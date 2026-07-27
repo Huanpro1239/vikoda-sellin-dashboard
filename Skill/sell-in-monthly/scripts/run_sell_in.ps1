@@ -118,7 +118,6 @@ $previewDir = Join-Path $workDir 'previews'
 $verificationDir = Join-Path $workDir 'verification'
 $masterDataDir = Join-Path $workDir 'master_data'
 $candidateDir = Join-Path $workDir 'new_customers'
-$masterPreviewDir = Join-Path $previewDir 'master_data'
 $logDir = Join-Path $ProjectRoot 'Data\Logs\Tach data logs'
 $stateFile = Join-Path $logDir 'incremental_state.json'
 $incrementalPlanFile = Join-Path $stagingDir 'incremental_plan.json'
@@ -213,7 +212,6 @@ foreach ($directory in @(
     $verificationDir,
     $masterDataDir,
     $candidateDir,
-    $masterPreviewDir,
     $customerBackupDir,
     $logDir
 )) {

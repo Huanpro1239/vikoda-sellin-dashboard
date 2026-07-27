@@ -288,6 +288,36 @@ class WorkbookLayoutTest(unittest.TestCase):
         regions = [ws.cell(r, 2).value for r in range(6, 35)]
         self.assertEqual(sum(1 for x in regions if x), 20)
 
+    def test_to_mau_dieu_kien_khong_phu_len_grand_total(self) -> None:
+        """Dòng Grand Total nền xanh đậm; chữ đỏ tô lên trên sẽ không đọc được."""
+        ws = self.wb["PIVOT"]
+        for cell_range, rules in ws.conditional_formatting._cf_rules.items():
+            reference = str(cell_range.sqref)
+            if ":" not in reference:
+                continue
+            start, end = reference.split(":")
+            start_row = int("".join(c for c in start if c.isdigit()))
+            end_row = int("".join(c for c in end if c.isdigit()))
+            if start_row == end_row == 34:
+                continue  # luật riêng cho dòng Grand Total, dùng màu sáng
+            self.assertLess(
+                end_row, 34,
+                f"luật tô màu {reference} quét qua dòng Grand Total",
+            )
+            self.assertTrue(rules)
+
+    def test_grand_total_dung_mau_sang(self) -> None:
+        ws = self.wb["PIVOT"]
+        colors = set()
+        for cell_range, rules in ws.conditional_formatting._cf_rules.items():
+            if str(cell_range.sqref) in ("G34", "J34", "F34", "I34"):
+                for rule in rules:
+                    if rule.dxf and rule.dxf.font and rule.dxf.font.color:
+                        colors.add(rule.dxf.font.color.rgb)
+        self.assertTrue(colors)
+        self.assertNotIn("FFC00000", colors)
+        self.assertNotIn("FF9C0006", colors)
+
     def test_tien_hien_thi_theo_trieu_dong(self) -> None:
         ws = self.wb["PIVOT"]
         self.assertIn(",,", ws.cell(6, 3).number_format)
@@ -338,6 +368,45 @@ class WorkbookLayoutTest(unittest.TestCase):
             regions, ["Bắc Miền Trung", "Đông Bắc", "Hà Nội", "Tây Bắc"]
         )
 
+    def test_bc_du_the_kpi_ke_ca_target_vikoda(self) -> None:
+        ws = self.wb["BC_Miền Bắc"]
+        expected = {
+            (5, 2): "ACTUAL",
+            (5, 4): "CÙNG KỲ LY",
+            (5, 6): "% VS LY",
+            (5, 8): "THÁNG TRƯỚC",
+            (5, 10): "% VS THÁNG TRƯỚC",
+            (7, 2): "VIKODA",
+            (7, 4): "TARGET",
+            (7, 6): "% ĐẠT TARGET",
+            (7, 8): "TARGET VIKODA",
+            (7, 10): "% ĐẠT TG VIKODA",
+        }
+        for (row, column), label in expected.items():
+            self.assertEqual(ws.cell(row, column).value, label)
+
+    def test_the_kpi_vikoda_khop_dong_grand_total(self) -> None:
+        grand = self._grand_row("BC_Miền Bắc")
+        # Hàng 8 là hàng giá trị của nhóm thẻ Vikoda.
+        for column, source in ((2, 7), (4, 8), (8, 10), (10, 11)):
+            self.assertAlmostEqual(
+                self.ev.cell_value("BC_Miền Bắc", 8, column),
+                self.ev.cell_value("BC_Miền Bắc", grand, source),
+                msg=f"thẻ KPI cột {column}",
+            )
+
+    def test_cot_phan_tram_dat_target_vikoda(self) -> None:
+        ws = self.wb["BC_Miền Bắc"]
+        self.assertEqual(ws.cell(10, 10).value, "Target Vikoda")
+        self.assertEqual(ws.cell(10, 11).value, "% đạt TG Vikoda")
+        grand = self._grand_row("BC_Miền Bắc")
+        vikoda = self.ev.cell_value("BC_Miền Bắc", grand, 7)
+        target_vikoda = self.ev.cell_value("BC_Miền Bắc", grand, 10)
+        expected = vikoda / target_vikoda if target_vikoda else 0
+        self.assertAlmostEqual(
+            self.ev.cell_value("BC_Miền Bắc", grand, 11), expected
+        )
+
     def test_bc_khach_hang_bang_tong_san_pham(self) -> None:
         ws = self.wb["BC_Miền Bắc"]
         customer_row = next(
@@ -350,14 +419,16 @@ class WorkbookLayoutTest(unittest.TestCase):
             children.append(row)
             row += 1
         self.assertTrue(children)
-        for column in (2, 3, 5, 7, 8, 9):
+        for column in (2, 3, 5, 7, 8, 10):
             parent = self.ev.cell_value("BC_Miền Bắc", customer_row, column)
             total = sum(float(ws.cell(r, column).value or 0) for r in children)
             self.assertAlmostEqual(parent, total, msg=f"cột {column}")
 
     def test_bc_grand_total_khop_pivot(self) -> None:
         """Tổng 8 sheet BC_ phải bằng Grand Total của PIVOT."""
-        for pivot_column, bc_column in ((5, 2), (12, 3), (16, 5), (8, 7), (3, 8)):
+        for pivot_column, bc_column in (
+            (5, 2), (12, 3), (16, 5), (8, 7), (3, 8), (4, 10),
+        ):
             bc_total = sum(
                 self.ev.cell_value(
                     f"BC_{area}",
@@ -381,10 +452,10 @@ class WorkbookLayoutTest(unittest.TestCase):
     def test_kpi_dau_trang_tro_toi_grand_total(self) -> None:
         ws = self.wb["BC_Miền Bắc"]
         grand = self._grand_row("BC_Miền Bắc")
-        self.assertEqual(ws.cell(6, 2).value, "ACTUAL")
-        self.assertEqual(ws.cell(7, 2).value, f"=B{grand}")
+        self.assertEqual(ws.cell(5, 2).value, "ACTUAL")
+        self.assertEqual(ws.cell(6, 2).value, f"=B{grand}")
         self.assertEqual(
-            self.ev.cell_value("BC_Miền Bắc", 7, 2),
+            self.ev.cell_value("BC_Miền Bắc", 6, 2),
             self.ev.cell_value("BC_Miền Bắc", grand, 2),
         )
 

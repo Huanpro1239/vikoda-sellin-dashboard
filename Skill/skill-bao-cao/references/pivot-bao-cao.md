@@ -110,9 +110,24 @@ doanh thu theo triệu đồng bằng định dạng `#,##0,,`, nhưng giữ gi�
 Tám sheet `BC_<Miền>` theo đúng thứ tự miền của báo cáo. Mỗi sheet:
 
 - Hàng 2-3: tiêu đề và dòng thông tin kỳ.
-- Hàng 6-7: nhãn và giá trị KPI (`ACTUAL`, `CÙNG KỲ LY`, `% VS LY`, `TARGET`,
-  `% ĐẠT TARGET`), lấy thẳng từ dòng `Grand Total` của chính sheet.
-- Hàng 10: tiêu đề bảng, 10 cột.
+- Hàng 5-8: hai hàng thẻ KPI, lấy thẳng từ dòng `Grand Total` của chính sheet.
+  Hàng 5-6 là kết quả chung, hàng 7-8 là phần Vikoda:
+
+  | Cột | Hàng 5-6 | Hàng 7-8 |
+  | --- | --- | --- |
+  | B | `ACTUAL` | `VIKODA` |
+  | D | `CÙNG KỲ LY` | `TARGET` |
+  | F | `% VS LY` | `% ĐẠT TARGET` |
+  | H | `THÁNG TRƯỚC` | `TARGET VIKODA` |
+  | J | `% VS THÁNG TRƯỚC` | `% ĐẠT TG VIKODA` |
+
+  Phải có đủ cả `TARGET VIKODA` và `% ĐẠT TG VIKODA`: xem Vikoda đạt bao nhiêu
+  phần trăm target riêng của nó là mục đích chính của sheet này.
+
+- Hàng 10: tiêu đề bảng, 11 cột:
+  `Vùng / Khách hàng / Sản phẩm`, `Actual`, `Cùng kỳ LY`, `% vs LY`,
+  `Tháng trước`, `% vs TT`, `Vikoda`, `Target`, `% đạt Target`,
+  `Target Vikoda`, `% đạt TG Vikoda`.
 - Từ hàng 11: ba cấp Vùng → Khách hàng → Sản phẩm, kết thúc bằng `Grand Total`.
 
 Cấp sản phẩm mặc định thu gọn. Dòng tổng nằm **trên** dòng chi tiết nên
@@ -141,6 +156,11 @@ Dòng Target chưa gắn sản phẩm nằm ở sản phẩm `-`, hiển thị l
   tổng tám sheet phải khớp `Grand Total`.
 - Tô màu tỷ lệ hoàn thành: đỏ dưới 80%, vàng từ 80% đến dưới 100%, xanh từ 100%.
 - Tô chữ variance âm màu đỏ và variance dương màu xanh.
+
+Vùng tô màu điều kiện phải **dừng trước dòng `Grand Total`**. Dòng đó nền xanh
+đậm chữ trắng; nếu phủ thêm chữ đỏ hoặc nền đỏ nhạt lên trên thì gần như không
+đọc được. Riêng dòng `Grand Total` dùng luật màu sáng: vàng nhạt `FFD966` cho
+giá trị âm hoặc dưới target, xanh lá nhạt `A9D08E` cho phần còn lại.
 
 `openpyxl` chỉ ghi công thức chứ không ghi kèm giá trị đã tính, nên đọc workbook
 bằng `data_only=True` sẽ ra `None` cho tới khi Excel mở và lưu lại. Bộ kiểm tra

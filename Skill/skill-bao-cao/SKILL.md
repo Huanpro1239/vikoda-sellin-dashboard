@@ -116,6 +116,9 @@ kiểu dữ liệu của sheet `Data`.
 - Từng dòng vùng trong `PIVOT` khớp tổng từ `PVT_DATA`.
 - Mỗi sheet `BC_` có đủ các vùng của miền đó, đúng thứ tự; mỗi dòng khách hàng
   bằng tổng các dòng sản phẩm con.
+- Mỗi sheet `BC_` có đủ 10 thẻ KPI ở hàng 5-8, gồm cả `TARGET VIKODA` và
+  `% ĐẠT TG VIKODA`.
+- Tô màu điều kiện không được phủ lên dòng `Grand Total` nền xanh đậm.
 - `Grand Total` của từng sheet `BC_` khớp dòng tổng miền tương ứng trong `PIVOT`;
   tổng 8 sheet `BC_` khớp `Grand Total` của `PIVOT`.
 - Bộ kiểm tra tự tính lại công thức bằng `scripts/formula_eval.py`, không đọc

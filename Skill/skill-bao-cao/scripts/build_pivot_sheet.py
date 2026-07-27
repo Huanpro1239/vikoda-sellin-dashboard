@@ -54,6 +54,10 @@ BAND_BLUE = "FFD9E2F3"
 SOFT_GOLD = "FFFFF9E6"
 SOFT_BLUE = "FFF2F7FC"
 
+# Màu chữ trên dòng Grand Total nền xanh đậm: phải đủ sáng để đọc được.
+GRAND_TOTAL_NEGATIVE = "FFFFD966"
+GRAND_TOTAL_POSITIVE = "FFA9D08E"
+
 # Tiền: lưu VND, hiển thị triệu đồng. Mỗi dấu phẩy cuối chuỗi chia cho 1.000.
 MONEY_FORMAT = '#,##0,,;(#,##0,,);"-"'
 PERCENT_FORMAT = '0.0%;(0.0%);"-"'
@@ -324,10 +328,15 @@ def build_pivot_sheet(
 
     ws.freeze_panes = "C6"
 
-    # Tô màu theo ngưỡng: dưới 80% đỏ, 80-100% vàng, từ 100% xanh.
+    # Tô màu điều kiện dừng TRƯỚC dòng Grand Total. Dòng đó nền xanh đậm chữ
+    # trắng; nếu tô thêm chữ đỏ hoặc nền đỏ nhạt lên trên thì gần như không đọc
+    # được. Dòng Grand Total dùng màu sáng cố định bên dưới.
+    conditional_last_row = grand_total_row - 1
+
+    # Dưới 80% đỏ, 80-100% vàng, từ 100% xanh.
     for column in PIVOT_ATTAINMENT_COLUMNS:
         letter = get_column_letter(column)
-        area = f"{letter}{PIVOT_FIRST_DATA_ROW}:{letter}{grand_total_row}"
+        area = f"{letter}{PIVOT_FIRST_DATA_ROW}:{letter}{conditional_last_row}"
         ws.conditional_formatting.add(area, CellIsRule(
             operator="lessThan", formula=["0.8"],
             fill=PatternFill("solid", fgColor="FFFFC7CE"),
@@ -345,12 +354,27 @@ def build_pivot_sheet(
         ))
     for column in PIVOT_GAP_COLUMNS:
         letter = get_column_letter(column)
-        area = f"{letter}{PIVOT_FIRST_DATA_ROW}:{letter}{grand_total_row}"
+        area = f"{letter}{PIVOT_FIRST_DATA_ROW}:{letter}{conditional_last_row}"
         ws.conditional_formatting.add(area, CellIsRule(
             operator="lessThan", formula=["0"], font=Font(color="FFC00000"),
         ))
         ws.conditional_formatting.add(area, CellIsRule(
             operator="greaterThan", formula=["0"], font=Font(color="FF00703C"),
+        ))
+
+    # Trên nền xanh đậm, dùng vàng nhạt cho số âm và xanh lá nhạt cho số dương
+    # để vẫn phân biệt được mà không mất độ tương phản với nền.
+    for column in PIVOT_GAP_COLUMNS + PIVOT_ATTAINMENT_COLUMNS:
+        letter = get_column_letter(column)
+        cell_ref = f"{letter}{grand_total_row}:{letter}{grand_total_row}"
+        threshold = "0" if column in PIVOT_GAP_COLUMNS else "1"
+        ws.conditional_formatting.add(cell_ref, CellIsRule(
+            operator="lessThan", formula=[threshold],
+            font=Font(bold=True, color=GRAND_TOTAL_NEGATIVE),
+        ))
+        ws.conditional_formatting.add(cell_ref, CellIsRule(
+            operator="greaterThanOrEqual", formula=[threshold],
+            font=Font(bold=True, color=GRAND_TOTAL_POSITIVE),
         ))
 
     return {
@@ -414,16 +438,17 @@ BC_HEADERS = [
     "% vs TT",
     "Vikoda",
     "Target",
-    "Target Vikoda",
     "% đạt Target",
+    "Target Vikoda",
+    "% đạt TG Vikoda",
 ]
 
-BC_WIDTHS = [58, 16, 16, 11, 16, 11, 16, 16, 16, 12]
+BC_WIDTHS = [58, 16, 16, 11, 16, 11, 16, 16, 12, 16, 13]
 
 BC_TITLE_ROW = 2
 BC_SUBTITLE_ROW = 3
-BC_KPI_LABEL_ROW = 6
-BC_KPI_VALUE_ROW = 7
+# Hai hàng thẻ KPI: hàng trên là kết quả chung, hàng dưới là phần Vikoda.
+BC_KPI_ROWS = [(5, 6), (7, 8)]
 BC_HEADER_ROW = 10
 BC_FIRST_DATA_ROW = 11
 
@@ -434,17 +459,36 @@ BC_SUM_FIELDS = {
     5: "ThangTruoc",
     7: "Vikoda",
     8: "TargetTong",
-    9: "TargetVikoda",
+    10: "TargetVikoda",
 }
-BC_PERCENT_COLUMNS = {4: ("B", "C"), 6: ("B", "E"), 10: ("B", "H")}
+# Cột phần trăm: (tử số, mẫu số).
+BC_PERCENT_COLUMNS = {
+    4: ("B", "C"),    # % vs LY
+    6: ("B", "E"),    # % vs tháng trước
+    9: ("B", "H"),    # % đạt Target
+    11: ("G", "J"),   # % đạt Target Vikoda
+}
 
-BC_KPI_LABELS = [
-    (2, "ACTUAL"),
-    (4, "CÙNG KỲ LY"),
-    (6, "% VS LY"),
-    (8, "TARGET"),
-    (10, "% ĐẠT TARGET"),
+# (cột đặt thẻ, nhãn, cột nguồn trong bảng)
+BC_KPI_CARDS = [
+    [
+        (2, "ACTUAL", "B"),
+        (4, "CÙNG KỲ LY", "C"),
+        (6, "% VS LY", "D"),
+        (8, "THÁNG TRƯỚC", "E"),
+        (10, "% VS THÁNG TRƯỚC", "F"),
+    ],
+    [
+        (2, "VIKODA", "G"),
+        (4, "TARGET", "H"),
+        (6, "% ĐẠT TARGET", "I"),
+        (8, "TARGET VIKODA", "J"),
+        (10, "% ĐẠT TG VIKODA", "K"),
+    ],
 ]
+
+# Cột phần trăm trong thẻ KPI, để đặt đúng định dạng.
+BC_KPI_PERCENT_SOURCES = {"D", "F", "I", "K"}
 
 
 def sheet_title_for(area: str) -> str:
@@ -597,25 +641,52 @@ def build_bc_sheet(
                     name=FONT, size=9, italic=True, color=GREY
                 )
 
-    # KPI đầu trang, lấy thẳng từ dòng Grand Total.
-    for column, label in BC_KPI_LABELS:
-        label_cell = ws.cell(BC_KPI_LABEL_ROW, column, label)
-        label_cell.font = Font(name=FONT, size=9, bold=True, color=WHITE)
-        label_cell.fill = PatternFill("solid", fgColor=GREY)
-        label_cell.alignment = Alignment(horizontal="center", vertical="center")
-        label_cell.border = GRID
-    kpi_source = {2: "B", 4: "C", 6: "D", 8: "H", 10: "J"}
-    for column, source_letter in kpi_source.items():
-        cell = ws.cell(
-            BC_KPI_VALUE_ROW, column, f"={source_letter}{grand_total_row}"
-        )
-        cell.font = Font(name=FONT, size=12, bold=True, color=NAVY)
-        cell.border = GRID
-        if column in (6, 10):
-            percent(cell)
-        else:
-            money(cell)
-    ws.row_dimensions[BC_KPI_VALUE_ROW].height = 22
+    # Thẻ KPI đầu trang, lấy thẳng từ dòng Grand Total của chính sheet.
+    # Hàng trên: kết quả chung. Hàng dưới: phần Vikoda, gồm cả đánh giá
+    # Target Vikoda mà bản trước còn thiếu.
+    for (label_row, value_row), cards in zip(BC_KPI_ROWS, BC_KPI_CARDS):
+        for column, label, source_letter in cards:
+            label_cell = ws.cell(label_row, column, label)
+            label_cell.font = Font(name=FONT, size=9, bold=True, color=WHITE)
+            label_cell.fill = PatternFill("solid", fgColor=GREY)
+            label_cell.alignment = Alignment(
+                horizontal="center", vertical="center", wrap_text=True
+            )
+            label_cell.border = GRID
+
+            value_cell = ws.cell(
+                value_row, column, f"={source_letter}{grand_total_row}"
+            )
+            value_cell.font = Font(name=FONT, size=12, bold=True, color=NAVY)
+            value_cell.border = GRID
+            if source_letter in BC_KPI_PERCENT_SOURCES:
+                percent(value_cell)
+            else:
+                money(value_cell)
+        ws.row_dimensions[label_row].height = 16
+        ws.row_dimensions[value_row].height = 22
+
+    # Tô ngưỡng cho hai thẻ phần trăm đạt Target.
+    for _, cards in zip(BC_KPI_ROWS, BC_KPI_CARDS):
+        for column, _, source_letter in cards:
+            if source_letter not in ("I", "K"):
+                continue
+            letter = get_column_letter(column)
+            reference = f"{letter}{BC_KPI_ROWS[1][1]}"
+            ws.conditional_formatting.add(
+                f"{reference}:{reference}",
+                CellIsRule(
+                    operator="lessThan", formula=["0.8"],
+                    font=Font(bold=True, size=12, color="FF9C0006"),
+                ),
+            )
+            ws.conditional_formatting.add(
+                f"{reference}:{reference}",
+                CellIsRule(
+                    operator="greaterThanOrEqual", formula=["1"],
+                    font=Font(bold=True, size=12, color="FF006100"),
+                ),
+            )
 
     for index, width in enumerate(BC_WIDTHS, start=1):
         ws.column_dimensions[get_column_letter(index)].width = width
@@ -625,14 +696,27 @@ def build_bc_sheet(
     ws.sheet_properties.outlinePr.applyStyles = False
     ws.freeze_panes = f"A{BC_FIRST_DATA_ROW}"
 
-    for column in (4, 6, 10):
+    # Tô ngưỡng cho các cột phần trăm, dừng trước dòng Grand Total vì dòng đó
+    # nền xanh đậm chữ trắng.
+    for column in BC_PERCENT_COLUMNS:
         letter = get_column_letter(column)
-        area_ref = f"{letter}{BC_FIRST_DATA_ROW}:{letter}{grand_total_row}"
+        area_ref = (
+            f"{letter}{BC_FIRST_DATA_ROW}:{letter}{grand_total_row - 1}"
+        )
         ws.conditional_formatting.add(area_ref, CellIsRule(
             operator="lessThan", formula=["0.8"], font=Font(color="FF9C0006"),
         ))
         ws.conditional_formatting.add(area_ref, CellIsRule(
             operator="greaterThanOrEqual", formula=["1"], font=Font(color="FF006100"),
+        ))
+        grand_ref = f"{letter}{grand_total_row}"
+        ws.conditional_formatting.add(f"{grand_ref}:{grand_ref}", CellIsRule(
+            operator="lessThan", formula=["1"],
+            font=Font(bold=True, color=GRAND_TOTAL_NEGATIVE),
+        ))
+        ws.conditional_formatting.add(f"{grand_ref}:{grand_ref}", CellIsRule(
+            operator="greaterThanOrEqual", formula=["1"],
+            font=Font(bold=True, color=GRAND_TOTAL_POSITIVE),
         ))
 
     return {

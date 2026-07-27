@@ -123,12 +123,30 @@ BC_COLUMNS = [
     "% vs TT",
     "Vikoda",
     "Target",
-    "Target Vikoda",
     "% đạt Target",
+    "Target Vikoda",
+    "% đạt TG Vikoda",
 ]
 
 BC_HEADER_ROW = 10
 BC_FIRST_DATA_ROW = 11
+
+# Hai hang the KPI: (hang nhan, hang gia tri).
+BC_KPI_ROWS = [(5, 6), (7, 8)]
+
+# Nhan the KPI theo cot, phai co ca danh gia Target Vikoda.
+BC_KPI_LABELS = {
+    (5, 2): "ACTUAL",
+    (5, 4): "CÙNG KỲ LY",
+    (5, 6): "% VS LY",
+    (5, 8): "THÁNG TRƯỚC",
+    (5, 10): "% VS THÁNG TRƯỚC",
+    (7, 2): "VIKODA",
+    (7, 4): "TARGET",
+    (7, 6): "% ĐẠT TARGET",
+    (7, 8): "TARGET VIKODA",
+    (7, 10): "% ĐẠT TG VIKODA",
+}
 
 # Chi tieu doi chieu giua sheet BC_ va PIVOT.
 BC_FIELD_COLUMNS = {
@@ -137,7 +155,7 @@ BC_FIELD_COLUMNS = {
     "prior_month": 5,
     "vikoda_actual": 7,
     "target_total": 8,
-    "target_vikoda": 9,
+    "target_vikoda": 10,
 }
 
 REPORTING_STRUCTURE = [
@@ -1019,6 +1037,14 @@ def main() -> int:
                         )
                     if ws.sheet_state != "visible":
                         add_problem(problems, f"BC_{area} phai hien")
+
+                    for (label_row, column), label in BC_KPI_LABELS.items():
+                        if ws.cell(label_row, column).value != label:
+                            add_problem(
+                                problems,
+                                f"BC_{area} thieu the KPI {label!r} tai "
+                                f"hang {label_row} cot {column}",
+                            )
 
                     region_rows: list[int] = []
                     customer_rows: list[int] = []
