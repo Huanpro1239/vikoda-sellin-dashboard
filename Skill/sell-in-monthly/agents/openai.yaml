@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sell In hàng tháng"
+  short_description: "Tách tăng dần và rà soát dữ liệu Sell In"
+  default_prompt: "Dùng $sell-in-monthly để chỉ cập nhật tháng Sell In có dữ liệu mới, kiểm tra chất lượng và rà soát danh mục."

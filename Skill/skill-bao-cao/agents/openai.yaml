@@ -1,0 +1,4 @@
+interface:
+  display_name: "Skill Báo cáo Sell In"
+  short_description: "Tạo Target, Data, DMKH và PIVOT Sell In"
+  default_prompt: "Use $skill-bao-cao để tạo Bao_Cao_Sell_in.xlsx gồm Target, Data, DMKH, PIVOT và kiểm tra toàn bộ số liệu."

@@ -1,0 +1,14 @@
+# Giữ nguyên kiểu xuống dòng để không tạo diff giả khi làm việc trên Windows.
+* text=auto
+
+*.py text eol=lf
+*.mjs text eol=lf
+*.md text eol=lf
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+
+*.xlsx binary
+*.xlsm binary
+*.xltx binary
+*.exe binary
+*.png binary
