@@ -64,24 +64,71 @@ Vikoda, TargetTong, TargetVikoda, KDT, VikodaLY, VikodaThangTruoc`
 
 ## PIVOT
 
-Giữ vùng báo cáo `B1:T33`:
+Vùng báo cáo `A1:S34`, bố cục theo file mẫu `Sell_in_report_chuan.xlsb`:
 
-- Hàng 1-2: tiêu đề, kỳ, đơn vị và quy tắc phân loại.
-- Hàng 3-4: nhóm cột và tiêu đề.
-- Hàng 5-32: 20 vùng và 8 dòng tổng miền.
-- Hàng 33: `Grand Total`.
+- Hàng 1: `DAILY REVENUE SELL IN REPORT: VIKODA`.
+- Hàng 2: `Report for:` kèm ngày cập nhật và
+  `Period: MM/YYYY | Unit: VND mn | Sales + Returns`.
+- Hàng 3: nhóm cột `MARKET STRUCTURE`, `TARGET`, `MTD / GAP`, `LAST YEAR`,
+  `LAST MONTH`.
+- Hàng 4: tên cột.
+- Hàng 5: số thứ tự cột `(1)`…`(17)` cho các cột từ C tới S.
+- Hàng 6-33: 20 vùng xen 8 dòng tổng miền.
+- Hàng 34: `Grand Total`.
 
-Các nhóm chỉ số:
+Cột A là Miền (nhãn `Sales Region`), cột B là Vùng (nhãn `Area`) — đúng theo
+cách gọi của file mẫu.
 
-- Target: Total Target, Vikoda Target.
-- Actual vs Target: Actual, Attainment, Variance, Vikoda Actual,
-  Vikoda Attainment, Vikoda Variance, KDT Actual.
-- YoY: Total LY, Total YoY Index, Vikoda LY, Vikoda YoY Index.
-- MoM: Total Previous Month, Total MoM Index, Vikoda Previous Month,
-  Vikoda MoM Index.
+17 cột chỉ tiêu, đánh số để tên cột phần trăm tham chiếu được:
+
+| Số | Cột | Nội dung |
+| --- | --- | --- |
+| (1) | C | Total Target |
+| (2) | D | Vikoda Target |
+| (3) | E | Total MTD |
+| (4) | F | Total % (3) vs (1) |
+| (5) | G | Total Gap |
+| (6) | H | Vikoda MTD |
+| (7) | I | Vikoda % (6) vs (2) |
+| (8) | J | Vikoda Gap |
+| (9) | K | KDT MTD |
+| (10) | L | Total Last Year |
+| (11) | M | Total % (3) vs (10) |
+| (12) | N | Vikoda Last Year |
+| (13) | O | Vikoda % (6) vs (12) |
+| (14) | P | Total Last Month |
+| (15) | Q | Total % (3) vs (14) |
+| (16) | R | Vikoda Last Month |
+| (17) | S | Vikoda % (6) vs (16) |
 
 Dùng `SUMIFS`, `SUM` và `IFERROR` với phạm vi hữu hạn trong `PVT_DATA`. Hiển thị
-doanh thu theo triệu đồng bằng định dạng số, nhưng giữ giá trị ô theo VND.
+doanh thu theo triệu đồng bằng định dạng `#,##0,,`, nhưng giữ giá trị ô theo VND
+để cộng trừ không sinh sai số làm tròn.
+
+## Sheet báo cáo theo miền
+
+Tám sheet `BC_<Miền>` theo đúng thứ tự miền của báo cáo. Mỗi sheet:
+
+- Hàng 2-3: tiêu đề và dòng thông tin kỳ.
+- Hàng 6-7: nhãn và giá trị KPI (`ACTUAL`, `CÙNG KỲ LY`, `% VS LY`, `TARGET`,
+  `% ĐẠT TARGET`), lấy thẳng từ dòng `Grand Total` của chính sheet.
+- Hàng 10: tiêu đề bảng, 10 cột.
+- Từ hàng 11: ba cấp Vùng → Khách hàng → Sản phẩm, kết thúc bằng `Grand Total`.
+
+Cấp sản phẩm mặc định thu gọn. Dòng tổng nằm **trên** dòng chi tiết nên
+`summaryBelow` phải để `False`, nếu không Excel sẽ gộp nhóm lệch một dòng.
+
+Dòng vùng và dòng khách hàng dùng `SUMIFS` về `PVT_DATA` để luôn khớp `PIVOT`.
+Dòng sản phẩm là dữ liệu lá nên ghi thẳng giá trị: dùng `SUMIFS` cho cả ba nghìn
+dòng sản phẩm sẽ làm Excel mở rất chậm mà không thêm thông tin gì.
+
+Gom khách hàng theo **mã**, không theo tên hiển thị. Cùng một mã có thể có hai
+cách viết tên giữa Sell In và Target; nếu tách đôi thì dòng khách hàng dùng
+`SUMIFS` theo mã sẽ đếm gộp cả hai trong khi dòng sản phẩm con chỉ có một phần.
+Tên hiển thị chọn bản đầy đủ nhất trong các cách viết.
+
+Dòng Target chưa gắn sản phẩm nằm ở sản phẩm `-`, hiển thị là
+`(chưa gắn sản phẩm)`.
 
 ## Đối soát
 
@@ -89,5 +136,13 @@ doanh thu theo triệu đồng bằng định dạng số, nhưng giữ giá tr�
 - Từng dòng vùng trong `PIVOT` phải khớp tổng theo Miền/Vùng từ `PVT_DATA`.
 - `Grand Total` phải khớp nguồn cho chín chỉ tiêu tiền.
 - Các tỷ lệ phải dùng mẫu số đúng và trả `0` khi mẫu số bằng `0`.
+- Mỗi dòng khách hàng trong `BC_` phải bằng tổng các dòng sản phẩm con.
+- `Grand Total` của từng sheet `BC_` phải khớp dòng tổng miền trong `PIVOT`;
+  tổng tám sheet phải khớp `Grand Total`.
 - Tô màu tỷ lệ hoàn thành: đỏ dưới 80%, vàng từ 80% đến dưới 100%, xanh từ 100%.
 - Tô chữ variance âm màu đỏ và variance dương màu xanh.
+
+`openpyxl` chỉ ghi công thức chứ không ghi kèm giá trị đã tính, nên đọc workbook
+bằng `data_only=True` sẽ ra `None` cho tới khi Excel mở và lưu lại. Bộ kiểm tra
+tự tính lại công thức bằng `scripts/formula_eval.py` thay vì tin vào giá trị
+Excel đệm sẵn.

@@ -11,7 +11,6 @@ const previewDir = path.resolve(process.argv[3]);
 const sellInDataFile = path.resolve(process.argv[4]);
 const targetDataFile = path.resolve(process.argv[5]);
 const dmkhDataFile = path.resolve(process.argv[6]);
-const pivotArtifactFile = path.resolve(process.argv[7]);
 await fs.mkdir(previewDir, { recursive: true });
 
 const [sellInPayload, targetPayload, dmkhPayload] = await Promise.all([
@@ -176,15 +175,20 @@ applyWidths(
   dmkhLastRow,
 );
 
-const pivotBlob = await FileBlob.load(pivotArtifactFile);
-const pivotPreview = await SpreadsheetFile.importXlsx(pivotBlob);
+// PIVOT, PVT_DATA va cac sheet BC_ nam ngay trong workbook bao cao.
+const outputBlob = await FileBlob.load(outputPath);
+const pivotPreview = await SpreadsheetFile.importXlsx(outputBlob);
+const bcSheetNames = pivotPreview.worksheets.items
+  .map((sheet) => sheet.name)
+  .filter((name) => name.startsWith("BC_"));
 const inspections = {};
 for (const [workbook, sheetName, range, columns] of [
   [sourcePreview, "Target", "A1:I12", 9],
   [sourcePreview, "Data", "A1:N12", 14],
   [sourcePreview, "DMKH", "A1:N12", 14],
-  [pivotPreview, "PIVOT", "B1:T33", 19],
+  [pivotPreview, "PIVOT", "A1:S34", 19],
   [pivotPreview, "PVT_DATA", "A1:N12", 14],
+  ...bcSheetNames.map((name) => [pivotPreview, name, "A1:J24", 10]),
 ]) {
   const result = await workbook.inspect({
     kind: "table",
@@ -217,8 +221,9 @@ for (const [workbook, sheetName, range, scale] of [
   [sourcePreview, "Target", `A1:I${targetLastRow}`, 1],
   [sourcePreview, "Data", `A1:N${dataLastRow}`, 1],
   [sourcePreview, "DMKH", `A1:N${dmkhLastRow}`, 1],
-  [pivotPreview, "PIVOT", "B1:T33", 1.2],
+  [pivotPreview, "PIVOT", "A1:S34", 1.2],
   [pivotPreview, "PVT_DATA", "A1:N25", 1],
+  ...bcSheetNames.map((name) => [pivotPreview, name, "A1:J24", 1]),
 ]) {
   const preview = await workbook.render({
     sheetName,
@@ -240,7 +245,7 @@ await fs.writeFile(
   JSON.stringify(
     {
       output_path: outputPath,
-      pivot_artifact: pivotArtifactFile,
+      bc_sheets: bcSheetNames,
       expected_rows: {
         Target: targetPayload.records.length,
         Data: sellInPayload.rows.length,

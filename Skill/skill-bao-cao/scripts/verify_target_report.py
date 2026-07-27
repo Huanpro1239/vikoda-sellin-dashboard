@@ -11,6 +11,8 @@ from pathlib import Path
 
 from openpyxl import load_workbook
 
+from formula_eval import WorkbookEvaluator
+
 
 TARGET_COLUMNS = [
     "Ky",
@@ -84,26 +86,59 @@ PVT_DATA_COLUMNS = [
 ]
 
 PIVOT_COLUMNS = [
-    "Area",
     "Sales Region",
-    "Total Target (VND mn)",
-    "Vikoda Target (VND mn)",
-    "Total Actual (VND mn)",
-    "Total Attainment (%)",
-    "Total Variance (VND mn)",
-    "Vikoda Actual (VND mn)",
-    "Vikoda Attainment (%)",
-    "Vikoda Variance (VND mn)",
-    "KDT Actual (VND mn)",
-    "Total LY (VND mn)",
-    "Total YoY Index (%)",
-    "Vikoda LY (VND mn)",
-    "Vikoda YoY Index (%)",
-    "Total Previous Month (VND mn)",
-    "Total MoM Index (%)",
-    "Vikoda Previous Month (VND mn)",
-    "Vikoda MoM Index (%)",
+    "Area",
+    "Total Target",
+    "Vikoda Target",
+    "Total MTD",
+    "Total % (3) vs (1)",
+    "Total Gap",
+    "Vikoda MTD",
+    "Vikoda % (6) vs (2)",
+    "Vikoda Gap",
+    "KDT MTD",
+    "Total Last Year",
+    "Total % (3) vs (10)",
+    "Vikoda Last Year",
+    "Vikoda % (6) vs (12)",
+    "Total Last Month",
+    "Total % (3) vs (14)",
+    "Vikoda Last Month",
+    "Vikoda % (6) vs (16)",
 ]
+
+# Bo cuc PIVOT: 1 tieu de, 2 ky bao cao, 3 nhom cot, 4 ten cot, 5 so thu tu cot.
+PIVOT_HEADER_ROW = 4
+PIVOT_NUMBER_ROW = 5
+PIVOT_FIRST_DATA_ROW = 6
+# 20 vung + 8 dong tong mien + 1 Grand Total.
+PIVOT_GRAND_TOTAL_ROW = PIVOT_FIRST_DATA_ROW + 20 + 8
+
+BC_COLUMNS = [
+    "Vùng / Khách hàng / Sản phẩm",
+    "Actual",
+    "Cùng kỳ LY",
+    "% vs LY",
+    "Tháng trước",
+    "% vs TT",
+    "Vikoda",
+    "Target",
+    "Target Vikoda",
+    "% đạt Target",
+]
+
+BC_HEADER_ROW = 10
+BC_FIRST_DATA_ROW = 11
+
+# Chi tieu doi chieu giua sheet BC_ va PIVOT.
+BC_FIELD_COLUMNS = {
+    "actual": 2,
+    "last_year": 3,
+    "prior_month": 5,
+    "vikoda_actual": 7,
+    "target_total": 8,
+    "target_vikoda": 9,
+}
 
 REPORTING_STRUCTURE = [
     ("Miền Bắc", ["Bắc Miền Trung", "Đông Bắc", "Hà Nội", "Tây Bắc"]),
@@ -356,12 +391,9 @@ def main() -> int:
     if not output_file.exists():
         add_problem(problems, f"Khong tim thay file dau ra: {output_file}")
     else:
+        # openpyxl khong ghi kem gia tri da tinh cho cong thuc, nen bo kiem tra
+        # tu tinh lai bang WorkbookEvaluator thay vi doc gia tri Excel dem san.
         workbook = load_workbook(output_file, read_only=False, data_only=False)
-        values_workbook = load_workbook(
-            output_file,
-            read_only=False,
-            data_only=True,
-        )
         try:
             expected_sheet_names = [
                 "Target",
@@ -369,7 +401,7 @@ def main() -> int:
                 "DMKH",
                 "PIVOT",
                 "PVT_DATA",
-            ]
+            ] + [f"BC_{area}" for area, _ in REPORTING_STRUCTURE]
             if workbook.sheetnames != expected_sheet_names:
                 add_problem(
                     problems,
@@ -818,11 +850,11 @@ def main() -> int:
                         )
 
             if "PIVOT" in workbook.sheetnames:
+                evaluator = WorkbookEvaluator(workbook)
                 worksheet = workbook["PIVOT"]
-                values_sheet = values_workbook["PIVOT"]
                 headers = [
-                    worksheet.cell(4, column).value
-                    for column in range(2, 21)
+                    worksheet.cell(PIVOT_HEADER_ROW, column).value
+                    for column in range(1, len(PIVOT_COLUMNS) + 1)
                 ]
                 if headers != PIVOT_COLUMNS:
                     add_problem(problems, f"Tieu de PIVOT khong dung: {headers}")
@@ -831,22 +863,32 @@ def main() -> int:
                         problems,
                         f"PIVOT phai hien, hien tai={worksheet.sheet_state!r}",
                     )
-                if "tblPivotBaoCao" not in worksheet.tables:
-                    add_problem(problems, "Khong co Excel Table tblPivotBaoCao")
-                if worksheet.freeze_panes != "C5":
+                if worksheet.freeze_panes != "C6":
                     add_problem(
                         problems,
                         f"Freeze panes PIVOT khong dung: {worksheet.freeze_panes}",
                     )
 
+                # Dong so thu tu cot (1)...(17) de ten cot phan tram tham chieu duoc.
+                for column in range(3, len(PIVOT_COLUMNS) + 1):
+                    value = str(
+                        worksheet.cell(PIVOT_NUMBER_ROW, column).value or ""
+                    )
+                    if not value.endswith(f"({column - 2})"):
+                        add_problem(
+                            problems,
+                            f"Thieu so thu tu cot ({column - 2}) tai PIVOT hang "
+                            f"{PIVOT_NUMBER_ROW}",
+                        )
+
                 expected_formula_cells = 29 * 17
                 formula_cells = sum(
                     1
                     for row in worksheet.iter_rows(
-                        min_row=5,
-                        max_row=33,
-                        min_col=4,
-                        max_col=20,
+                        min_row=PIVOT_FIRST_DATA_ROW,
+                        max_row=PIVOT_GRAND_TOTAL_ROW,
+                        min_col=3,
+                        max_col=len(PIVOT_COLUMNS),
                     )
                     for cell in row
                     if cell.data_type == "f"
@@ -859,33 +901,32 @@ def main() -> int:
                     )
 
                 metric_columns = {
-                    "target_total": 4,
-                    "target_vikoda": 5,
-                    "actual": 6,
-                    "vikoda_actual": 9,
-                    "kdt_actual": 12,
-                    "last_year": 13,
-                    "vikoda_last_year": 15,
-                    "prior_month": 17,
-                    "vikoda_prior_month": 19,
+                    "target_total": 3,
+                    "target_vikoda": 4,
+                    "actual": 5,
+                    "vikoda_actual": 8,
+                    "kdt_actual": 11,
+                    "last_year": 12,
+                    "vikoda_last_year": 14,
+                    "prior_month": 16,
+                    "vikoda_prior_month": 18,
                 }
-                row_number = 5
+                row_number = PIVOT_FIRST_DATA_ROW
                 for area, regions in REPORTING_STRUCTURE:
                     for region in regions:
                         if (
-                            values_sheet.cell(row_number, 2).value != area
-                            or values_sheet.cell(row_number, 3).value != region
+                            worksheet.cell(row_number, 1).value != area
+                            or worksheet.cell(row_number, 2).value != region
                         ):
                             add_problem(
                                 problems,
-                                f"Nhãn PIVOT sai tai hang {row_number}",
+                                f"Nhan PIVOT sai tai hang {row_number}",
                             )
                         metrics = model_by_region[(area, region)]
                         for key, column in metric_columns.items():
-                            actual_value = values_sheet.cell(
-                                row_number,
-                                column,
-                            ).value
+                            actual_value = evaluator.cell_value(
+                                "PIVOT", row_number, column
+                            )
                             if not close_enough(actual_value, metrics[key]):
                                 add_problem(
                                     problems,
@@ -894,21 +935,23 @@ def main() -> int:
                                     f"expected={metrics[key]}",
                                 )
                         row_number += 1
-                    if values_sheet.cell(row_number, 2).value != f"{area} Total":
+                    if worksheet.cell(row_number, 1).value != f"{area} Total":
                         add_problem(
                             problems,
-                            f"Nhãn tong PIVOT sai tai hang {row_number}",
+                            f"Nhan tong PIVOT sai tai hang {row_number}",
                         )
                     row_number += 1
 
-                grand_total_row = 33
-                if values_sheet.cell(grand_total_row, 2).value != "Grand Total":
-                    add_problem(problems, "Khong tim thay Grand Total tai PIVOT!B33")
+                grand_total_row = PIVOT_GRAND_TOTAL_ROW
+                if worksheet.cell(grand_total_row, 1).value != "Grand Total":
+                    add_problem(
+                        problems,
+                        f"Khong tim thay Grand Total tai PIVOT!A{grand_total_row}",
+                    )
                 for key, column in metric_columns.items():
-                    actual_value = values_sheet.cell(
-                        grand_total_row,
-                        column,
-                    ).value
+                    actual_value = evaluator.cell_value(
+                        "PIVOT", grand_total_row, column
+                    )
                     actual_pivot_totals[key] = actual_value
                     expected_value = pivot_expected["totals"][key]
                     if not close_enough(actual_value, expected_value):
@@ -918,80 +961,144 @@ def main() -> int:
                             f"output={actual_value}, expected={expected_value}",
                         )
 
+                totals = pivot_expected["totals"]
+
+                def ratio(numerator: str, denominator: str) -> float:
+                    return (
+                        totals[numerator] / totals[denominator]
+                        if totals[denominator]
+                        else 0
+                    )
+
                 expected_ratios = {
-                    7: (
-                        pivot_expected["totals"]["actual"]
-                        / pivot_expected["totals"]["target_total"]
-                        if pivot_expected["totals"]["target_total"]
-                        else 0
-                    ),
-                    10: (
-                        pivot_expected["totals"]["vikoda_actual"]
-                        / pivot_expected["totals"]["target_vikoda"]
-                        if pivot_expected["totals"]["target_vikoda"]
-                        else 0
-                    ),
-                    14: (
-                        pivot_expected["totals"]["actual"]
-                        / pivot_expected["totals"]["last_year"]
-                        if pivot_expected["totals"]["last_year"]
-                        else 0
-                    ),
-                    16: (
-                        pivot_expected["totals"]["vikoda_actual"]
-                        / pivot_expected["totals"]["vikoda_last_year"]
-                        if pivot_expected["totals"]["vikoda_last_year"]
-                        else 0
-                    ),
-                    18: (
-                        pivot_expected["totals"]["actual"]
-                        / pivot_expected["totals"]["prior_month"]
-                        if pivot_expected["totals"]["prior_month"]
-                        else 0
-                    ),
-                    20: (
-                        pivot_expected["totals"]["vikoda_actual"]
-                        / pivot_expected["totals"]["vikoda_prior_month"]
-                        if pivot_expected["totals"]["vikoda_prior_month"]
-                        else 0
-                    ),
+                    6: ratio("actual", "target_total"),
+                    9: ratio("vikoda_actual", "target_vikoda"),
+                    13: ratio("actual", "last_year"),
+                    15: ratio("vikoda_actual", "vikoda_last_year"),
+                    17: ratio("actual", "prior_month"),
+                    19: ratio("vikoda_actual", "vikoda_prior_month"),
                 }
                 for column, expected_value in expected_ratios.items():
-                    actual_value = values_sheet.cell(
-                        grand_total_row,
-                        column,
-                    ).value
+                    actual_value = evaluator.cell_value(
+                        "PIVOT", grand_total_row, column
+                    )
                     if not close_enough(
-                        actual_value,
-                        expected_value,
-                        tolerance=1e-9,
+                        actual_value, expected_value, tolerance=1e-9
                     ):
                         add_problem(
                             problems,
-                            f"Ty le PIVOT tai "
-                            f"{values_sheet.cell(grand_total_row, column).coordinate} "
-                            f"khong khop: output={actual_value}, "
-                            f"expected={expected_value}",
+                            f"Ty le PIVOT tai cot {column} hang "
+                            f"{grand_total_row} khong khop: "
+                            f"output={actual_value}, expected={expected_value}",
                         )
 
-                for row in values_sheet.iter_rows(
-                    min_row=1,
-                    max_row=33,
-                    min_col=2,
-                    max_col=20,
-                ):
-                    for cell in row:
-                        if (
-                            isinstance(cell.value, str)
-                            and cell.value.startswith("#")
-                        ):
+            # Cac sheet bao cao chi tiet theo mien.
+            bc_sheet_names = [
+                name for name in workbook.sheetnames if name.startswith("BC_")
+            ]
+            expected_bc_names = [f"BC_{area}" for area, _ in REPORTING_STRUCTURE]
+            if bc_sheet_names != expected_bc_names:
+                add_problem(
+                    problems,
+                    f"Sheet bao cao mien khong dung: {bc_sheet_names}; "
+                    f"can {expected_bc_names}",
+                )
+            else:
+                evaluator = WorkbookEvaluator(workbook)
+                bc_totals = {key: 0.0 for key in BC_FIELD_COLUMNS}
+                for area, regions in REPORTING_STRUCTURE:
+                    ws = workbook[f"BC_{area}"]
+                    headers = [
+                        ws.cell(BC_HEADER_ROW, column).value
+                        for column in range(1, len(BC_COLUMNS) + 1)
+                    ]
+                    if headers != BC_COLUMNS:
+                        add_problem(
+                            problems,
+                            f"Tieu de BC_{area} khong dung: {headers}",
+                        )
+                    if ws.sheet_state != "visible":
+                        add_problem(problems, f"BC_{area} phai hien")
+
+                    region_rows: list[int] = []
+                    customer_rows: list[int] = []
+                    product_rows: list[int] = []
+                    grand_row = None
+                    row_number = BC_FIRST_DATA_ROW
+                    while True:
+                        label = ws.cell(row_number, 1).value
+                        if label is None:
+                            break
+                        if label == "Grand Total":
+                            grand_row = row_number
+                            break
+                        level = ws.row_dimensions[row_number].outlineLevel or 0
+                        if level == 0:
+                            region_rows.append(row_number)
+                        elif level == 1:
+                            customer_rows.append(row_number)
+                        else:
+                            product_rows.append(row_number)
+                        row_number += 1
+
+                    if grand_row is None:
+                        add_problem(problems, f"BC_{area} thieu dong Grand Total")
+                        continue
+                    if [ws.cell(item, 1).value for item in region_rows] != regions:
+                        add_problem(
+                            problems,
+                            f"BC_{area} thieu hoac sai thu tu vung ban hang",
+                        )
+
+                    # Moi khach hang phai bang tong cac dong san pham cua no.
+                    current_customer = None
+                    children: dict[int, list[int]] = {}
+                    for item in sorted(customer_rows + product_rows):
+                        if item in customer_rows:
+                            current_customer = item
+                            children[item] = []
+                        elif current_customer is not None:
+                            children[current_customer].append(item)
+                    for customer_row, product_list in children.items():
+                        for column in BC_FIELD_COLUMNS.values():
+                            parent = evaluator.cell_value(
+                                f"BC_{area}", customer_row, column
+                            )
+                            child_total = sum(
+                                float(ws.cell(item, column).value or 0)
+                                for item in product_list
+                            )
+                            if not close_enough(parent, child_total):
+                                add_problem(
+                                    problems,
+                                    f"BC_{area} hang {customer_row} cot {column}: "
+                                    f"khach hang={parent} khac tong san pham="
+                                    f"{child_total}",
+                                )
+
+                    for key, column in BC_FIELD_COLUMNS.items():
+                        value = evaluator.cell_value(f"BC_{area}", grand_row, column)
+                        bc_totals[key] += value
+                        expected_value = sum(
+                            model_by_region[(area, region)][key]
+                            for region in regions
+                        )
+                        if not close_enough(value, expected_value):
                             add_problem(
                                 problems,
-                                f"Loi cong thuc tai PIVOT!{cell.coordinate}: "
-                                f"{cell.value}",
+                                f"BC_{area} Grand Total {key} khong khop PIVOT: "
+                                f"output={value}, expected={expected_value}",
                             )
+
+                for key, column in BC_FIELD_COLUMNS.items():
+                    expected_value = pivot_expected["totals"][key]
+                    if not close_enough(bc_totals[key], expected_value):
+                        add_problem(
+                            problems,
+                            f"Tong 8 sheet BC_ cho {key} khong khop PIVOT: "
+                            f"output={bc_totals[key]}, expected={expected_value}",
+                        )
         finally:
-            values_workbook.close()
             workbook.close()
 
     actual_target_summary = summarize_target(actual_target_records)

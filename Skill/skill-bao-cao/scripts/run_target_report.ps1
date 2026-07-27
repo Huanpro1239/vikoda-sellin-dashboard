@@ -118,7 +118,6 @@ $sellInDataFile = Join-Path $dataStagingDir 'sell_in_data.json'
 $sellInAuditFile = Join-Path $dataStagingDir 'sell_in_audit.json'
 $dmkhDataFile = Join-Path $dmkhStagingDir 'dmkh_data.json'
 $dmkhAuditFile = Join-Path $dmkhStagingDir 'dmkh_audit.json'
-$pivotArtifactFile = Join-Path $pivotStagingDir 'pivot_artifact.xlsx'
 $pivotBuildReport = Join-Path $pivotStagingDir 'pivot_build_report.json'
 $pivotPreviewFile = Join-Path $previewDir 'PIVOT.png'
 $finalInspectionFile = Join-Path $previewDir 'report_final_inspection.json'
@@ -214,16 +213,20 @@ foreach ($candidate in $nodeCandidates) {
         break
     }
 }
+# Toan bo workbook do Python/openpyxl dung. Node chi con dung de render anh
+# preview trong buoc kiem tra hinh anh, va la tuy chon.
 if ($null -eq $node) {
-    throw @'
-Khong tim thay Codex spreadsheet runtime de tao sheet PIVOT.
-Hay chay trong Codex, hoac copy Node runtime vao .runtime\node.
-'@
+    Write-Warning (
+        'Khong co Node runtime: bo qua buoc preview anh. Workbook va toan bo ' +
+        'buoc kiem tra du lieu van chay day du bang Python.'
+    )
+    $SkipVisualQa = $true
 }
 
 $localNodeModules = Join-Path $PSScriptRoot 'node_modules'
 $createdLocalNodeModules = $false
 if (
+    $null -ne $node -and
     -not (Test-Path -LiteralPath $localNodeModules)
 ) {
     New-Item -ItemType Junction `
@@ -277,33 +280,17 @@ try {
         throw "Tao workbook that bai voi exit code $script:LastPythonExitCode."
     }
 
-    Write-Host '5/7 - Tao mo hinh PVT_DATA va sheet PIVOT...'
-    & $node (Join-Path $PSScriptRoot 'build_pivot_sheet.mjs') `
-        $pivotArtifactFile `
-        $sellInDataFile `
-        $targetDataFile `
-        $dmkhDataFile `
-        $pivotBuildReport `
-        $pivotPreviewFile
-    if ($LASTEXITCODE -ne 0) {
-        if (
-            $LASTEXITCODE -eq -1073740791 -and
-            (Test-Path -LiteralPath $pivotArtifactFile) -and
-            (Test-Path -LiteralPath $pivotBuildReport) -and
-            (Test-Path -LiteralPath $pivotPreviewFile)
-        ) {
-            Write-Warning 'Workbook engine cleanup warning sau buoc tao PIVOT.'
-        } else {
-            throw "Tao sheet PIVOT that bai voi exit code $LASTEXITCODE."
-        }
-    }
+    Write-Host '5/7 - Tao PVT_DATA, sheet PIVOT va 8 sheet bao cao theo mien...'
     Invoke-ReportPython -ArgumentList @(
-        (Join-Path $PSScriptRoot 'merge_pivot_workbook.py'),
-        '--base-workbook', $OutputFile,
-        '--pivot-workbook', $pivotArtifactFile
+        (Join-Path $PSScriptRoot 'build_pivot_sheet.py'),
+        '--workbook', $OutputFile,
+        '--sell-in-data-file', $sellInDataFile,
+        '--target-data-file', $targetDataFile,
+        '--dmkh-data-file', $dmkhDataFile,
+        '--report-file', $pivotBuildReport
     )
     if ($script:LastPythonExitCode -ne 0) {
-        throw "Ghep PIVOT vao workbook that bai."
+        throw "Tao sheet PIVOT va cac sheet BC_ that bai. Xem: $pivotBuildReport"
     }
 
     Write-Host '6/7 - Kiem tra hinh anh workbook...'
@@ -313,8 +300,7 @@ try {
             $previewDir `
             $sellInDataFile `
             $targetDataFile `
-            $dmkhDataFile `
-            $pivotArtifactFile
+            $dmkhDataFile
         if ($LASTEXITCODE -ne 0) {
             if (
                 $LASTEXITCODE -eq -1073740791 -and

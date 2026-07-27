@@ -7,20 +7,24 @@ description: Xây dựng và vận hành Bao_Cao_Sell_in.xlsx trong dự án "Ba
 
 ## Phạm vi
 
-Tạo `Data/File bao cao/Excel/Bao_Cao_Sell_in.xlsx` với năm sheet:
+Tạo `Data/File bao cao/Excel/Bao_Cao_Sell_in.xlsx` với 13 sheet, đúng thứ tự:
 
 - `Target`: Target tất cả các tháng.
 - `Data`: Sell In từ đầu năm đến tháng hiện tại và cùng kỳ năm trước.
 - `DMKH`: danh mục khách hàng để tra cứu và chuẩn hóa báo cáo.
-- `PIVOT`: báo cáo tổng hợp theo 20 vùng bán hàng.
+- `PIVOT`: báo cáo tổng hợp theo 20 vùng bán hàng, bố cục theo file mẫu
+  `Sell_in_report_chuan.xlsb`.
 - `PVT_DATA`: dữ liệu mô hình chi tiết, phải để ẩn.
+- 8 sheet `BC_<Miền>`: `BC_Miền Bắc`, `BC_Miền Nam`, `BC_Miền Trung 1`,
+  `BC_Miền Trung 2`, `BC_KA`, `BC_MT`, `BC_B2C`, `BC_Other`. Mỗi sheet là báo
+  cáo chi tiết ba cấp Vùng → Khách hàng → Sản phẩm, có thể thu gọn.
 
 Đọc reference liên quan trước khi thay đổi:
 
 - `references/target-hang-thang.md`: nguồn và quy tắc Target.
 - `references/data-sell-in.md`: phạm vi kỳ và cấu trúc `Data`.
 - `references/dmkh.md`: nguồn và cấu trúc `DMKH`.
-- `references/pivot-bao-cao.md`: mô hình, công thức và bố cục `PIVOT`.
+- `references/pivot-bao-cao.md`: mô hình, công thức và bố cục `PIVOT` và `BC_`.
 - `references/portable.md`: launcher và runtime.
 
 ## Chạy
@@ -40,11 +44,12 @@ Hoặc nhấp đúp `Bao cao Target.cmd`.
 2. Chạy `scripts/extract_sell_in_data.py` để lấy thực hiện theo phạm vi kỳ.
 3. Chạy `scripts/extract_customers.py` để chuẩn hóa danh mục khách hàng.
 4. Chạy `scripts/build_report_workbook.py` để tạo workbook nền.
-5. Chạy `scripts/build_pivot_sheet.mjs` để tạo mô hình và công thức trong workbook
-   PIVOT nhỏ; chạy `scripts/merge_pivot_workbook.py` để ghép vào báo cáo chính và
-   ẩn `PVT_DATA`.
-6. Chạy `scripts/inspect_target_workbook.mjs` để tạo ảnh kiểm tra năm sheet, trừ
-   khi người dùng truyền `-SkipVisualQa`.
+5. Chạy `scripts/build_pivot_sheet.py` để dựng `PVT_DATA`, `PIVOT` và 8 sheet
+   `BC_<Miền>` ngay trong workbook báo cáo, rồi ẩn `PVT_DATA`. Mô hình gộp số
+   liệu nằm ở `scripts/report_model.py`.
+6. Chạy `scripts/inspect_target_workbook.mjs` để tạo ảnh kiểm tra, trừ khi
+   truyền `-SkipVisualQa`. Bước này **tùy chọn**: cần Node kèm
+   `@oai/artifact-tool`, không có thì tự bỏ qua.
 7. Chạy `scripts/verify_target_report.py`; chỉ bàn giao khi `problems` rỗng.
 
 ## Quy tắc cốt lõi
@@ -75,6 +80,16 @@ Hoặc nhấp đúp `Bao cao Target.cmd`.
 - Nhận diện Vikoda khi tên sản phẩm chứa `Vikoda`; nhận diện KDT khi tên sản phẩm
   chứa `KDT`.
 - Tính các chỉ số kết quả trong `PIVOT` bằng công thức, không ghi cứng.
+- `PIVOT` giữ đúng bố cục file mẫu: dòng 1 tiêu đề, dòng 2 kỳ báo cáo, dòng 3
+  nhóm cột, dòng 4 tên cột, dòng 5 số thứ tự cột `(1)`…`(17)`, dữ liệu từ dòng 6.
+  Tên cột phần trăm phải tham chiếu số thứ tự, ví dụ `Total % (3) vs (1)`.
+- Tiền lưu đủ VND, hiển thị triệu đồng bằng định dạng `#,##0,,`. Không chia sẵn
+  giá trị trong ô vì sẽ phát sinh sai số làm tròn khi cộng.
+- Trong sheet `BC_`, dòng vùng và dòng khách hàng dùng `SUMIFS` về `PVT_DATA`;
+  dòng sản phẩm là dữ liệu lá nên ghi thẳng giá trị.
+- Gom khách hàng trong `BC_` theo **mã**, không theo tên hiển thị. Một mã có thể
+  có hai cách viết tên giữa Sell In và Target; tách đôi sẽ làm dòng khách hàng
+  đếm gộp trong khi dòng sản phẩm con chỉ có một phần.
 
 ## Test
 
@@ -91,13 +106,20 @@ kiểu dữ liệu của sheet `Data`.
 
 ## Kiểm tra bắt buộc
 
-- Có đúng năm sheet theo thứ tự `Target`, `Data`, `DMKH`, `PIVOT`, `PVT_DATA`.
+- Có đúng 13 sheet theo thứ tự `Target`, `Data`, `DMKH`, `PIVOT`, `PVT_DATA`
+  rồi 8 sheet `BC_<Miền>` theo thứ tự miền của báo cáo.
 - `PVT_DATA` ẩn; `PIVOT` hiển thị, có 20 dòng vùng, 8 dòng tổng miền và một
-  `Grand Total`.
-- `PIVOT` có đủ 493 công thức trong vùng `D5:T33`.
+  `Grand Total` tại dòng 34.
+- `PIVOT` có đủ 493 công thức trong vùng `C6:S34` và đủ số thứ tự cột ở dòng 5.
 - Tổng Target, Actual, Vikoda, KDT, cùng kỳ và tháng trước tại `Grand Total`
   khớp nguồn.
 - Từng dòng vùng trong `PIVOT` khớp tổng từ `PVT_DATA`.
+- Mỗi sheet `BC_` có đủ các vùng của miền đó, đúng thứ tự; mỗi dòng khách hàng
+  bằng tổng các dòng sản phẩm con.
+- `Grand Total` của từng sheet `BC_` khớp dòng tổng miền tương ứng trong `PIVOT`;
+  tổng 8 sheet `BC_` khớp `Grand Total` của `PIVOT`.
+- Bộ kiểm tra tự tính lại công thức bằng `scripts/formula_eval.py`, không đọc
+  giá trị Excel đệm sẵn — openpyxl không ghi kèm giá trị đã tính.
 - Không có lỗi `#REF!`, `#DIV/0!`, `#VALUE!`, `#NAME?` hoặc `#N/A`.
 - Số dòng, tổng từng kỳ, kiểu dữ liệu và định dạng của `Target`, `Data`, `DMKH`
   khớp staging.
