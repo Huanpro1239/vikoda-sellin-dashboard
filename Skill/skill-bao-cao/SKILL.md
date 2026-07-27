@@ -76,6 +76,19 @@ Hoặc nhấp đúp `Bao cao Target.cmd`.
   chứa `KDT`.
 - Tính các chỉ số kết quả trong `PIVOT` bằng công thức, không ghi cứng.
 
+## Test
+
+Chạy trước khi bàn giao mọi thay đổi logic:
+
+```powershell
+python .\Skill\skill-bao-cao\scripts\run_tests.py
+```
+
+`scripts/tests/test_target_rules.py` khóa ánh xạ 20 vùng bán hàng, quy tắc
+B2C/Other, cách tách vùng KA và chuẩn hóa giá trị Target.
+`scripts/tests/test_sell_in_rules.py` khóa bộ lọc `LoaiDonHang`, phạm vi kỳ và
+kiểu dữ liệu của sheet `Data`.
+
 ## Kiểm tra bắt buộc
 
 - Có đúng năm sheet theo thứ tự `Target`, `Data`, `DMKH`, `PIVOT`, `PVT_DATA`.

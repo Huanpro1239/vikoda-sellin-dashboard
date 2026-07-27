@@ -127,7 +127,10 @@ Luồng chuyển giao dùng `scripts/portable_sell_in.py`, đóng gói tại
 - Xác nhận `problems` và `missing` đều rỗng.
 - Kiểm tra workbook `Data/Work/sell_in/new_customers/Khach hang moi TMM_YYYY.xlsx`.
 - Kiểm tra ảnh trong `Data/Work/sell_in/previews` khi đổi định dạng.
-- Khi sửa logic dùng chung, chạy test trong `scripts/tests`.
+- Khi sửa logic dùng chung, chạy `python .\Skill\sell-in-monthly\scripts\run_tests.py`.
+  `test_extraction.py` khóa quy tắc lọc nguồn và kiểu `NgayHoaDon`;
+  `test_workbook_builder.py` khóa định dạng file đầu ra;
+  `test_incremental.py` khóa điều kiện `SKIP`/`REBUILD`.
 - Khi sửa luồng chuyển giao, chạy `scripts/build_portable.ps1`, kiểm tra
   `assets/portable/SHA256.txt`, chạy thử launcher và kiểm tra cả nhánh Python
   lẫn EXE khi chính sách máy cho phép.

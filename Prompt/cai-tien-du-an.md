@@ -12,6 +12,7 @@ Trước khi sửa:
 4. Giữ logic dùng chung đúng một bản; không viết hai bản khác nhau cho luồng
    chính và portable:
    - quy tắc đọc và lọc file ERP: `scripts/extraction.py`
+   - dựng và định dạng workbook đầu ra: `scripts/workbook_builder.py`
    - điều kiện phát hiện dữ liệu mới: `scripts/incremental.py`
    - danh mục khách hàng và sản phẩm: `scripts/master_data.py`
    - chuẩn hóa số: `scripts/normalization.py`
@@ -19,7 +20,7 @@ Trước khi sửa:
 
 Sau khi sửa:
 
-1. Chạy test trong `scripts/tests`.
+1. Chạy `python scripts/run_tests.py` của skill bị ảnh hưởng.
 2. Kiểm tra cả `SKIP`, `REBUILD`, file nguồn chỉ lưu lại, ngày mới, đổi số dòng
    cùng ngày, output thiếu và `ForcePeriod`.
 3. Chạy luồng chính với dữ liệu thật vào thư mục kiểm thử.
