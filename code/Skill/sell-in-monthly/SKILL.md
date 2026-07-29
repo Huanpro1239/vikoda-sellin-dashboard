@@ -7,7 +7,7 @@ description: Tách tăng dần, lọc, chuẩn hóa và gộp dữ liệu Sell I
 
 ## Cấu trúc
 
-- `Skill/sell-in-monthly`: quy tắc, mã chạy, tài liệu và file chuyển giao.
+- `code/Skill/sell-in-monthly`: quy tắc, mã chạy, tài liệu và file chuyển giao.
 - `Data`: dữ liệu nguồn, dữ liệu tham chiếu, kết quả, log và vùng làm việc.
 - `Prompt`: yêu cầu mẫu để vận hành, kiểm tra và cải tiến.
 
@@ -22,26 +22,26 @@ duyệt cập nhật danh mục khách hàng hoặc kiểm tra mã sản phẩm 
 Tại thư mục gốc:
 
 ```powershell
-.\Tach data.cmd
+.\Chay CT\Tach data.cmd
 ```
 
 Chỉ tạo file cục bộ, không chép Google Drive:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File ".\Skill\sell-in-monthly\scripts\run_sell_in.ps1" -SkipGoogleDrive
+powershell -ExecutionPolicy Bypass -File ".\code\Skill\sell-in-monthly\scripts\run_sell_in.ps1" -SkipGoogleDrive
 ```
 
 Ép làm lại một tháng hoặc toàn bộ:
 
 ```powershell
-.\Tach data.cmd -ForcePeriod 2026-07
-.\Tach data.cmd -ForceAll
+.\Chay CT\Tach data.cmd -ForcePeriod 2026-07
+.\Chay CT\Tach data.cmd -ForceAll
 ```
 
 Trên máy chuyển giao:
 
 ```powershell
-.\Tach data - Chuyen giao.cmd
+.\Chay CT\Tach data - Chuyen giao.cmd
 ```
 
 Launcher chuyển giao ưu tiên Python 3 được chính sách máy cho phép và có
@@ -53,11 +53,11 @@ Luồng chính cũng tự tìm Python theo thứ tự `-PythonExecutable` → `.
 `skill-bao-cao` khi Python hệ thống chưa có. Chỉ định thủ công khi cần:
 
 ```powershell
-.\Tach data.cmd -PythonExecutable "C:\Python312\python.exe"
+.\Chay CT\Tach data.cmd -PythonExecutable "C:\Python312\python.exe"
 ```
 
 Node kèm `@oai/artifact-tool` chỉ bắt buộc khi có tháng phải dựng lại. Máy không
-có Node thì dùng `.\Tach data - Chuyen giao.cmd`.
+có Node thì dùng `.\Chay CT\Tach data - Chuyen giao.cmd`.
 
 ## Luồng chính
 
@@ -127,7 +127,7 @@ Luồng chuyển giao dùng `scripts/portable_sell_in.py`, đóng gói tại
 - Xác nhận `problems` và `missing` đều rỗng.
 - Kiểm tra workbook `Data/Work/sell_in/new_customers/Khach hang moi TMM_YYYY.xlsx`.
 - Kiểm tra ảnh trong `Data/Work/sell_in/previews` khi đổi định dạng.
-- Khi sửa logic dùng chung, chạy `python .\Skill\sell-in-monthly\scripts\run_tests.py`.
+- Khi sửa logic dùng chung, chạy `python .\code\Skill\sell-in-monthly\scripts\run_tests.py`.
   `test_extraction.py` khóa quy tắc lọc nguồn và kiểu `NgayHoaDon`;
   `test_workbook_builder.py` khóa định dạng file đầu ra;
   `test_incremental.py` khóa điều kiện `SKIP`/`REBUILD`.

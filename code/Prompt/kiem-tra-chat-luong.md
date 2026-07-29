@@ -1,6 +1,6 @@
 # Prompt kiểm tra chất lượng Sell In
 
-Đọc Skill `Skill/sell-in-monthly` và kiểm tra một lần chạy Sell In theo các mục:
+Đọc Skill `code/Skill/sell-in-monthly` và kiểm tra một lần chạy Sell In theo các mục:
 
 - Đúng số file theo tháng/năm và đúng 14 cột.
 - Ngày hóa đơn là ngày Excel thật.

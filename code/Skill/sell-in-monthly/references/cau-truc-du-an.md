@@ -2,7 +2,7 @@
 
 ## Skill
 
-`Skill/sell-in-monthly` là nguồn chuẩn duy nhất cho logic vận hành:
+`code/Skill/sell-in-monthly` là nguồn chuẩn duy nhất cho logic vận hành:
 
 - `SKILL.md`: quy trình ngắn gọn và điểm vào chính.
 - `scripts`: mã xử lý, kiểm tra, build và test.
@@ -42,7 +42,7 @@ bị `REBUILD` lại — `scripts/tests/test_extraction.py` khóa hợp đồng 
 theo thứ tự: tham số `-PythonExecutable`, `.runtime\python\python.exe` trong
 thư mục dự án, runtime Codex, `py.exe -3`, rồi `python.exe`/`python3.exe` trong
 PATH. Nếu Python hệ thống không có `openpyxl`, script tự thêm bản vendored tại
-`Skill\skill-bao-cao\scripts\vendor` vào `PYTHONPATH`.
+`code\Skill\skill-bao-cao\scripts\vendor` vào `PYTHONPATH`.
 
 Toàn bộ bước dựng file đã chuyển sang Python/openpyxl. Node kèm
 `@oai/artifact-tool` chỉ còn phục vụ `render_previews.mjs` để render ảnh PNG,

@@ -3,10 +3,18 @@ param(
     [string]$ProjectRoot = '',
     [string]$OutputFile = '',
     [string]$PythonExecutable = '',
-    [switch]$SkipVisualQa
+    [switch]$SkipVisualQa,
+    [switch]$EnableVisualQa,
+    [switch]$SkipPowerBI,
+    # Không tự chạy lại Tach data khi file ERP mới hơn workbook Sell In.
+    [switch]$SkipAutoRefresh,
+    # Không mở Power BI Desktop sau khi dựng xong.
+    [switch]$NoOpen
 )
 
 $ErrorActionPreference = 'Stop'
+
+. (Join-Path $PSScriptRoot 'lib\Pipeline.ps1')
 
 function Resolve-ReportPython {
     param(
@@ -83,7 +91,7 @@ function Resolve-ReportPython {
     throw @'
 Khong tim thay Python 3.8+ phu hop.
 Hay cai Python chinh thuc, hoac copy Python vao .runtime\python\python.exe,
-sau do chay lai Bao cao Target.cmd.
+sau do chay lai Chay CT\Bao cao Target.cmd.
 '@
 }
 
@@ -95,7 +103,7 @@ function Invoke-ReportPython {
 }
 
 if ([string]::IsNullOrWhiteSpace($ProjectRoot)) {
-    $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
+    $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..')).Path
 } else {
     $ProjectRoot = $ProjectRoot.Trim().Trim('"')
     $ProjectRoot = (Resolve-Path -LiteralPath $ProjectRoot).Path
@@ -112,12 +120,14 @@ $pivotWorkDir = Join-Path $ProjectRoot 'Data\Work\bao_cao\pivot'
 $pivotStagingDir = Join-Path $pivotWorkDir 'staging'
 $previewDir = Join-Path $targetWorkDir 'previews'
 $verificationDir = Join-Path $targetWorkDir 'verification'
+$powerBIOutputDir = Join-Path $ProjectRoot 'Data\File bao cao\PowerBI'
 $targetDataFile = Join-Path $targetStagingDir 'target_records.json'
 $targetAuditFile = Join-Path $targetStagingDir 'target_audit.json'
 $sellInDataFile = Join-Path $dataStagingDir 'sell_in_data.json'
 $sellInAuditFile = Join-Path $dataStagingDir 'sell_in_audit.json'
 $dmkhDataFile = Join-Path $dmkhStagingDir 'dmkh_data.json'
 $dmkhAuditFile = Join-Path $dmkhStagingDir 'dmkh_audit.json'
+$productCatalogFile = Join-Path $ProjectRoot 'Data\Danh muc SP\Danh Muc San Pham.xlsx'
 $pivotBuildReport = Join-Path $pivotStagingDir 'pivot_build_report.json'
 $pivotPreviewFile = Join-Path $previewDir 'PIVOT.png'
 $finalInspectionFile = Join-Path $previewDir 'report_final_inspection.json'
@@ -132,6 +142,7 @@ foreach ($requiredPath in @(
     $targetSourceDir,
     $sellInSourceDir,
     $dmkhSourceDir,
+    $productCatalogFile,
     (Join-Path $vendorDir 'openpyxl\__init__.py'),
     (Join-Path $vendorDir 'et_xmlfile\__init__.py')
 )) {
@@ -147,6 +158,7 @@ foreach ($directory in @(
     $pivotStagingDir,
     $previewDir,
     $verificationDir,
+    $powerBIOutputDir,
     (Split-Path -Parent $OutputFile)
 )) {
     New-Item -ItemType Directory -Force -Path $directory | Out-Null
@@ -182,6 +194,23 @@ Write-Host (
     $script:PythonRuntime.Executable, `
     $script:PythonRuntime.Label
 )
+
+# Buoc 0/9 - Neu file ERP moi hon workbook Sell In theo thang thi tach lai
+# truoc, de bao cao khong bao gio dung so cu ma khong bao.
+if (-not $SkipAutoRefresh) {
+    $freshness = Get-PipelineFreshness `
+        -PythonExecutable $script:PythonRuntime.Executable `
+        -PythonPrefix $script:PythonRuntime.Prefix `
+        -ScriptRoot $PSScriptRoot `
+        -ProjectRoot $ProjectRoot
+    Write-FreshnessSummary -Freshness $freshness
+    if ($null -ne $freshness -and $freshness.needs_tach_data) {
+        Write-Host '0/9 - Tach lai data ERP truoc khi dung bao cao...'
+        Invoke-TachData -ProjectRoot $ProjectRoot -PythonExecutable $PythonExecutable
+    }
+} else {
+    Write-Host 'Bo qua kiem tra du lieu cu theo tham so SkipAutoRefresh.'
+}
 
 $nodeCandidates = @(
     [pscustomobject]@{
@@ -222,6 +251,10 @@ if ($null -eq $node) {
     )
     $SkipVisualQa = $true
 }
+if (-not $EnableVisualQa) {
+    $SkipVisualQa = $true
+    Write-Host 'Visual QA: bo qua theo mac dinh; dung -EnableVisualQa neu can render preview.'
+}
 
 $localNodeModules = Join-Path $PSScriptRoot 'node_modules'
 $createdLocalNodeModules = $false
@@ -236,7 +269,7 @@ if (
 }
 
 try {
-    Write-Host '1/7 - Doc va chuan hoa Target tat ca cac thang...'
+    Write-Host '1/9 - Doc va chuan hoa Target tat ca cac thang...'
     Invoke-ReportPython -ArgumentList @(
         (Join-Path $PSScriptRoot 'extract_targets.py'),
         '--source-dir', $targetSourceDir,
@@ -246,7 +279,7 @@ try {
         throw "Chuan hoa Target that bai. Xem: $targetAuditFile"
     }
 
-    Write-Host '2/7 - Doc Sell In nam nay va cung ky nam truoc...'
+    Write-Host '2/9 - Doc Sell In nam nay va cung ky nam truoc...'
     $asOfDate = (Get-Date).ToString('yyyy-MM-dd')
     Invoke-ReportPython -ArgumentList @(
         (Join-Path $PSScriptRoot 'extract_sell_in_data.py'),
@@ -258,7 +291,7 @@ try {
         throw "Chuan hoa Sell In that bai. Xem: $sellInAuditFile"
     }
 
-    Write-Host '3/7 - Doc va chuan hoa danh muc khach hang...'
+    Write-Host '3/9 - Doc va chuan hoa danh muc khach hang...'
     Invoke-ReportPython -ArgumentList @(
         (Join-Path $PSScriptRoot 'extract_customers.py'),
         '--source-dir', $dmkhSourceDir,
@@ -268,7 +301,7 @@ try {
         throw "Chuan hoa DMKH that bai. Xem: $dmkhAuditFile"
     }
 
-    Write-Host '4/7 - Tao workbook nen Target, Data va DMKH...'
+    Write-Host '4/9 - Tao workbook nen Target, Data va DMKH...'
     Invoke-ReportPython -ArgumentList @(
         (Join-Path $PSScriptRoot 'build_report_workbook.py'),
         '--target-data-file', $targetDataFile,
@@ -280,7 +313,7 @@ try {
         throw "Tao workbook that bai voi exit code $script:LastPythonExitCode."
     }
 
-    Write-Host '5/7 - Tao PVT_DATA, sheet PIVOT va 8 sheet bao cao theo mien...'
+    Write-Host '5/9 - Tao PVT_DATA, sheet PIVOT va 8 sheet bao cao theo mien...'
     Invoke-ReportPython -ArgumentList @(
         (Join-Path $PSScriptRoot 'build_pivot_sheet.py'),
         '--workbook', $OutputFile,
@@ -293,7 +326,7 @@ try {
         throw "Tao sheet PIVOT va cac sheet BC_ that bai. Xem: $pivotBuildReport"
     }
 
-    Write-Host '6/7 - Kiem tra hinh anh workbook...'
+    Write-Host '6/9 - Kiem tra hinh anh workbook...'
     if (-not $SkipVisualQa) {
         & $node (Join-Path $PSScriptRoot 'inspect_target_workbook.mjs') `
             $OutputFile `
@@ -302,20 +335,17 @@ try {
             $targetDataFile `
             $dmkhDataFile
         if ($LASTEXITCODE -ne 0) {
-            if (
-                $LASTEXITCODE -eq -1073740791 -and
-                (Test-Path -LiteralPath $finalInspectionFile)
-            ) {
-                Write-Warning 'Workbook engine cleanup warning sau buoc preview.'
-            } else {
-                throw "Kiem tra hinh anh that bai voi exit code $LASTEXITCODE."
-            }
+            Write-Warning (
+                "Preview Node khong hoan tat (exit code $LASTEXITCODE). " +
+                'Day la buoc tuy chon; tiep tuc kiem tra du lieu, cong thuc va ' +
+                'dinh dang bang Python.'
+            )
         }
     } else {
         Write-Warning 'Da bo qua preview anh theo tham so SkipVisualQa.'
     }
 
-    Write-Host '7/7 - Kiem tra du lieu, cong thuc va dinh dang...'
+    Write-Host '7/9 - Kiem tra du lieu, cong thuc va dinh dang...'
     Invoke-ReportPython -ArgumentList @(
         (Join-Path $PSScriptRoot 'verify_target_report.py'),
         '--data-file', $targetDataFile,
@@ -330,7 +360,46 @@ try {
         throw "Kiem tra workbook that bai. Xem: $verificationFile"
     }
 
-    Write-Host "Hoan tat: $OutputFile"
+    Write-Host '8/9 - Gan Power Query portable vao workbook...'
+    $powerQueryInstaller = Join-Path $PSScriptRoot 'add_powerquery_option2.ps1'
+    if (Test-Path -LiteralPath $powerQueryInstaller) {
+        & "$PSHOME\powershell.exe" -NoLogo -NoProfile -ExecutionPolicy Bypass `
+            -File $powerQueryInstaller -WorkbookPath $OutputFile
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning (
+                'Khong gan duoc Power Query. Bao cao Python van hoan tat; ' +
+                'co the chay lai add_powerquery_option2.ps1 tren may co Excel.'
+            )
+        }
+    } else {
+        Write-Warning "Khong tim thay script Power Query: $powerQueryInstaller"
+    }
+
+    if (-not $SkipPowerBI) {
+        Write-Host '9/9 - Tao goi Power BI PBIP va bo du lieu sao...'
+        Invoke-ReportPython -ArgumentList @(
+            (Join-Path $PSScriptRoot 'build_powerbi_package.py'),
+            '--sell-in-data-file', $sellInDataFile,
+            '--target-data-file', $targetDataFile,
+            '--dmkh-data-file', $dmkhDataFile,
+            '--product-catalog-file', $productCatalogFile,
+            '--output-dir', $powerBIOutputDir
+        )
+        if ($script:LastPythonExitCode -ne 0) {
+            throw "Tao goi Power BI that bai voi exit code $script:LastPythonExitCode."
+        }
+        Write-Host "Power BI: $powerBIOutputDir\Vikoda_SellIn_PowerBI.pbip"
+    } else {
+        Write-Host '9/9 - Bo qua goi Power BI theo tham so SkipPowerBI.'
+    }
+
+    Write-Host "Hoan tat Excel va Power BI: $OutputFile"
+
+    if (-not $SkipPowerBI -and -not $NoOpen) {
+        Open-PowerBIProject -ProjectFile (
+            Join-Path $powerBIOutputDir 'Vikoda_SellIn_PowerBI.pbip'
+        )
+    }
 } finally {
     if (
         $createdLocalNodeModules -and

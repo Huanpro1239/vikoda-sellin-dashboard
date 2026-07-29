@@ -9,7 +9,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 if ([string]::IsNullOrWhiteSpace($ProjectRoot)) {
-    $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
+    $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..')).Path
 }
 
 # Tim pyinstaller.exe: tham so truyen vao, .runtime cua du an, roi PATH.
@@ -41,7 +41,7 @@ Cach xu ly, chon mot trong hai:
 }
 Write-Host "PyInstaller: $PyInstaller"
 
-$assetDir = Join-Path $ProjectRoot 'Skill\sell-in-monthly\assets\portable'
+$assetDir = Join-Path $ProjectRoot 'code\Skill\sell-in-monthly\assets\portable'
 $workDir = Join-Path $ProjectRoot 'Data\Work\portable_build'
 $specDir = Join-Path $ProjectRoot 'Data\Work\portable_spec'
 $source = Join-Path $PSScriptRoot 'portable_sell_in.py'

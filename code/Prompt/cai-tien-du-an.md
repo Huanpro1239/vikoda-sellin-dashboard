@@ -1,6 +1,6 @@
 # Prompt cải tiến dự án Sell In
 
-Kiểm tra yêu cầu thay đổi của tôi trên toàn bộ Skill `Skill/sell-in-monthly`.
+Kiểm tra yêu cầu thay đổi của tôi trên toàn bộ Skill `code/Skill/sell-in-monthly`.
 
 Trước khi sửa:
 

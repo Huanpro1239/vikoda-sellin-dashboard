@@ -1,11 +1,12 @@
 @echo off
 setlocal
 
-cd /d "%~dp0"
+for %%I in ("%~dp0..") do set "PROJECT_ROOT=%%~fI"
+cd /d "%PROJECT_ROOT%"
 echo Starting Tach data...
 echo.
 
-powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0Skill\sell-in-monthly\scripts\run_sell_in.ps1" %*
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_ROOT%\code\Skill\sell-in-monthly\scripts\run_sell_in.ps1" -ProjectRoot "%PROJECT_ROOT%" %*
 set "exit_code=%ERRORLEVEL%"
 
 echo.

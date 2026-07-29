@@ -1,6 +1,6 @@
 ---
 name: skill-bao-cao
-description: Xây dựng và vận hành Bao_Cao_Sell_in.xlsx trong dự án "Bao cao Sell in"; tạo Target đủ 12 tháng từ Target sellin YYYY.xlsx và Target MT KA.xlsx, áp dụng cách nhóm MT/KA của VBA Final V6, tổng hợp Sell In năm nay/cùng kỳ, DMKH, PVT_DATA và PIVOT theo Miền/Vùng. Dùng khi cần chạy hoặc kiểm tra báo cáo, cập nhật Target/Sell In/DMKH, phân tích Actual so với Target, YoY, MoM, Vikoda/KDT, đóng gói hoặc di chuyển dự án.
+description: Xây dựng và vận hành Bao_Cao_Sell_in.xlsx cùng dashboard Vikoda_SellIn_PowerBI.pbip trong dự án "Bao cao Sell in"; tạo Target đủ 12 tháng từ Target sellin YYYY.xlsx và Target MT KA.xlsx, áp dụng cách nhóm MT/KA của VBA Final V6, tổng hợp Sell In năm nay/cùng kỳ, DMKH, PVT_DATA và PIVOT theo Miền/Vùng. Dùng khi cần chạy hoặc kiểm tra báo cáo, cập nhật Target/Sell In/DMKH, phân tích Actual so với Target, YoY, MoM, Vikoda/KDT, dự báo, đóng gói hoặc di chuyển dự án.
 ---
 
 # Skill báo cáo Sell In
@@ -19,6 +19,10 @@ Tạo `Data/File bao cao/Excel/Bao_Cao_Sell_in.xlsx` với 13 sheet, đúng th�
   `BC_Miền Trung 2`, `BC_KA`, `BC_MT`, `BC_B2C`, `BC_Other`. Mỗi sheet là báo
   cáo chi tiết ba cấp Vùng → Khách hàng → Sản phẩm, có thể thu gọn.
 
+Đồng thời tạo `Data/File bao cao/PowerBI/Vikoda_SellIn_PowerBI.pbip` gồm semantic
+model và bốn trang `CEO | Tổng quan`, `Kế hoạch & dự báo`, `Vùng & miền`,
+`Khách hàng & sản phẩm`.
+
 Đọc reference liên quan trước khi thay đổi:
 
 - `references/target-hang-thang.md`: nguồn và quy tắc Target.
@@ -32,10 +36,117 @@ Tạo `Data/File bao cao/Excel/Bao_Cao_Sell_in.xlsx` với 13 sheet, đúng th�
 Tại thư mục gốc dự án:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File ".\Skill\skill-bao-cao\scripts\run_target_report.ps1"
+powershell -ExecutionPolicy Bypass -File ".\code\Skill\skill-bao-cao\scripts\run_target_report.ps1"
 ```
 
-Hoặc nhấp đúp `Bao cao Target.cmd`.
+Hoặc nhấp đúp `Chay CT\Bao cao Target.cmd`. Luồng này mặc định tạo cả Excel và
+Power BI; dùng `-SkipPowerBI` chỉ khi cần kiểm tra riêng workbook.
+
+Dựng lại dashboard:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File ".\code\Skill\skill-bao-cao\scripts\run_powerbi_dashboard.ps1"
+```
+
+Hoặc nhấp đúp `Chay CT\Bao cao Power BI.cmd`.
+
+### Tự động phát hiện dữ liệu cũ
+
+`scripts/pipeline_freshness.py` là bản logic **duy nhất** so mốc thời gian giữa
+bốn chặng: ERP → workbook Sell In theo tháng → staging JSON → Excel/CSV. Cả hai
+luồng PowerShell dot-source `scripts/lib/Pipeline.ps1` để gọi nó, không được
+chép lại phần so sánh này sang PowerShell.
+
+- Chặng `tach_data` so **theo từng kỳ**, ghép `BCDonHangBanTrongKyNPP_*_T{M}_{YYYY}.xlsm`
+  với `Sell in T{MM}_{YYYY}.xlsx`. Tách data chạy tăng dần nên workbook tháng cũ
+  mang mốc thời gian cũ là bình thường; so cả thư mục sẽ báo cũ sai.
+- Chặng sau kế thừa trạng thái chặng trước: staging cũ thì Excel và Power BI đều
+  phải dựng lại kể cả khi mốc riêng của chúng còn mới.
+- `run_target_report.ps1` tự gọi lại Tach data khi cần; `run_powerbi_dashboard.ps1`
+  giao trọn cho `run_target_report.ps1` khi staging cũ, tránh dựng gói hai lần.
+- Tham số thoát hiểm: `-SkipAutoRefresh` (không tự chạy lại), `-Force` (dựng lại
+  dù đã mới), `-NoOpen` (không mở Power BI Desktop).
+- File tạm Excel `~$*.xlsx` bị bỏ qua; sai lệch dưới `TOLERANCE_SECONDS` (2 giây)
+  không tính là cũ.
+
+### Dọn dẹp
+
+`scripts/cleanup_workspace.py` (launcher `Chay CT\Don dep.cmd`) xóa rác tái tạo
+được. Thiết kế **chặn mặc định**, hai lớp:
+
+1. Chỉ mẫu ghi trong `CLEANUP_RULES` mới thành ứng viên.
+2. Mọi ứng viên phải vượt `PROTECTED_PATHS`; trúng vùng cấm thì bị từ chối và
+   ghi vào phần `DA TU CHOI` của báo cáo, không im lặng bỏ qua.
+
+Thêm quy tắc mới thì phải thêm test trong `tests/test_cleanup_workspace.py`
+khẳng định dữ liệu nguồn còn nguyên sau `--confirm`. Mặc định là chạy thử;
+`drop_nested()` loại ứng viên nằm trong thư mục đã chọn để báo cáo không phình
+lên hàng trăm dòng và dung lượng không bị đếm hai lần.
+
+## Dashboard Power BI
+
+- `scripts/build_powerbi_package.py` tạo sáu bảng CSV: `DimDate`, `DimCustomer`,
+  `DimProduct`, `DimTerritory`, `FactSellIn`, `FactTarget`.
+- Semantic model phải có 38 measure DAX và bảy quan hệ many-to-one. Doanh thu/Target
+  hiển thị theo triệu đồng; sản lượng K/T/B lấy `Số lượng ÷ Quy cách` từ DMSP và có
+  chỉ tiêu riêng cho dòng chưa quy đổi, cùng kỳ và tăng trưởng YoY cho từng đơn vị.
+  Các measure
+  quan trọng gồm Actual, Target, Gap, tỷ lệ đạt, YoY, MoM, Vikoda/KDT, run-rate,
+  dự báo cuối tháng, doanh thu/ngày cần đạt và Target ba tháng tới.
+- Visual dùng theme Vikoda và phương pháp DAR của Datapot: trang 1 là Dashboard,
+  trang 2–3 là Analysis theo chủ đề, trang 4 là Reporting chi tiết. KPI chỉ được đặt
+  trên Dashboard; không lặp KPI hoặc cùng một biểu đồ ở các trang sau. Hướng thiết kế
+  tham khảo DaTaxan/Datapot nhưng không phụ thuộc asset hay template bên ngoài.
+- Canvas bắt buộc 1280×720 theo kiểu ERP; mỗi trang có header navy, sidebar trái rộng
+  220 px với menu; Dashboard đặt bốn KPI dọc bên trái và chỉ có slicer Năm/Kỳ. Các
+  trang Analysis/Reporting dùng sidebar cho bộ lọc theo ngữ cảnh, không có KPI.
+  Rail có bốn `actionButton` dùng `PageNavigation`; trang hiện tại tô cyan. Slicer
+  dùng nền navy, giá trị chọn màu cyan, bo góc 6 px và cùng lưới 196×60 px; dropdown
+  phải hiện trọn chữ, các slicer cách nhau 8 px và không được chạm hoặc bị KPI che; không
+  dùng card trắng tách rời rail.
+  Biểu đồ chính phải rộng tối thiểu 1028 px, tắt data label khi nhiều series.
+  Chart phải hiện tiêu đề trục X/Y, gridline và nhãn dễ đọc; trục tháng phải dùng
+  `MonthAxis` dạng phân loại `YY/MM` để tránh khoảng trắng giữa các kỳ; bảng phẳng phải giới hạn
+  số cột, có header/total rõ ràng. Doanh thu triệu đồng và sản lượng quản trị không
+  hiển thị số thập phân; trục tháng phải tăng cỡ chữ, mật độ nhãn và nhãn dữ liệu.
+  So sánh Actual/Target phải dùng cột dọc kết hợp đường `% đạt` trên trục phụ (vai trò
+  combo `Y`/`Y2`, không dùng `ColumnY`/`LineY`). Donut chỉ dùng cho quan hệ part-to-whole;
+  waterfall dùng để làm rõ đóng góp gap; trang sản lượng có xu hướng Két/Thùng/Bình.
+  Trang Reporting cuối cùng dùng một bảng tự giãn cột kín toàn bộ vùng nội dung.
+  Khi không có bộ lọc ngày, measure mặc định về kỳ dữ liệu mới nhất nhưng vẫn tôn
+  trọng slicer lịch sử.
+- Partition M ghi **đường dẫn tuyệt đối** tới CSV trong `PowerBI/Data`, tính lại bằng
+  `Path.resolve()` ở mỗi lần dựng. Chuyển thư mục dự án sang ổ/máy khác thì phải chạy
+  lại builder một lần để vá đường dẫn; copy riêng thư mục PowerBI sẽ không refresh được.
+- Dự án **không** giữ file `.pbix`. PBIX là bản chụp tĩnh, không script nào ghi được
+  vào nó nên sau mỗi lần cập nhật dữ liệu là lệch ngay mà không có dấu hiệu.
+  `remove_stale_pbix()` xóa file này nếu còn sót từ quy trình cũ. Cần chia sẻ thì Publish.
+- Builder giữ lại `.pbi/localSettings.json` và `.pbi/editorSettings.json` qua mỗi lần
+  dựng (`preserve_local_settings`) để Power BI Desktop không hỏi lại quyền đọc file CSV.
+  Cố tình **không** giữ `.pbi/cache.abf`: đó là số liệu lần trước, để lại sẽ hiện số cũ
+  trước khi kịp Refresh.
+- Sau khi mở project được dựng lại, người vận hành chỉ cần chọn **Refresh**.
+  Power BI Desktop chỉ cần cho bước mở/refresh/publish, không cần cho bước sinh package.
+- Không chỉnh tay CSV, `model.bim` hoặc PBIR nếu thay đổi có thể được biểu diễn trong
+  builder; lần chạy tiếp theo sẽ sinh lại toàn bộ package.
+
+## Phương án 2 - Power Query
+
+Workbook đã có query `PQ_PVT_DATA` và `PQ_PIVOT`; sheet `PQ_HuongDan` mô tả cách dùng.
+Chọn **Data > Refresh All** để Power Query đọc bảng mô hình chuẩn `tblPVTDataPython`
+và tính lại tổng theo Miền/Vùng. Đây là lớp đối soát; luồng Python vẫn chịu trách nhiệm
+đọc nguồn, chuẩn hóa Target/Data/DMKH và dựng báo cáo chi tiết.
+
+Query chỉ dùng `Excel.CurrentWorkbook()`/`Data Source=$Workbook$`, tuyệt đối không ghi
+đường dẫn máy tạo file. Vì vậy workbook có thể được copy độc lập sang máy khác.
+
+Nếu luồng Python tạo lại toàn bộ workbook, chạy:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File ".\code\Skill\skill-bao-cao\scripts\add_powerquery_option2.ps1"
+```
+
+Hoặc chỉ định workbook ở vị trí bất kỳ bằng tham số `-WorkbookPath`.
 
 ## Luồng bắt buộc
 
@@ -49,8 +160,12 @@ Hoặc nhấp đúp `Bao cao Target.cmd`.
    liệu nằm ở `scripts/report_model.py`.
 6. Chạy `scripts/inspect_target_workbook.mjs` để tạo ảnh kiểm tra, trừ khi
    truyền `-SkipVisualQa`. Bước này **tùy chọn**: cần Node kèm
-   `@oai/artifact-tool`, không có thì tự bỏ qua.
+   `@oai/artifact-tool`, không có hoặc Node/V8 bị lỗi thì cảnh báo và tiếp tục.
+   Luồng vận hành mặc định bỏ qua; truyền `-EnableVisualQa` khi cần soi giao diện.
 7. Chạy `scripts/verify_target_report.py`; chỉ bàn giao khi `problems` rỗng.
+8. Chạy `scripts/add_powerquery_option2.ps1` để gắn Power Query portable vào workbook.
+9. Chạy `scripts/build_powerbi_package.py` để tạo lại project PBIP và bộ dữ liệu hình sao,
+   trừ khi người vận hành chủ động truyền `-SkipPowerBI`.
 
 ## Quy tắc cốt lõi
 
@@ -96,13 +211,15 @@ Hoặc nhấp đúp `Bao cao Target.cmd`.
 Chạy trước khi bàn giao mọi thay đổi logic:
 
 ```powershell
-python .\Skill\skill-bao-cao\scripts\run_tests.py
+python .\code\Skill\skill-bao-cao\scripts\run_tests.py
 ```
 
 `scripts/tests/test_target_rules.py` khóa ánh xạ 20 vùng bán hàng, quy tắc
 B2C/Other, cách tách vùng KA và chuẩn hóa giá trị Target.
 `scripts/tests/test_sell_in_rules.py` khóa bộ lọc `LoaiDonHang`, phạm vi kỳ và
 kiểu dữ liệu của sheet `Data`.
+`scripts/tests/test_powerbi_package.py` khóa cấu trúc PBIP/PBIR, sáu bảng dữ liệu,
+38 measure, bảy quan hệ và bốn trang dashboard.
 
 ## Kiểm tra bắt buộc
 
@@ -126,3 +243,6 @@ kiểu dữ liệu của sheet `Data`.
 - Không có lỗi `#REF!`, `#DIV/0!`, `#VALUE!`, `#NAME?` hoặc `#N/A`.
 - Số dòng, tổng từng kỳ, kiểu dữ liệu và định dạng của `Target`, `Data`, `DMKH`
   khớp staging.
+- `refresh_manifest.json` của Power BI báo đủ sáu bảng, 20 vùng, 38 measure và bảy
+  quan hệ; tổng Actual/Target/Vikoda/cùng kỳ/tháng trước khớp báo cáo verification.
+- Project `.pbip` mở được trong Power BI Desktop, đủ bốn trang và không thiếu visual.

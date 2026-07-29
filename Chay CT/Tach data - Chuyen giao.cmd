@@ -1,11 +1,10 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
 
-cd /d "%~dp0"
-set "portable_exe=%~dp0Skill\sell-in-monthly\assets\portable\TachDataPortable.exe"
-set "portable_script=%~dp0Skill\sell-in-monthly\scripts\portable_sell_in.py"
-set "project_root=%~dp0"
-if "%project_root:~-1%"=="\" set "project_root=%project_root:~0,-1%"
+for %%I in ("%~dp0..") do set "project_root=%%~fI"
+cd /d "%project_root%"
+set "portable_exe=%project_root%\code\Skill\sell-in-monthly\assets\portable\TachDataPortable.exe"
+set "portable_script=%project_root%\code\Skill\sell-in-monthly\scripts\portable_sell_in.py"
 set "portable_options="
 if defined TACH_DATA_OUTPUT set portable_options=%portable_options% --output-dir "%TACH_DATA_OUTPUT%"
 if defined TACH_DATA_LOG_DIR set portable_options=%portable_options% --log-dir "%TACH_DATA_LOG_DIR%"

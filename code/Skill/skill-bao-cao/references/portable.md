@@ -5,7 +5,7 @@
 - Suy ra thư mục gốc từ launcher hoặc `PSScriptRoot`.
 - Trong file batch, truyền thư mục gốc bằng `%~dp0.`.
 - Không ghi đường dẫn tuyệt đối theo tên người dùng, ổ đĩa hoặc Desktop.
-- Giữ nguyên cấu trúc `Data`, `Skill` và file `Bao cao Target.cmd`.
+- Giữ nguyên cấu trúc `Data`, `code` và thư mục `Chay CT`.
 - Không đóng gói EXE.
 
 ## Python
@@ -33,7 +33,7 @@ thúc. Không sửa thư mục dependency của runtime.
 
 ## Kiểm tra sau khi di chuyển
 
-1. Chạy `Bao cao Target.cmd`.
+1. Chạy `Chay CT\Bao cao Target.cmd`.
 2. Xác nhận có `Target`, `Data`, `DMKH`, `PIVOT` và `PVT_DATA`.
 3. Xác nhận `PVT_DATA` ẩn và báo cáo verification có `problems` rỗng.
 4. Không dùng staging cũ để kết luận; mỗi lần chạy phải tạo lại staging.

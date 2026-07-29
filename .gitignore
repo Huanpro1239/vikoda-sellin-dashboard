@@ -1,9 +1,13 @@
-# Chỉ theo dõi mã và tài liệu trong Skill/ và Prompt/.
+# Theo dõi mã và tài liệu trong code/, launcher trong Chay CT/.
 # Dữ liệu và file nhị phân không đưa vào git: file Excel không diff được và
 # làm repo phình rất nhanh.
 
 # Toàn bộ dữ liệu, kết quả, log và vùng làm việc
 /Data/
+
+# Workbook rời ở gốc dự án: dữ liệu, không phải mã chạy. Chưa có script nào đọc
+# nên tạm để nguyên chỗ cũ; nếu sau này đưa vào quy trình thì chuyển vào /Data/.
+/Chiet khau tra sau/
 
 # Thư mục nháp của agent và runtime cục bộ
 /.codex_work/
@@ -11,10 +15,10 @@
 node_modules/
 
 # File thực thi đóng gói: dựng lại bằng scripts/build_portable.ps1
-Skill/sell-in-monthly/assets/portable/*.exe
+code/Skill/sell-in-monthly/assets/portable/*.exe
 
 # Thư viện vendored: khôi phục bằng pip install openpyxl
-Skill/skill-bao-cao/scripts/vendor/
+code/Skill/skill-bao-cao/scripts/vendor/
 
 # Rác của Python và Excel
 __pycache__/

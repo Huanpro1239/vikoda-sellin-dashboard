@@ -103,7 +103,7 @@ function Invoke-SellInPython {
 }
 
 if ([string]::IsNullOrWhiteSpace($ProjectRoot)) {
-    $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
+    $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..')).Path
 }
 
 $sourceDir = Join-Path $ProjectRoot 'Data\Data ERP'
@@ -146,7 +146,7 @@ foreach ($requiredPath in @(
 # skill bao cao de khong phai cai them goi.
 $vendorCandidates = @(
     (Join-Path $PSScriptRoot 'vendor'),
-    (Join-Path $ProjectRoot 'Skill\skill-bao-cao\scripts\vendor')
+    (Join-Path $ProjectRoot 'code\Skill\skill-bao-cao\scripts\vendor')
 )
 foreach ($vendorDir in $vendorCandidates) {
     if (Test-Path -LiteralPath (Join-Path $vendorDir 'openpyxl\__init__.py')) {

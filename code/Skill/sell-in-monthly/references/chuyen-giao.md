@@ -17,7 +17,7 @@ Luồng này:
   phẩm giống luồng chính.
 - Ưu tiên Python 3 được Windows cho phép và đã có `openpyxl`.
 - Nếu không tìm thấy Python phù hợp, chạy
-  `Skill/sell-in-monthly/assets/portable/TachDataPortable.exe`.
+  `code/Skill/sell-in-monthly/assets/portable/TachDataPortable.exe`.
 
 ## Cách chuyển giao
 
@@ -43,8 +43,8 @@ Launcher tự tìm runtime theo thứ tự:
 Ép làm lại một kỳ hoặc toàn bộ trên máy chuyển giao:
 
 ```powershell
-.\Tach data - Chuyen giao.cmd --force-period 2026-07
-.\Tach data - Chuyen giao.cmd --force-all
+.\Chay CT\Tach data - Chuyen giao.cmd --force-period 2026-07
+.\Chay CT\Tach data - Chuyen giao.cmd --force-all
 ```
 
 ## Device Guard và Code Integrity
@@ -64,13 +64,13 @@ Nếu thay đổi `portable_sell_in.py`, `extraction.py`, `incremental.py`,
 `master_data.py`, `normalization.py` hoặc quy tắc dùng chung:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File ".\Skill\sell-in-monthly\scripts\build_portable.ps1"
+powershell -ExecutionPolicy Bypass -File ".\code\Skill\sell-in-monthly\scripts\build_portable.ps1"
 ```
 
 Khi IT cung cấp chứng thư ký mã trong kho `CurrentUser\My`:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File ".\Skill\sell-in-monthly\scripts\build_portable.ps1" `
+powershell -ExecutionPolicy Bypass -File ".\code\Skill\sell-in-monthly\scripts\build_portable.ps1" `
   -CodeSigningCertificateThumbprint "<THUMBPRINT>" `
   -TimestampServer "<TIMESTAMP_URL>"
 ```

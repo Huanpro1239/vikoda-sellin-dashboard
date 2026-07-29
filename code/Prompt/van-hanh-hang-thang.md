@@ -1,6 +1,6 @@
 # Prompt vận hành Sell In hàng tháng
 
-Dùng Skill `Skill/sell-in-monthly` để chạy báo cáo Sell In từ các file trong
+Dùng Skill `code/Skill/sell-in-monthly` để chạy báo cáo Sell In từ các file trong
 `Data/Data ERP`.
 
 Yêu cầu:
