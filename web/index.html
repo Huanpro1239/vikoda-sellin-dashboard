@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Vikoda | Báo Cáo Quản Trị Sell-In & Dự Báo Kinh Doanh</title>
   <meta name="description" content="Dashboard điều hành bán hàng Sell In thông minh Vikoda - Phân tích đa chiều, tự động hóa dự báo & nhịp độ kinh doanh">
   <link rel="stylesheet" href="css/style.css">
@@ -30,8 +30,12 @@
       <div class="filter-pills-bar" id="filter_pills_container"></div>
 
       <div class="header-actions">
-        <button class="btn-clear-all" id="btn_clear_filters">Xóa tất cả lọc ✕</button>
-        <div class="meta-badge" id="as_of_badge">📅 Dữ liệu: 11/08/2026</div>
+        <button class="btn-mobile-filter" id="btn_toggle_mobile_filter">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+          <span>Bộ lọc</span>
+        </button>
+        <button class="btn-clear-all" id="btn_clear_filters">Xóa lọc ✕</button>
+        <div class="meta-badge" id="as_of_badge">📅 11/08/2026</div>
       </div>
     </header>
 
@@ -456,6 +460,34 @@
       </main>
 
     </div>
+
+    <!-- MOBILE BOTTOM NAVIGATION BAR -->
+    <nav class="mobile-bottom-nav">
+      <button class="mobile-nav-btn active" data-page="page_01">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        <span>Tổng quan</span>
+      </button>
+      <button class="mobile-nav-btn" data-page="page_02">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path></svg>
+        <span>Kênh & KH</span>
+      </button>
+      <button class="mobile-nav-btn" data-page="page_03">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line></svg>
+        <span>Sản phẩm</span>
+      </button>
+      <button class="mobile-nav-btn" data-page="page_04">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
+        <span>Vùng miền</span>
+      </button>
+      <button class="mobile-nav-btn" data-page="page_05">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+        <span>Chi tiết</span>
+      </button>
+      <button class="mobile-nav-btn" data-page="page_06">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+        <span>Kế hoạch</span>
+      </button>
+    </nav>
 
   </div>
 

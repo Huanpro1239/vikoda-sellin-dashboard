@@ -68,10 +68,10 @@ class VikodaApp {
   }
 
   // ------------------------------------------------------------------------
-  // ĐIỀU HƯỚNG 6 TRANG
+  // ĐIỀU HƯỚNG 6 TRANG & DI ĐỘNG
   // ------------------------------------------------------------------------
   initNavigation() {
-    const navItems = document.querySelectorAll('.nav-item');
+    const navItems = document.querySelectorAll('.nav-item, .mobile-nav-btn');
     navItems.forEach((btn) => {
       btn.addEventListener('click', (e) => {
         e.preventDefault();
@@ -79,13 +79,24 @@ class VikodaApp {
         this.switchPage(targetPage);
       });
     });
+
+    // Nút mở/đóng bộ lọc trên di động
+    const mobileFilterBtn = document.getElementById('btn_toggle_mobile_filter');
+    const sidebar = document.querySelector('.app-sidebar');
+    if (mobileFilterBtn && sidebar) {
+      mobileFilterBtn.addEventListener('click', () => {
+        sidebar.classList.toggle('mobile-open');
+        const isOpen = sidebar.classList.contains('mobile-open');
+        mobileFilterBtn.querySelector('span').innerText = isOpen ? 'Đóng lọc' : 'Bộ lọc';
+      });
+    }
   }
 
   switchPage(pageId) {
     this.activePage = pageId;
 
-    // Active nav item
-    document.querySelectorAll('.nav-item').forEach((b) => {
+    // Active nav items (Cả Sidebar và Mobile Bottom Nav)
+    document.querySelectorAll('.nav-item, .mobile-nav-btn').forEach((b) => {
       b.classList.toggle('active', b.getAttribute('data-page') === pageId);
     });
 
@@ -93,6 +104,10 @@ class VikodaApp {
     document.querySelectorAll('.view-page').forEach((v) => {
       v.classList.toggle('active', v.id === `view_${pageId}`);
     });
+
+    // Tự động cuộn lên đầu trang trên điện thoại
+    const content = document.querySelector('.app-content');
+    if (content) content.scrollTop = 0;
 
     // Render nội dung cho trang vừa chọn
     if (pageId === 'page_05') {
