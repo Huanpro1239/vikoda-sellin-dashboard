@@ -5,12 +5,40 @@ for %%I in ("%~dp0..") do set "project_root=%%~fI"
 cd /d "%project_root%"
 set "portable_exe=%project_root%\code\Skill\sell-in-monthly\assets\portable\TachDataPortable.exe"
 set "portable_script=%project_root%\code\Skill\sell-in-monthly\scripts\portable_sell_in.py"
+
+if not exist "%project_root%\code" (
+    echo.
+    echo ============================================================
+    echo  KHONG CHAY DUOC - THIEU PHAN CODE CUA DU AN
+    echo ============================================================
+    echo  Thu muc "Chay CT" chi la nut bam. Toan bo code, thu vien va
+    echo  du lieu deu nam o thu muc CHA "Bao cao Sell in".
+    echo.
+    echo  May nay dang thieu phan code do chi copy moi "Chay CT".
+    echo  Hay copy CA thu muc "Bao cao Sell in" sang may nay, roi chay
+    echo  launcher trong "Chay CT" nam ben trong no.
+    echo.
+    echo  Khong tim thay: %project_root%\code
+    echo ============================================================
+    pause
+    exit /b 3
+)
+
 set "portable_options="
 if defined TACH_DATA_OUTPUT set portable_options=%portable_options% --output-dir "%TACH_DATA_OUTPUT%"
 if defined TACH_DATA_LOG_DIR set portable_options=%portable_options% --log-dir "%TACH_DATA_LOG_DIR%"
+rem TACH_DATA_DRIVE_FOLDER_ID va TACH_DATA_RCLONE do portable_sell_in.py tu doc,
+rem khong can truyen. Dat TACH_DATA_SKIP_DRIVE=1 khi chi muon tao file cuc bo.
+if "%TACH_DATA_SKIP_DRIVE%"=="1" set portable_options=%portable_options% --skip-google-drive
 
 echo Starting portable Tach data...
-echo Google Drive upload is disabled.
+if "%TACH_DATA_SKIP_DRIVE%"=="1" (
+    echo Google Drive: skipped by TACH_DATA_SKIP_DRIVE=1.
+) else (
+    echo Google Drive: tai len thu muc dung chung bang rclone.
+    echo   May nay KHONG can cai Google Drive for Desktop.
+    echo   Can rclone.exe va mot lan "rclone config" - doc references\google-drive-rclone.md
+)
 echo.
 
 set "portable_python="

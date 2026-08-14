@@ -2,8 +2,17 @@
 param(
     [string]$ProjectRoot = '',
     [string]$OutputDirectory = '',
-    [string]$GoogleDriveTarget = 'G:\My Drive\Bao cao Sell in\Sell in hang thang',
+    # Thu muc Drive dich, nhan ca folder ID tran va URL day du. Bo trong de
+    # sync_drive.py giai theo: TACH_DATA_DRIVE_FOLDER_ID -> Chay CT\drive.conf ->
+    # thu muc dung chung mac dinh cua du an.
+    [string]$DriveFolderId = '',
+    [string]$RcloneRemote = '',
+    [string]$RclonePath = '',
     [switch]$SkipGoogleDrive,
+    # Khong con -SyncChangedOnly: rclone copy da tu bo qua file khong doi, nen
+    # luon doi soat ca thu muc ma chi truyen phan khac.
+    [switch]$SkipLookerDataset,
+    [string]$LookerCsvName = 'Sell in tong hop.csv',
     [string[]]$ForcePeriod = @(),
     [switch]$ForceAll,
     [string]$PythonExecutable = ''
@@ -117,6 +126,7 @@ $stagingDir = Join-Path $workDir 'staging'
 $previewDir = Join-Path $workDir 'previews'
 $verificationDir = Join-Path $workDir 'verification'
 $masterDataDir = Join-Path $workDir 'master_data'
+$lookerDir = Join-Path $workDir 'looker'
 $candidateDir = Join-Path $workDir 'new_customers'
 $logDir = Join-Path $ProjectRoot 'Data\Logs\Tach data logs'
 $stateFile = Join-Path $logDir 'incremental_state.json'
@@ -128,6 +138,9 @@ $approvalPlanFile = Join-Path $masterDataDir 'approved_customers_plan.json'
 $applyReportFile = Join-Path $masterDataDir 'approved_customers_apply_report.json'
 $masterAnalysisFile = Join-Path $masterDataDir 'master_data_analysis.json'
 $masterVerificationFile = Join-Path $verificationDir 'master_data_report.json'
+$lookerCsvFile = Join-Path $lookerDir $LookerCsvName
+$lookerReportFile = Join-Path $verificationDir 'looker_dataset_report.json'
+$driveReportFile = Join-Path $verificationDir 'drive_sync_report.json'
 
 $localNodeModules = Join-Path $PSScriptRoot 'node_modules'
 $createdLocalNodeModules = $false
@@ -213,7 +226,8 @@ foreach ($directory in @(
     $masterDataDir,
     $candidateDir,
     $customerBackupDir,
-    $logDir
+    $logDir,
+    $lookerDir
 )) {
     New-Item -ItemType Directory -Force -Path $directory | Out-Null
 }
@@ -406,21 +420,56 @@ try {
         Write-Host '5/5 - No changed month or approved customer; master-data review skipped.'
     }
 
-    if (-not $SkipGoogleDrive -and $rebuildCount -gt 0) {
-        if (Test-Path -LiteralPath (Split-Path -Parent $GoogleDriveTarget)) {
-            New-Item -ItemType Directory -Force -Path $GoogleDriveTarget |
-                Out-Null
-            foreach ($period in $rebuildPeriods) {
-                $parts = $period.Split('-')
-                $outputName = 'Sell in T{0:D2}_{1}.xlsx' -f [int]$parts[1], [int]$parts[0]
-                Copy-Item `
-                    -LiteralPath (Join-Path $outputDir $outputName) `
-                    -Destination $GoogleDriveTarget `
-                    -Force
-            }
-            Write-Host "Rebuilt files copied to: $GoogleDriveTarget"
-        } else {
-            Write-Warning 'Google Drive was not found. Local files were still created.'
+    # Looker Studio khong doc duoc .xlsx tren Drive (chi Google Sheets, CSV
+    # File Upload, hoac BigQuery). Nen ngoai cac workbook thang, luon gop them
+    # mot CSV phang chua tat ca cac thang de dung lam nguon ve Looker.
+    $lookerCsvReady = $false
+    if (-not $SkipLookerDataset) {
+        Write-Host 'Building consolidated CSV dataset for Looker...'
+        Invoke-SellInPython -ArgumentList @(
+            (Join-Path $PSScriptRoot 'build_looker_dataset.py'),
+            '--output-dir', $outputDir,
+            '--csv-file', $lookerCsvFile,
+            '--report-file', $lookerReportFile
+        )
+        if ($LASTEXITCODE -ne 0) {
+            throw "Looker dataset build failed. Review: $lookerReportFile"
+        }
+        $lookerCsvReady = Test-Path -LiteralPath $lookerCsvFile
+    }
+
+    # Buoc dong bo tai file len Google Drive bang rclone, dung chung
+    # `sync_drive.py`/`drive_sync.py` voi luong chuyen giao nen hai luong khong
+    # the lech hanh vi. Khong con chep vao thu muc `G:\My Drive\...` do Drive for
+    # Desktop mount: cach do doi may dich phai cai Drive for Desktop, con rclone
+    # thi chi can mot file exe va mot lan dang nhap.
+    if (-not $SkipGoogleDrive) {
+        Write-Host 'Uploading to shared Google Drive folder (rclone)...'
+        $syncArguments = @(
+            (Join-Path $PSScriptRoot 'sync_drive.py'),
+            '--project-root', $ProjectRoot,
+            '--output-dir', $outputDir,
+            '--report-file', $driveReportFile
+        )
+        if (-not [string]::IsNullOrWhiteSpace($DriveFolderId)) {
+            $syncArguments += @('--folder-id', $DriveFolderId)
+        }
+        if (-not [string]::IsNullOrWhiteSpace($RcloneRemote)) {
+            $syncArguments += @('--remote', $RcloneRemote)
+        }
+        if (-not [string]::IsNullOrWhiteSpace($RclonePath)) {
+            $syncArguments += @('--rclone', $RclonePath)
+        }
+        if ($lookerCsvReady) {
+            $syncArguments += @('--extra-file', $lookerCsvFile)
+        }
+
+        Invoke-SellInPython -ArgumentList $syncArguments
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning (
+                'Con file chua tai duoc len Google Drive. File cuc bo van day ' +
+                "du. Chi tiet: $driveReportFile"
+            )
         }
     }
 
@@ -443,6 +492,9 @@ try {
         ).Count,
         $outputDir
     )
+    if ($lookerCsvReady) {
+        Write-Host "Looker dataset: $lookerCsvFile"
+    }
 } finally {
     if (
         $createdLocalNodeModules -and

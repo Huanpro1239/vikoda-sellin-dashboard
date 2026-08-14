@@ -8,6 +8,8 @@ from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
+from build_looker_dataset import build_looker_csv
+from drive_sync import RcloneNotFound, RcloneRemoteMissing, upload as upload_to_drive
 from extraction import (
     extract_file,
     is_candidate_source,
@@ -47,7 +49,10 @@ def default_project_root() -> Path:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Portable monthly Sell In processor. Google Drive is not used."
+        description=(
+            "Portable monthly Sell In processor. Dong bo Google Drive va CSV "
+            "nguon Looker chay giong luong chinh."
+        )
     )
     parser.add_argument("--project-root", default=str(default_project_root()))
     parser.add_argument("--source-dir")
@@ -63,6 +68,40 @@ def parse_args() -> argparse.Namespace:
         "--force-all",
         action="store_true",
         help="Làm lại toàn bộ các tháng.",
+    )
+    parser.add_argument(
+        "--drive-folder-id",
+        default="",
+        help=(
+            "Folder ID hoặc URL thư mục Drive đích. Bỏ trống thì lấy biến môi "
+            "trường TACH_DATA_DRIVE_FOLDER_ID, rồi Chay CT/drive.conf, rồi thư "
+            "mục dùng chung mặc định của dự án."
+        ),
+    )
+    parser.add_argument(
+        "--rclone-remote",
+        default="",
+        help="Tên remote trong cấu hình rclone. Bỏ trống dùng vikoda-drive.",
+    )
+    parser.add_argument(
+        "--rclone",
+        default="",
+        help="Đường dẫn rclone.exe. Bỏ trống để tự tìm.",
+    )
+    parser.add_argument(
+        "--skip-google-drive",
+        action="store_true",
+        help="Chỉ tạo file cục bộ, không tải lên Google Drive.",
+    )
+    parser.add_argument(
+        "--skip-looker-dataset",
+        action="store_true",
+        help="Không dựng CSV gộp làm nguồn Looker.",
+    )
+    parser.add_argument(
+        "--looker-csv-name",
+        default="Sell in tong hop.csv",
+        help="Tên file CSV gộp.",
     )
     return parser.parse_args()
 
@@ -127,6 +166,13 @@ def run(args: argparse.Namespace) -> dict:
         / "sell_in"
         / "staging"
     )
+    looker_dir = (
+        project_root
+        / "Data"
+        / "Work"
+        / "sell_in"
+        / "looker"
+    )
     customer_backup_dir = (
         project_root / "Data" / "Logs" / "Danh muc KH backups"
     )
@@ -146,6 +192,7 @@ def run(args: argparse.Namespace) -> dict:
     master_data_dir.mkdir(parents=True, exist_ok=True)
     master_verification_dir.mkdir(parents=True, exist_ok=True)
     staging_dir.mkdir(parents=True, exist_ok=True)
+    looker_dir.mkdir(parents=True, exist_ok=True)
 
     plan = build_incremental_plan(
         source_dir,
@@ -287,11 +334,67 @@ def run(args: argparse.Namespace) -> dict:
             "approval_plan": str(approval_plan_path),
         }
 
+    # Looker Studio khong doc duoc .xlsx tren Drive (chi Google Sheets, CSV
+    # File Upload hoac BigQuery), nen gop them mot CSV phang tat ca cac thang.
+    looker_payload: dict = {"skipped": True, "reason": "disabled_by_flag"}
+    looker_csv_path: Path | None = None
+    if not args.skip_looker_dataset:
+        print("Building consolidated CSV dataset for Looker")
+        looker_csv_path = looker_dir / args.looker_csv_name
+        looker_report = build_looker_csv(
+            output_dir=output_dir,
+            csv_file=looker_csv_path,
+            report_file=(
+                master_verification_dir / "looker_dataset_report.json"
+            ),
+        )
+        looker_payload = {"skipped": False, **looker_report}
+
+    # Tai toan bo workbook cung CSV Looker len thu muc Drive dung chung bang
+    # rclone. May chuyen giao khong can cai Google Drive for Desktop nua, chi can
+    # rclone.exe va mot lan `rclone config`.
+    if args.skip_google_drive:
+        drive_payload: dict = {"skipped": True, "reason": "disabled_by_flag"}
+        print("Google Drive: skipped by flag")
+    else:
+        extra_files = []
+        if looker_csv_path is not None and looker_csv_path.is_file():
+            extra_files.append(looker_csv_path)
+        try:
+            print("Uploading to shared Google Drive folder (rclone)")
+            drive_payload = {
+                "skipped": False,
+                **upload_to_drive(
+                    project_root=project_root,
+                    output_dir=output_dir,
+                    extra_files=extra_files,
+                    folder_id=args.drive_folder_id,
+                    remote=args.rclone_remote,
+                    rclone_path=args.rclone,
+                ),
+            }
+            listing = drive_payload.get("remote_listing") or {}
+            if listing.get("ok"):
+                print(
+                    "  Doi soat: thu muc Drive co {0} file, mong doi it nhat "
+                    "{1}.".format(
+                        listing["file_count"], drive_payload["expected_count"]
+                    )
+                )
+            for job in drive_payload.get("failed_jobs", []):
+                print(f"  Loi khi tai {job['source_dir']}: {job['stderr']}")
+        except (RcloneNotFound, RcloneRemoteMissing) as error:
+            # Chua cai/cau hinh rclone la viec setup mot lan, khong phai loi du
+            # lieu, nen khong lam do lan tach data.
+            drive_payload = {"skipped": True, "reason": "rclone_not_ready"}
+            print(str(error))
+
     commit_incremental_plan(plan, state_file)
 
     payload = {
         "portable_flow": True,
-        "google_drive_used": False,
+        "google_drive": drive_payload,
+        "looker_dataset": looker_payload,
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "project_root": str(project_root),
         "source_dir": str(source_dir),
@@ -338,7 +441,29 @@ def main() -> int:
         f"{len(payload['incremental']['skipped_periods'])} skipped months."
     )
     print(f"Output: {payload['output_dir']}")
-    print("Google Drive: disabled")
+
+    looker = payload["looker_dataset"]
+    if looker.get("skipped"):
+        print("Looker dataset: skipped")
+    else:
+        print(
+            f"Looker dataset: {looker['csv_file']} "
+            f"({looker['row_count']:,} rows)"
+        )
+
+    drive = payload["google_drive"]
+    if drive.get("skipped"):
+        print(f"Google Drive: skipped ({drive.get('reason')})")
+    else:
+        listing = drive.get("remote_listing") or {}
+        count = listing.get("file_count", "?") if listing.get("ok") else "?"
+        print(
+            "Google Drive: thu muc {0} hien co {1} file (mong doi it nhat {2})".format(
+                drive["folder_id"], count, drive["expected_count"]
+            )
+        )
+        if drive.get("failed_jobs"):
+            print("Google Drive: con job loi, xem audit_portable.json.")
     return 0
 
 

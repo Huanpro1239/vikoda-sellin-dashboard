@@ -1,0 +1,48 @@
+HƯỚNG DẪN CHẠY TRÊN MÁY KHÁC
+================================
+
+VÌ SAO COPY MỖI "Chay CT" THÌ KHÔNG CHẠY ĐƯỢC
+-----------------------------------------------
+Thư mục "Chay CT" chỉ chứa các NÚT BẤM (file .cmd). Chúng không tự làm gì cả,
+mà gọi sang phần code thật của dự án nằm ở THƯ MỤC CHA "Bao cao Sell in":
+
+    Bao cao Sell in\          <-- thư mục dự án (phải copy CẢ cái này)
+        Chay CT\              <-- các nút bấm .cmd
+        code\                 <-- script Python + PowerShell + thư viện openpyxl
+        Data\                 <-- dữ liệu ERP, danh mục KH/SP, kết quả xuất ra
+        README.md
+
+Mỗi file .cmd lấy thư mục cha của "Chay CT" làm gốc dự án rồi chạy
+"...\code\...". Nếu bạn chỉ copy riêng "Chay CT", máy mới không có "code" và
+"Data" nên cửa sổ mở ra rồi tắt ngay (không có gì để chạy).
+
+
+CÁCH LÀM ĐÚNG
+-------------
+1. Copy CẢ thư mục "Bao cao Sell in" sang máy mới
+   (nén zip / chép qua USB / OneDrive... đều được), KHÔNG chỉ copy "Chay CT".
+   Giữ nguyên cấu trúc thư mục con bên trong.
+
+2. Trên máy mới, mở thư mục "Bao cao Sell in\Chay CT" rồi bấm đúp launcher
+   cần dùng (Tach data.cmd, Bao cao Power BI.cmd, ...).
+
+3. Yêu cầu máy: chỉ cần Python 3.8 trở lên.
+   - Nếu máy đã cài Python (tích "Add python.exe to PATH" lúc cài) thì chạy được ngay.
+   - Nếu chưa có Python, cài từ https://www.python.org rồi chạy lại.
+   - Thư viện openpyxl KHÔNG cần cài thêm: đã có sẵn bản vendored trong
+     code\Skill\skill-bao-cao\scripts\vendor (nhớ copy kèm, đừng bỏ sót).
+   - Power BI Desktop chỉ cần khi muốn mở/làm mới dashboard.
+
+
+NẾU CHỈ MUỐN CHUYỂN QUA GIT
+---------------------------
+File .gitignore đang bỏ qua thư mục "Data\", bản vendored openpyxl và ".runtime".
+Nếu clone repo bằng git, máy mới sẽ THIẾU dữ liệu và thiếu openpyxl. Khi đó phải
+copy tay các thứ này sang, hoặc cứ chép nguyên cả thư mục như mục "CÁCH LÀM ĐÚNG".
+
+
+KIỂM TRA NHANH
+--------------
+Nếu launcher báo hộp "KHONG CHAY DUOC - THIEU PHAN CODE CUA DU AN" thì đúng là
+đang thiếu code do copy sót — làm lại bước 1. Cửa sổ giờ sẽ dừng lại và nói rõ
+thay vì nháy tắt.

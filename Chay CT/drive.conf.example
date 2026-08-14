@@ -1,0 +1,24 @@
+# Cau hinh dich Google Drive cho buoc dong bo Sell In.
+#
+# Cach dung: doi ten file nay thanh "drive.conf" roi sua gia tri ben duoi.
+# Dong bat dau bang '#' bi bo qua. Dinh dang: khoa = gia tri
+#
+# THUONG THI KHONG CAN FILE NAY. Thu muc dung chung cua du an da duoc dat lam
+# mac dinh san trong code (drive_sync.py). Chi tao file nay khi muon doi dich,
+# vi du khi test vao mot thu muc Drive rieng.
+#
+# Thu tu uu tien:
+#   1. Tham so -DriveFolderId / --drive-folder-id
+#   2. Bien moi truong TACH_DATA_DRIVE_FOLDER_ID / TACH_DATA_RCLONE_REMOTE
+#   3. File nay
+#   4. Mac dinh trong drive_sync.py
+
+# folder_id nhan ca ID tran va URL day du, dan nguyen tu thanh dia chi cung duoc.
+folder_id = 1zJHdr3L9g9VAQVYM8KR_Bl0jpV2FClv5
+
+# Ten remote da tao bang `rclone config`. Phai khop chinh xac.
+remote = vikoda-drive
+
+# Vi du doi dich khi kiem thu:
+# folder_id = https://drive.google.com/drive/folders/XXXXXXXXXXXXXXXXX
+# remote = drive-thu-nghiem

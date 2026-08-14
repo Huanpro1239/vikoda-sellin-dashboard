@@ -91,7 +91,10 @@ function Invoke-TachData {
         '-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass',
         '-File', $runner,
         '-ProjectRoot', $ProjectRoot,
-        '-SkipGoogleDrive'
+        '-SkipGoogleDrive',
+        # Buoc nay chi can workbook thang; CSV gop cho Looker la viec cua
+        # Tach data.cmd, khong dung o day nen bo qua cho nhanh.
+        '-SkipLookerDataset'
     )
     if (-not [string]::IsNullOrWhiteSpace($PythonExecutable)) {
         $arguments += @('-PythonExecutable', $PythonExecutable)

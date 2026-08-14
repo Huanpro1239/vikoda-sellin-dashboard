@@ -53,7 +53,7 @@ class PowerBIPackageTest(unittest.TestCase):
         self.temp.cleanup()
 
     def test_writes_six_star_schema_tables(self) -> None:
-        self.assertEqual(self.manifest["package_version"], "1.9.0")
+        self.assertEqual(self.manifest["package_version"], "2.0.0")
         self.assertEqual(self.manifest["tables"]["FactSellIn"], 3)
         self.assertEqual(self.manifest["tables"]["FactTarget"], 1)
         self.assertEqual(self.manifest["tables"]["DimTerritory"], 20)
@@ -72,12 +72,19 @@ class PowerBIPackageTest(unittest.TestCase):
         self.assertEqual(totals["last_year"], 800)
         self.assertEqual(totals["previous_month"], 900)
 
-    def test_pbir_has_four_management_pages(self) -> None:
+    def test_pbir_tells_the_dar_story_in_six_pages(self) -> None:
         report = self.output / f"{REPORT_NAME}.Report"
         pages = json.loads((report / "definition" / "pages" / "pages.json").read_text(encoding="utf-8"))
         self.assertEqual(
             pages["pageOrder"],
-            ["CEO_TongQuan", "KeHoach_DuBao", "Vung_Mien", "KhachHang_SanPham"],
+            [
+                "CEO_TongQuan",
+                "Kenh_KhachHang",
+                "SanPham",
+                "Vung_Mien",
+                "KhachHang_SanPham",
+                "KeHoach_KhuyenNghi",
+            ],
         )
         for page in pages["pageOrder"]:
             page_dir = report / "definition" / "pages" / page
@@ -89,7 +96,7 @@ class PowerBIPackageTest(unittest.TestCase):
         pages_dir = report / "definition" / "pages"
         page = json.loads((pages_dir / "CEO_TongQuan" / "page.json").read_text(encoding="utf-8"))
         self.assertEqual((page["width"], page["height"]), (1280, 720))
-        self.assertEqual(page["displayName"], "01. CEO | Tổng quan")
+        self.assertEqual(page["displayName"], "01. Tổng quan điều hành")
 
         header = json.loads(
             (pages_dir / "CEO_TongQuan" / "visuals" / "title_overview" / "visual.json").read_text(encoding="utf-8")
@@ -103,35 +110,55 @@ class PowerBIPackageTest(unittest.TestCase):
         )
         self.assertEqual(nav["position"], {"x": 0, "y": 72, "z": 1, "width": 220, "height": 648, "tabOrder": 1})
         slicer = json.loads(
-            (pages_dir / "CEO_TongQuan" / "visuals" / "overview_year" / "visual.json").read_text(encoding="utf-8")
+            (pages_dir / "CEO_TongQuan" / "visuals" / "overview_date_range" / "visual.json").read_text(encoding="utf-8")
         )
         self.assertLess(slicer["position"]["x"] + slicer["position"]["width"], 220)
         self.assertEqual(
             slicer["position"],
-            {"x": 12, "y": 260, "z": 10, "width": 196, "height": 60, "tabOrder": 10},
+            {"x": 12, "y": 308, "z": 10, "width": 196, "height": 72, "tabOrder": 10},
         )
         slicer_container = slicer["visual"]["visualContainerObjects"]
         self.assertEqual(
             slicer_container["background"][0]["properties"]["color"]["solid"]["color"]["expr"]["Literal"]["Value"],
-            "'#123A5D'",
+            "'#FFFFFF'",
         )
         self.assertEqual(
-            slicer["visual"]["objects"]["items"][0]["properties"]["fontColor"]["solid"]["color"]["expr"]["Literal"]["Value"],
-            "'#7DD3FC'",
+            slicer["visual"]["objects"]["input"][0]["properties"]["fontColor"]["solid"]["color"]["expr"]["Literal"]["Value"],
+            "'#0F172A'",
+        )
+        self.assertEqual(
+            slicer["visual"]["objects"]["data"][0]["properties"]["mode"]["expr"]["Literal"]["Value"],
+            "'Between'",
         )
 
-        month_slicer = json.loads(
-            (pages_dir / "CEO_TongQuan" / "visuals" / "overview_month" / "visual.json").read_text(encoding="utf-8")
-        )
         first_card = json.loads(
             (pages_dir / "CEO_TongQuan" / "visuals" / "overview_card_actual" / "visual.json").read_text(encoding="utf-8")
         )
-        self.assertEqual(month_slicer["position"]["y"], 328)
+        self.assertEqual(first_card["position"]["y"], 390)
         self.assertGreaterEqual(
-            first_card["position"]["y"] - (month_slicer["position"]["y"] + month_slicer["position"]["height"]),
-            12,
+            first_card["position"]["y"] - (slicer["position"]["y"] + slicer["position"]["height"]),
+            8,
         )
-        self.assertEqual(first_card["position"]["height"], 59)
+        self.assertEqual(first_card["position"]["height"], 62)
+        # Chữ số trong thẻ KPI phải nằm trọn trong khung: padding trên dưới,
+        # dòng tiêu đề và dòng giá trị cộng lại không được vượt chiều cao thẻ.
+        card_visual = first_card["visual"]
+        pad = int(card_visual["visualContainerObjects"]["padding"][0]["properties"]["top"]["expr"]["Literal"]["Value"].rstrip("D"))
+        title_pt = int(card_visual["visualContainerObjects"]["title"][0]["properties"]["fontSize"]["expr"]["Literal"]["Value"].rstrip("D"))
+        value_pt = int(card_visual["objects"]["labels"][0]["properties"]["fontSize"]["expr"]["Literal"]["Value"].rstrip("D"))
+        needed = pad * 2 + (title_pt + value_pt) * 1.333 * 1.35
+        self.assertLessEqual(
+            needed,
+            first_card["position"]["height"],
+            "chữ số trong thẻ KPI sẽ bị cắt mất chân",
+        )
+        # Bốn KPI xếp dọc phải nằm trọn trong canvas 720 px.
+        card_positions = [
+            json.loads(path.read_text(encoding="utf-8"))["position"]
+            for path in (pages_dir / "CEO_TongQuan" / "visuals").glob("overview_card_*/visual.json")
+        ]
+        self.assertEqual(len(card_positions), 4)
+        self.assertLessEqual(max(item["y"] + item["height"] for item in card_positions), 720)
 
         detail_slicer_paths = sorted((pages_dir / "KhachHang_SanPham" / "visuals").glob("detail_*/visual.json"))
         detail_slicers = [
@@ -139,8 +166,7 @@ class PowerBIPackageTest(unittest.TestCase):
             for path in detail_slicer_paths
             if json.loads(path.read_text(encoding="utf-8"))["visual"]["visualType"] == "slicer"
         ]
-        self.assertEqual(len(detail_slicers), 5)
-        self.assertTrue(all(item["position"]["height"] == 60 for item in detail_slicers))
+        self.assertEqual(len(detail_slicers), 4)
         self.assertLessEqual(max(item["position"]["y"] + item["position"]["height"] for item in detail_slicers), 720)
 
         nav_button = json.loads(
@@ -149,8 +175,15 @@ class PowerBIPackageTest(unittest.TestCase):
         self.assertEqual(nav_button["visual"]["visualType"], "actionButton")
         self.assertEqual(
             nav_button["position"],
-            {"x": 14, "y": 128, "z": 2, "width": 192, "height": 28, "tabOrder": 2},
+            {"x": 14, "y": 128, "z": 2, "width": 192, "height": 26, "tabOrder": 2},
         )
+        # Sáu nút điều hướng phải kết thúc trước khối slicer đầu tiên.
+        nav_bottom = max(
+            json.loads(path.read_text(encoding="utf-8"))["position"]["y"]
+            + json.loads(path.read_text(encoding="utf-8"))["position"]["height"]
+            for path in (pages_dir / "CEO_TongQuan" / "visuals").glob("nav_to_*/visual.json")
+        )
+        self.assertLess(nav_bottom, slicer["position"]["y"])
         nav_link = nav_button["visual"]["visualContainerObjects"]["visualLink"][0]["properties"]
         self.assertEqual(nav_link["type"]["expr"]["Literal"]["Value"], "'PageNavigation'")
         self.assertEqual(nav_link["navigationSection"]["expr"]["Literal"]["Value"], "'CEO_TongQuan'")
@@ -161,7 +194,7 @@ class PowerBIPackageTest(unittest.TestCase):
             (pages_dir / "CEO_TongQuan" / "visuals" / "overview_trend" / "visual.json").read_text(encoding="utf-8")
         )
         self.assertEqual(trend["visual"]["visualType"], "lineClusteredColumnComboChart")
-        self.assertEqual(trend["position"], {"x": 236, "y": 92, "z": 30, "width": 1028, "height": 294, "tabOrder": 30})
+        self.assertEqual(trend["position"], {"x": 236, "y": 92, "z": 30, "width": 1028, "height": 286, "tabOrder": 30})
         self.assertIn("categoryAxis", trend["visual"]["objects"])
         self.assertIn("valueAxis", trend["visual"]["objects"])
         self.assertEqual(
@@ -219,13 +252,14 @@ class PowerBIPackageTest(unittest.TestCase):
         self.assertEqual(table_header["columnAdjustment"]["expr"]["Literal"]["Value"], "'growToFit'")
 
         visuals = list(pages_dir.glob("*/visuals/*/visual.json"))
-        self.assertGreaterEqual(len(visuals), 53)
+        self.assertGreaterEqual(len(visuals), 90)
         nav_button_paths = [
             path
             for path in visuals
             if json.loads(path.read_text(encoding="utf-8"))["visual"]["visualType"] == "actionButton"
         ]
-        self.assertEqual(len(nav_button_paths), 16)
+        # Sáu nút trên cả sáu trang.
+        self.assertEqual(len(nav_button_paths), 36)
         card_paths = [
             path
             for path in visuals
@@ -233,6 +267,135 @@ class PowerBIPackageTest(unittest.TestCase):
         ]
         self.assertEqual(len(card_paths), 4)
         self.assertTrue(all(path.parts[-4] == "CEO_TongQuan" for path in card_paths))
+
+        # Mỗi trang phân tích phải có ít nhất bốn visual nội dung, không kể
+        # header, rail, nút điều hướng và slicer.
+        chrome = {"actionButton", "slicer"}
+        for page_name in ("CEO_TongQuan", "Kenh_KhachHang", "SanPham", "Vung_Mien", "KeHoach_KhuyenNghi"):
+            content = [
+                path
+                for path in (pages_dir / page_name / "visuals").glob("*/visual.json")
+                if json.loads(path.read_text(encoding="utf-8"))["visual"]["visualType"] not in chrome
+                and not path.parent.name.startswith(("title_", "nav_"))
+            ]
+            self.assertGreaterEqual(len(content), 4, page_name)
+
+        # Các chiều trước đây bỏ không giờ phải xuất hiện trong query của visual.
+        used_refs = {
+            projection["queryRef"]
+            for path in visuals
+            for bucket in json.loads(path.read_text(encoding="utf-8"))["visual"].get("query", {}).get("queryState", {}).values()
+            for projection in bucket["projections"]
+        }
+        for required in ("DimCustomer.Channel", "DimCustomer.SystemMT", "DimCustomer.CustomerType", "DimProduct.CoBrand"):
+            self.assertIn(required, used_refs)
+
+        treemap = json.loads(
+            (pages_dir / "Vung_Mien" / "visuals" / "region_map" / "visual.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(treemap["visual"]["visualType"], "treemap")
+        self.assertEqual(set(treemap["visual"]["query"]["queryState"]), {"Group", "Details", "Values"})
+
+        # Mỗi loại visual có bộ vai dữ liệu riêng. Đặt sai tên vai thì Power BI
+        # vẫn mở được báo cáo nhưng vẽ ra khung trắng — lỗi rất khó thấy khi
+        # đọc code, nên chốt lại ở đây.
+        allowed_buckets = {
+            "barChart": {"Category", "Y", "Series"},
+            "clusteredColumnChart": {"Category", "Y", "Series"},
+            "lineChart": {"Category", "Y", "Series"},
+            "donutChart": {"Category", "Y"},
+            "waterfallChart": {"Category", "Y", "Series"},
+            "lineClusteredColumnComboChart": {"Category", "Y", "Y2", "Series"},
+            "treemap": {"Group", "Details", "Values"},
+            "tableEx": {"Values"},
+            "card": {"Values"},
+            "slicer": {"Values"},
+        }
+        checked_buckets = 0
+        for path in visuals:
+            visual = json.loads(path.read_text(encoding="utf-8"))["visual"]
+            buckets = set(visual.get("query", {}).get("queryState", {}))
+            if not buckets:
+                continue
+            self.assertIn(visual["visualType"], allowed_buckets, path.parent.name)
+            self.assertTrue(
+                buckets <= allowed_buckets[visual["visualType"]],
+                f"{path.parent.name}: vai {sorted(buckets - allowed_buckets[visual['visualType']])} "
+                f"không hợp lệ cho {visual['visualType']} — visual sẽ ra khung trắng",
+            )
+            checked_buckets += 1
+        self.assertGreaterEqual(checked_buckets, 20)
+
+        # Combo phải đẩy đường lên trục phụ, nếu không đường và cột chồng thang đo.
+        self.assertEqual(set(trend["visual"]["query"]["queryState"]), {"Category", "Y", "Y2"})
+
+        # Mọi visual có truy vấn đều phải gắn ít nhất một giá trị đo.
+        for path in visuals:
+            visual = json.loads(path.read_text(encoding="utf-8"))["visual"]
+            state = visual.get("query", {}).get("queryState", {})
+            if not state or visual["visualType"] == "slicer":
+                continue
+            self.assertTrue(
+                any(bucket["projections"] for bucket in state.values()),
+                f"{path.parent.name}: không có trường nào được gắn",
+            )
+
+        insight = json.loads(
+            (pages_dir / "KeHoach_KhuyenNghi" / "visuals" / "plan_recommendation" / "visual.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(insight["visual"]["visualType"], "textbox")
+        self.assertGreaterEqual(len(insight["visual"]["objects"]["general"][0]["properties"]["paragraphs"]), 8)
+
+        declining = json.loads(
+            (pages_dir / "SanPham" / "visuals" / "product_declining_sku" / "visual.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            declining["visual"]["query"]["sortDefinition"]["sort"][0]["direction"],
+            "Ascending",
+        )
+
+        # Nhãn dài không được rơi vào dấu ba chấm: trục phân loại của biểu đồ
+        # thanh ngang phải đủ chỗ cho giá trị dài nhất trong cột đó.
+        with (self.output / "Data" / "DimProduct.csv").open(encoding="utf-8-sig", newline="") as handle:
+            product_rows = list(csv.DictReader(handle))
+        with (self.output / "Data" / "DimTerritory.csv").open(encoding="utf-8-sig", newline="") as handle:
+            territory_rows = list(csv.DictReader(handle))
+        longest = {}
+        for source, table in ((product_rows, "DimProduct"), (territory_rows, "DimTerritory")):
+            for row in source:
+                for column, value in row.items():
+                    key = f"{table}.{column}"
+                    longest[key] = max(longest.get(key, 0), len(value))
+        px_per_char = {9: 5.3, 10: 5.9}
+        checked = 0
+        for path in pages_dir.glob("*/visuals/*/visual.json"):
+            visual = json.loads(path.read_text(encoding="utf-8"))["visual"]
+            if visual["visualType"] != "barChart":
+                continue
+            query_ref = visual["query"]["queryState"]["Category"]["projections"][0]["queryRef"]
+            if query_ref not in longest:
+                continue
+            axis = visual["objects"]["categoryAxis"][0]["properties"]
+            margin = int(axis.get("maxMarginFactor", {"expr": {"Literal": {"Value": "25D"}}})["expr"]["Literal"]["Value"].rstrip("D"))
+            font = int(axis["fontSize"]["expr"]["Literal"]["Value"].rstrip("D"))
+            width = json.loads(path.read_text(encoding="utf-8"))["position"]["width"]
+            self.assertGreaterEqual(
+                width * margin / 100,
+                longest[query_ref] * px_per_char[font],
+                f"{path.parent.name}: nhãn {query_ref} sẽ bị cắt thành dấu ba chấm",
+            )
+            checked += 1
+        self.assertGreaterEqual(checked, 3)
+
+        # Tên SKU dùng cho trục phải bỏ tiền tố lặp và không còn khoảng trắng kép.
+        axis_labels = [row["ProductAxisLabel"] for row in product_rows]
+        self.assertTrue(all("  " not in item for item in axis_labels))
+        self.assertFalse(any(item.lower().startswith("vikoda ") for item in axis_labels))
+        self.assertTrue(any(row["ProductShortName"].startswith("Vikoda ") for row in product_rows))
+
+        # Bảng phải cho xuống dòng thay vì cắt tên khách hàng.
+        table_values = detail_table["visual"]["objects"]["values"][0]["properties"]
+        self.assertEqual(table_values["wordWrap"]["expr"]["Literal"]["Value"], "true")
         table_types = [
             json.loads(path.read_text(encoding="utf-8"))["visual"]["visualType"]
             for path in visuals
@@ -268,7 +431,20 @@ class PowerBIPackageTest(unittest.TestCase):
         self.assertIn("Tăng trưởng Két (K)", measure_names)
         self.assertIn("Tăng trưởng Thùng (T)", measure_names)
         self.assertIn("Tăng trưởng Bình (B)", measure_names)
-        self.assertEqual(len(measure_names), 38)
+        for added in (
+            "Doanh thu Vikoda LY", "Tăng trưởng Vikoda", "Doanh thu KDT LY", "Tăng trưởng KDT",
+            "Tỷ trọng KDT", "Số SKU", "Số khách hàng LY", "Tăng trưởng số khách hàng",
+            "Doanh thu bình quân KH", "Doanh thu / Điểm bán Active", "Khách hàng mới", "Khách hàng ngừng mua",
+            "Xếp hạng SKU", "Đóng góp doanh thu", "Doanh thu hệ thống MT",
+            "% Thời gian tháng đã qua", "Nhịp độ bán hàng", "Doanh thu ngày bình quân MTD",
+            "Hệ số gia tốc cần đạt", "Dự báo EOM Mùa vụ", "Tỷ trọng Két %", "Tỷ trọng Thùng %", "Tỷ trọng Bình %",
+        ):
+            self.assertIn(added, measure_names)
+        self.assertEqual(len(measure_names), 61)
+        churn = next(item for item in fact["measures"] if item["name"] == "Khách hàng ngừng mua")
+        # DAX không cho IF trả về bảng: cả hai nhánh phải quy về scalar trước khi chọn.
+        self.assertIn("EXCEPT(FilteredPrior, FilteredCurrent)", churn["expression"])
+        self.assertIn("EXCEPT(DefaultPrior, DefaultCurrent)", churn["expression"])
         return_rate = next(item for item in fact["measures"] if item["name"] == "Tỷ lệ trả hàng")
         self.assertIn("COALESCE", return_rate["expression"])
         self.assertEqual(return_rate["formatString"], "0.0%;(0.0%);0.0%")

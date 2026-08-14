@@ -290,9 +290,12 @@ def build_report(root: Path) -> dict:
             "FactTarget",
         )
     ]
+    model_bim = powerbi_dir / "Vikoda_SellIn_PowerBI.SemanticModel" / "model.bim"
+    model_tmdl = powerbi_dir / "Vikoda_SellIn_PowerBI.SemanticModel" / "definition" / "model.tmdl"
+    model_file = model_bim if model_bim.is_file() else model_tmdl
     powerbi_required = powerbi_outputs + [
         powerbi_dir / "Vikoda_SellIn_PowerBI.pbip",
-        powerbi_dir / "Vikoda_SellIn_PowerBI.SemanticModel" / "definition" / "model.tmdl",
+        model_file,
     ]
 
     monthly_files = _collect([(monthly_dir, "Sell in T*.xlsx")])

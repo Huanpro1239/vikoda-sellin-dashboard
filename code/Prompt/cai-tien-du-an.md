@@ -16,7 +16,7 @@ Trước khi sửa:
    - điều kiện phát hiện dữ liệu mới: `scripts/incremental.py`
    - danh mục khách hàng và sản phẩm: `scripts/master_data.py`
    - chuẩn hóa số: `scripts/normalization.py`
-5. Giữ dữ liệu trong `Data` và prompt tái sử dụng trong `Prompt`.
+5. Giữ dữ liệu trong `Data` và prompt tái sử dụng trong `code/Prompt`.
 
 Sau khi sửa:
 

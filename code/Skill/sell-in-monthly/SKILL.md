@@ -1,9 +1,33 @@
 ---
 name: sell-in-monthly
-description: Tách tăng dần, lọc, chuẩn hóa và gộp dữ liệu Sell In hàng tháng từ file ERP Excel/XLSM của VKD và Vikoda; chỉ tạo lại tháng có thay đổi NgayHoaDon/số dòng, tạo workbook theo tháng/năm, kiểm tra chất lượng, phát hiện khách hàng mới, cập nhật khách hàng đã duyệt, đối chiếu danh mục sản phẩm, tạo bản chuyển giao Windows và tùy chọn đồng bộ Google Drive. Dùng khi cần chạy hoặc cải tiến dự án "Bao cao Sell in", thêm dữ liệu ERP, xử lý khách hàng mới, kiểm tra danh mục khách hàng/sản phẩm, sửa quy tắc MaKhachHangMoi/VKD3, MaSanPhamMoi, NgayHoaDon, SoLuong, định dạng file đầu ra, trạng thái tăng dần hoặc luồng chuyển giao.
+description: Chặng ĐẦU VÀO của dự án "Bao cao Sell in" - đọc file ERP xlsm của VKD và Vikoda, lọc và chuẩn hóa thành workbook "Sell in TMM_YYYY.xlsx" theo tháng, chỉ dựng lại tháng có thay đổi NgayHoaDon hoặc số dòng, phát hiện khách hàng mới cần duyệt, đối chiếu danh mục sản phẩm, gộp CSV tất cả các tháng làm nguồn Looker Studio và đồng bộ toàn bộ file lên Google Drive. Dùng skill này BẤT CỨ KHI NÀO người dùng muốn chạy hoặc sửa bước tách data Sell In, thêm file ERP tháng mới, xử lý khách hàng mới, sửa quy tắc MaKhachHangMoi/VKD3/MaSanPhamMoi/NgayHoaDon/SoLuong, sửa định dạng workbook tháng, xử lý trạng thái SKIP/REBUILD, sửa bước đồng bộ Drive hay nguồn Looker, hoặc chạy luồng chuyển giao sang máy khác. Trigger cả khi chỉ nói "chạy tách data", "cập nhật Sell In tháng này", "có file ERP mới", "khách hàng nào chưa có trong danh mục", "đẩy lên Drive", "số nguồn cho Looker" mà không nêu tên file. KHÔNG dùng cho Bao_Cao_Sell_in.xlsx, sheet PIVOT/Target hay dashboard Power BI - đó là skill-bao-cao.
 ---
 
 # Sell In hàng tháng
+
+## Nguồn chuẩn của skill này
+
+Bản gốc nằm trong repo tại `code/Skill/sell-in-monthly` của dự án
+`D:\Vikoda\Bao cao Sell in`. File `.skill` đã cài vào Claude chỉ là **bản phát
+hành**, một bản chụp.
+
+Mọi sửa đổi làm trong repo, chạy `.\Chay CT\Kiem tra.cmd`, commit, rồi đóng gói
+lại và cài đè. Sửa trực tiếp vào bản đã cài thì thay đổi không có test bảo vệ,
+không vào git, và sẽ mất ở lần cài đè kế tiếp.
+
+Skill này chỉ chạy được khi thư mục dự án có sẵn: mã chạy và dữ liệu đều nằm
+trong repo, `.skill` không mang theo chúng.
+
+## Vị trí trong dây chuyền
+
+Dự án có hai skill nối tiếp nhau, đừng nhầm:
+
+1. **`sell-in-monthly`** (skill này) — ERP → workbook `Sell in TMM_YYYY.xlsx`
+   theo tháng → CSV Looker → Google Drive.
+2. **`skill-bao-cao`** — đọc các workbook tháng đó → `Bao_Cao_Sell_in.xlsx` và
+   dashboard Power BI.
+
+Yêu cầu về `PIVOT`, `Target`, sheet `BC_` hay Power BI thuộc skill kia.
 
 ## Cấu trúc
 
@@ -16,6 +40,8 @@ description: Tách tăng dần, lọc, chuẩn hóa và gộp dữ liệu Sell I
 Đọc `references/danh-muc-khach-hang-san-pham.md` khi xử lý khách hàng mới,
 duyệt cập nhật danh mục khách hàng hoặc kiểm tra mã sản phẩm thiếu.
 Đọc `references/chuyen-giao.md` khi cập nhật bản chạy trên máy khác.
+Đọc `references/google-drive-rclone.md` khi sửa bước tải file lên Google Drive
+hoặc khi cài rclone trên máy mới.
 
 ## Chạy
 
@@ -29,6 +55,13 @@ Chỉ tạo file cục bộ, không chép Google Drive:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File ".\code\Skill\sell-in-monthly\scripts\run_sell_in.ps1" -SkipGoogleDrive
+```
+
+Bỏ CSV gộp cho Looker, hoặc đổi thư mục Drive đích khi kiểm thử:
+
+```powershell
+.\Chay CT\Tach data.cmd -SkipLookerDataset
+.\Chay CT\Tach data.cmd -DriveFolderId "https://drive.google.com/drive/folders/XXXX"
 ```
 
 Ép làm lại một tháng hoặc toàn bộ:
@@ -80,13 +113,26 @@ có Node thì dùng `.\Chay CT\Tach data - Chuyen giao.cmd`.
    nhật danh mục.
 7. `scripts/render_previews.mjs`: **tùy chọn**, chỉ render ảnh PNG để soi mắt
    thường. Cần Node kèm `@oai/artifact-tool`; không có thì bỏ qua bước này.
-8. Chỉ chép các file `REBUILD` đã đạt kiểm tra sang Google Drive.
-9. Chỉ ghi `Data/Logs/Tach data logs/incremental_state.json` sau khi toàn bộ
-   bước cần chạy đã thành công.
+8. `scripts/build_looker_dataset.py`: gộp **toàn bộ** workbook `Sell in T*.xlsx`
+   thành một CSV phẳng `Data/Work/sell_in/looker/Sell in tong hop.csv` để làm
+   nguồn vẽ Looker Studio. Thêm cột `KyBaoCao` (YYYY-MM), `NgayHoaDon` dạng
+   `YYYY-MM-DD`, UTF-8 không BOM. Bỏ qua bằng `-SkipLookerDataset`.
+9. `scripts/drive_sync.py` + CLI `scripts/sync_drive.py`: tải **toàn bộ** file
+   `Sell in T*.xlsx` trong thư mục output cùng CSV gộp lên thư mục Google Drive
+   dùng chung bằng `rclone`, mỗi lần chạy, kể cả khi không có tháng nào
+   `REBUILD`. Đích xác định bằng **folder ID** nên máy đích không cần cài Google
+   Drive for Desktop. Dùng `rclone copy`, **không bao giờ** `sync` — `sync` sẽ
+   xóa Google Sheet và file người khác trong thư mục đó. Sau khi tải, gọi
+   `rclone lsjson` đếm lại để đối soát. Chưa cài rclone thì chỉ cảnh báo, không
+   làm đổ lần chạy. Cách cài: `references/google-drive-rclone.md`.
+10. Chỉ ghi `Data/Logs/Tach data logs/incremental_state.json` sau khi toàn bộ
+    bước cần chạy đã thành công.
 
 Luồng chuyển giao dùng `scripts/portable_sell_in.py`, đóng gói tại
-`assets/portable/TachDataPortable.exe`. Hai luồng gọi cùng `extraction.py` và
-`workbook_builder.py` nên file Sell In tạo ra giống hệt nhau.
+`assets/portable/TachDataPortable.exe`. Hai luồng gọi cùng `extraction.py`,
+`workbook_builder.py`, `build_looker_dataset.py` và `drive_sync.py` nên file Sell
+In, CSV Looker và kết quả trên Drive giống hệt nhau. Luồng chuyển giao import
+trực tiếp thay vì gọi script con vì được đóng gói thành EXE.
 
 ## Quy tắc bắt buộc
 
@@ -124,13 +170,19 @@ Luồng chuyển giao dùng `scripts/portable_sell_in.py`, đóng gói tại
 - Đọc `Data/Logs/Tach data logs/incremental_state.json`.
 - Đọc `Data/Work/sell_in/verification/verification_report.json`.
 - Đọc `Data/Work/sell_in/verification/master_data_report.json`.
+- Đọc `Data/Work/sell_in/verification/looker_dataset_report.json`: số dòng và
+  tổng `SoLuong`/`ThanhTien` từng kỳ trong CSV gộp phải khớp workbook tháng.
 - Xác nhận `problems` và `missing` đều rỗng.
 - Kiểm tra workbook `Data/Work/sell_in/new_customers/Khach hang moi TMM_YYYY.xlsx`.
 - Kiểm tra ảnh trong `Data/Work/sell_in/previews` khi đổi định dạng.
 - Khi sửa logic dùng chung, chạy `python .\code\Skill\sell-in-monthly\scripts\run_tests.py`.
   `test_extraction.py` khóa quy tắc lọc nguồn và kiểu `NgayHoaDon`;
   `test_workbook_builder.py` khóa định dạng file đầu ra;
-  `test_incremental.py` khóa điều kiện `SKIP`/`REBUILD`.
+  `test_incremental.py` khóa điều kiện `SKIP`/`REBUILD`;
+  `test_looker_dataset.py` khóa cột, kiểu ngày, số thuần và mã hoá của CSV gộp;
+  `test_drive_sync.py` khóa thứ tự ưu tiên khi tìm thư mục Drive.
+- Khi kiểm thử bước Drive, luôn truyền `-DriveFolderId`/`--drive-folder-id` vào
+  một thư mục Drive riêng. Để trống thì mặc định là thư mục dùng chung thật.
 - Khi sửa luồng chuyển giao, chạy `scripts/build_portable.ps1`, kiểm tra
   `assets/portable/SHA256.txt`, chạy thử launcher và kiểm tra cả nhánh Python
   lẫn EXE khi chính sách máy cho phép.

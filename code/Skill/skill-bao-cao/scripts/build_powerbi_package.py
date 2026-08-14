@@ -25,7 +25,7 @@ from typing import Any, Iterable
 from report_model import REPORTING_STRUCTURE, normalize_key, normalize_reporting_pair
 
 
-PACKAGE_VERSION = "1.9.0"
+PACKAGE_VERSION = "2.0.0"
 REPORT_NAME = "Vikoda_SellIn_PowerBI"
 REPORT_SCHEMA = "https://developer.microsoft.com/json-schemas/fabric/item/report/definition"
 SEMANTIC_SCHEMA = "https://developer.microsoft.com/json-schemas/fabric/item/semanticModel"
@@ -33,6 +33,9 @@ SEMANTIC_SCHEMA = "https://developer.microsoft.com/json-schemas/fabric/item/sema
 # Keep the executive view compact: no decimal places for million-VND amounts.
 MONEY_FORMAT = '#,##0 "tr";(#,##0 "tr");-'
 QUANTITY_FORMAT = '#,##0;(#,##0);-'
+# Tăng trưởng hiển thị dấu rõ ràng. Kiểu kế toán `(73,4%)` dễ bị đọc nhầm
+# thành số dương khi liếc nhanh trên thẻ KPI.
+GROWTH_FORMAT = "+0.0%;-0.0%;0.0%"
 
 # Shared executive rail geometry.  Keeping the filter rail on one grid avoids
 # slicers being clipped by the KPI cards on the CEO page and keeps every page
@@ -40,13 +43,33 @@ QUANTITY_FORMAT = '#,##0;(#,##0);-'
 # both the label and the dropdown value rendered by Power BI.
 SIDEBAR_X = 12
 SIDEBAR_WIDTH = 196
-SIDEBAR_SLICER_Y = 260
+SIDEBAR_SLICER_Y = 308
 SIDEBAR_SLICER_HEIGHT = 60
 SIDEBAR_SLICER_STEP = 68
-SIDEBAR_CARD_Y = 402
+SIDEBAR_DATE_SLICER_HEIGHT = 72
+SIDEBAR_CARD_Y = 390
 SIDEBAR_CARD_WIDTH = SIDEBAR_WIDTH
-SIDEBAR_CARD_HEIGHT = 59
-SIDEBAR_CARD_STEP = 65
+SIDEBAR_CARD_HEIGHT = 62
+SIDEBAR_CARD_STEP = 68
+
+# Rail nav: sáu trang nên nút phải gọn lại để không đè lên khối slicer bên dưới.
+NAV_BUTTON_Y = 128
+NAV_BUTTON_HEIGHT = 26
+NAV_BUTTON_STEP = 29
+
+# Lưới vùng nội dung: x 236..1264 (rộng 1028), y 92..704 (cao 612).
+CONTENT_X = 236
+CONTENT_Y = 92
+CONTENT_WIDTH = 1028
+ROW1_HEIGHT = 286
+ROW2_Y = 386
+ROW2_HEIGHT = 318
+# Ba cột đều nhau trong vùng nội dung.
+COL3_X = (236, 581, 926)
+COL3_WIDTH = 338
+# Hai cột đều nhau.
+COL2_X = (236, 754)
+COL2_WIDTH = 510
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -181,6 +204,27 @@ def product_key(code: Any, name: Any) -> str:
     return f"NAME|{normalize_key(name) or '-'}"
 
 
+def tidy_label(value: Any) -> str:
+    """Gộp khoảng trắng thừa trong nhãn hiển thị.
+
+    DMSP có vài tên kiểu `Vikoda  Fusion Cam Ranh  RGB 450` với hai dấu cách
+    liền nhau. Trên trục biểu đồ, mỗi khoảng trắng thừa lại đẩy tên tới ngưỡng
+    bị cắt bằng dấu ba chấm, nên chuẩn hóa ngay từ lúc dựng chiều.
+    """
+    return " ".join(str(value or "").split())
+
+
+def axis_label(short_name: str) -> str:
+    """Nhãn rút gọn dành riêng cho trục biểu đồ.
+
+    Bỏ tiền tố `Vikoda ` vì đây là báo cáo sell-in của chính Vikoda — tiền tố
+    lặp trên 43/67 SKU chỉ ăn chỗ và đẩy tên tới ngưỡng bị cắt. Tên đầy đủ vẫn
+    giữ nguyên ở `ProductShortName` cho các bảng Reporting.
+    """
+    trimmed = re.sub(r"^Vikoda\s+", "", tidy_label(short_name), flags=re.IGNORECASE)
+    return trimmed or tidy_label(short_name)
+
+
 def catalog_code(value: Any) -> str:
     """Normalize Excel numeric/text product codes to the staging key format."""
     if value in (None, ""):
@@ -227,8 +271,8 @@ def load_product_catalog(path: Path | None) -> dict[str, dict[str, Any]]:
             continue
         item = {
             "ProductCode": "",
-            "ProductNameDMSP": str(row[name_position] or "").strip(),
-            "ProductShortName": str(row[short_name_position] or "").strip(),
+            "ProductNameDMSP": tidy_label(row[name_position]),
+            "ProductShortName": tidy_label(row[short_name_position]),
             "PackSize": optional_positive_float(row[pack_size_position]),
             "PackUnit": str(row[pack_unit_position] or "").strip(),
             "CoBrand": str(row[7] or "").strip() if len(row) > 7 else "",
@@ -466,7 +510,8 @@ def build_dimensions(
             "ProductKey": key,
             "ProductCode": product_code,
             "ProductName": display_name,
-            "ProductShortName": str(catalog_item.get("ProductShortName") or display_name).strip(),
+            "ProductShortName": tidy_label(catalog_item.get("ProductShortName") or display_name),
+            "ProductAxisLabel": axis_label(catalog_item.get("ProductShortName") or display_name),
             "ProductGroup": "Vikoda" if "VIKODA" in normalize_key(display_name) else ("KDT" if "KDT" in normalize_key(display_name) else "Khác"),
             "PackSize": optional_positive_float(catalog_item.get("PackSize")),
             "PackUnit": str(catalog_item.get("PackUnit") or "").strip(),
@@ -544,7 +589,7 @@ def measure(name: str, expression: str, fmt: str = "#,##0;(#,##0);-") -> dict[st
 
 
 def build_measures() -> list[dict[str, Any]]:
-    has_date_filter = "ISCROSSFILTERED(DimDate[Date])"
+    has_date_filter = "(ISCROSSFILTERED(DimDate[Date]) || ISFILTERED(DimDate))"
     latest_period = "CALCULATE(MAX(FactSellIn[PeriodKey]), REMOVEFILTERS(DimDate), REMOVEFILTERS(FactSellIn))"
     latest_date = "CALCULATE(MAX(FactSellIn[InvoiceDate]), REMOVEFILTERS(DimDate), REMOVEFILTERS(FactSellIn))"
     actual_expression = f"VAR HasDateFilter = {has_date_filter} VAR LatestPeriod = {latest_period} RETURN DIVIDE(IF(HasDateFilter, SUM(FactSellIn[RevenueVND]), CALCULATE(SUM(FactSellIn[RevenueVND]), REMOVEFILTERS(DimDate), DimDate[PeriodKey] = LatestPeriod)), 1000000)"
@@ -568,6 +613,55 @@ def build_measures() -> list[dict[str, Any]]:
     cases_ly = prior_unit_expression("Két")
     cartons_ly = prior_unit_expression("Thùng")
     bottles_ly = prior_unit_expression("Bình")
+
+    sku_expression = (
+        f"VAR HasDateFilter = {has_date_filter} VAR LatestPeriod = {latest_period} "
+        "RETURN IF(HasDateFilter, DISTINCTCOUNT(FactSellIn[ProductKey]), "
+        "CALCULATE(DISTINCTCOUNT(FactSellIn[ProductKey]), REMOVEFILTERS(DimDate), DimDate[PeriodKey] = LatestPeriod))"
+    )
+    customers_ly_expression = (
+        f"VAR HasDateFilter = {has_date_filter} VAR MaxDataDate = {latest_date} "
+        'VAR LastYearPeriod = FORMAT(DATE(YEAR(MaxDataDate) - 1, MONTH(MaxDataDate), 1), "yyyyMM") '
+        "RETURN IF(HasDateFilter, "
+        "CALCULATE(DISTINCTCOUNT(FactSellIn[CustomerKey]), SAMEPERIODLASTYEAR(DimDate[Date])), "
+        "CALCULATE(DISTINCTCOUNT(FactSellIn[CustomerKey]), REMOVEFILTERS(DimDate), DimDate[PeriodKey] = LastYearPeriod))"
+    )
+
+    def customer_movement_expression(direction: str) -> str:
+        """Đếm khách hàng mới / ngừng mua so với cùng kỳ năm trước.
+
+        DAX không cho `IF` trả về bảng, nên cả hai nhánh (có lọc ngày và mặc
+        định về kỳ mới nhất) được tính sẵn thành scalar rồi mới chọn.
+        """
+        pair = "FilteredCurrent, FilteredPrior" if direction == "new" else "FilteredPrior, FilteredCurrent"
+        default_pair = "DefaultCurrent, DefaultPrior" if direction == "new" else "DefaultPrior, DefaultCurrent"
+        return (
+            f"VAR HasDateFilter = {has_date_filter} VAR LatestPeriod = {latest_period} VAR MaxDataDate = {latest_date} "
+            'VAR LastYearPeriod = FORMAT(DATE(YEAR(MaxDataDate) - 1, MONTH(MaxDataDate), 1), "yyyyMM") '
+            "VAR FilteredCurrent = VALUES(FactSellIn[CustomerKey]) "
+            "VAR FilteredPrior = CALCULATETABLE(VALUES(FactSellIn[CustomerKey]), SAMEPERIODLASTYEAR(DimDate[Date])) "
+            "VAR DefaultCurrent = CALCULATETABLE(VALUES(FactSellIn[CustomerKey]), REMOVEFILTERS(DimDate), DimDate[PeriodKey] = LatestPeriod) "
+            "VAR DefaultPrior = CALCULATETABLE(VALUES(FactSellIn[CustomerKey]), REMOVEFILTERS(DimDate), DimDate[PeriodKey] = LastYearPeriod) "
+            f"VAR FilteredResult = COUNTROWS(EXCEPT({pair})) "
+            f"VAR DefaultResult = COUNTROWS(EXCEPT({default_pair})) "
+            "RETURN COALESCE(IF(HasDateFilter, FilteredResult, DefaultResult), 0)"
+        )
+    seasonality_forecast = (
+        f"VAR HasDateFilter = {has_date_filter} VAR GlobalMaxDate = {latest_date} "
+        "VAR MaxDataDate = IF(HasDateFilter, MAX(FactSellIn[InvoiceDate]), GlobalMaxDate) "
+        "VAR MonthStart = DATE(YEAR(MaxDataDate), MONTH(MaxDataDate), 1) "
+        "VAR ActualMTD = DIVIDE(CALCULATE(SUM(FactSellIn[RevenueVND]), REMOVEFILTERS(DimDate), DATESBETWEEN(DimDate[Date], MonthStart, MaxDataDate)), 1000000) "
+        "VAR PriorMonthStart = EDATE(MonthStart, -12) "
+        "VAR PriorMonthEnd = EOMONTH(PriorMonthStart, 0) "
+        "VAR PriorSamePoint = EDATE(MaxDataDate, -12) "
+        "VAR PriorTotal = DIVIDE(CALCULATE(SUM(FactSellIn[RevenueVND]), REMOVEFILTERS(DimDate), DATESBETWEEN(DimDate[Date], PriorMonthStart, PriorMonthEnd)), 1000000) "
+        "VAR PriorMTD = DIVIDE(CALCULATE(SUM(FactSellIn[RevenueVND]), REMOVEFILTERS(DimDate), DATESBETWEEN(DimDate[Date], PriorMonthStart, PriorSamePoint)), 1000000) "
+        "VAR PriorRemaining = MAX(0, PriorTotal - PriorMTD) "
+        "VAR YoYGrowth = [Tăng trưởng YoY] "
+        "VAR ExpectedRemaining = PriorRemaining * (1 + IF(ISBLANK(YoYGrowth), 0, YoYGrowth)) "
+        "RETURN IF(PriorRemaining > 0, ActualMTD + ExpectedRemaining, [Run-rate dự báo tháng])"
+    )
+
     return [
         measure("Doanh thu Sell In", actual_expression, MONEY_FORMAT),
         measure("Doanh thu bán", "CALCULATE([Doanh thu Sell In], FactSellIn[IsReturn] = FALSE())", MONEY_FORMAT),
@@ -577,9 +671,9 @@ def build_measures() -> list[dict[str, Any]]:
         measure("Khoảng cách Target", "[Doanh thu Sell In] - [Target]", MONEY_FORMAT),
         measure("Tỷ lệ đạt Target", "DIVIDE([Doanh thu Sell In], [Target])", "0.0%;(0.0%);-"),
         measure("Doanh thu LY", f"VAR HasDateFilter = {has_date_filter} VAR MaxDataDate = {latest_date} VAR LastYearPeriod = FORMAT(DATE(YEAR(MaxDataDate) - 1, MONTH(MaxDataDate), 1), \"yyyyMM\") RETURN DIVIDE(IF(HasDateFilter, CALCULATE(SUM(FactSellIn[RevenueVND]), SAMEPERIODLASTYEAR(DimDate[Date])), CALCULATE(SUM(FactSellIn[RevenueVND]), REMOVEFILTERS(DimDate), DimDate[PeriodKey] = LastYearPeriod)), 1000000)", MONEY_FORMAT),
-        measure("Tăng trưởng YoY", "DIVIDE([Doanh thu Sell In] - [Doanh thu LY], [Doanh thu LY])", "0.0%;(0.0%);-"),
+        measure("Tăng trưởng YoY", "DIVIDE([Doanh thu Sell In] - [Doanh thu LY], [Doanh thu LY])", GROWTH_FORMAT),
         measure("Doanh thu tháng trước", f"VAR HasDateFilter = {has_date_filter} VAR MaxDataDate = {latest_date} VAR PreviousPeriod = FORMAT(EOMONTH(MaxDataDate, -1), \"yyyyMM\") RETURN DIVIDE(IF(HasDateFilter, CALCULATE(SUM(FactSellIn[RevenueVND]), DATEADD(DimDate[Date], -1, MONTH)), CALCULATE(SUM(FactSellIn[RevenueVND]), REMOVEFILTERS(DimDate), DimDate[PeriodKey] = PreviousPeriod)), 1000000)", MONEY_FORMAT),
-        measure("Tăng trưởng MoM", "DIVIDE([Doanh thu Sell In] - [Doanh thu tháng trước], [Doanh thu tháng trước])", "0.0%;(0.0%);-"),
+        measure("Tăng trưởng MoM", "DIVIDE([Doanh thu Sell In] - [Doanh thu tháng trước], [Doanh thu tháng trước])", GROWTH_FORMAT),
         measure("Doanh thu Vikoda", "CALCULATE([Doanh thu Sell In], KEEPFILTERS(DimProduct[IsVikoda] = TRUE()))", MONEY_FORMAT),
         measure("Đạt Target Vikoda", "DIVIDE([Doanh thu Vikoda], [Target Vikoda])", "0.0%;(0.0%);-"),
         measure("Khoảng cách Vikoda", "[Doanh thu Vikoda] - [Target Vikoda]", MONEY_FORMAT),
@@ -587,7 +681,13 @@ def build_measures() -> list[dict[str, Any]]:
         measure("Sản lượng", quantity_expression, QUANTITY_FORMAT),
         measure("Số khách hàng", customers_expression, "#,##0;(#,##0);-"),
         measure("Ngày dữ liệu mới nhất", f"VAR HasDateFilter = {has_date_filter} VAR MaxDataDate = {latest_date} RETURN IF(HasDateFilter, MAX(FactSellIn[InvoiceDate]), MaxDataDate)", "dd/mm/yyyy"),
+        # --- Chỉ số Nhịp độ & Dự báo Mùa vụ ngành Nước giải khát ---
+        measure("% Thời gian tháng đã qua", f"VAR HasDateFilter = {has_date_filter} VAR GlobalMaxDate = {latest_date} VAR MaxDataDate = IF(HasDateFilter, MAX(FactSellIn[InvoiceDate]), GlobalMaxDate) VAR DaysElapsed = DAY(MaxDataDate) VAR DaysInMonth = DAY(EOMONTH(MaxDataDate, 0)) RETURN DIVIDE(DaysElapsed, DaysInMonth)", "0.0%"),
+        measure("Nhịp độ bán hàng", "DIVIDE([Tỷ lệ đạt Target], [% Thời gian tháng đã qua])", "0.0%;(0.0%);-"),
+        measure("Doanh thu ngày bình quân MTD", f"VAR HasDateFilter = {has_date_filter} VAR GlobalMaxDate = {latest_date} VAR MaxDataDate = IF(HasDateFilter, MAX(FactSellIn[InvoiceDate]), GlobalMaxDate) VAR DaysElapsed = DAY(MaxDataDate) VAR MonthStart = DATE(YEAR(MaxDataDate), MONTH(MaxDataDate), 1) VAR ActualMTD = DIVIDE(CALCULATE(SUM(FactSellIn[RevenueVND]), REMOVEFILTERS(DimDate), DATESBETWEEN(DimDate[Date], MonthStart, MaxDataDate)), 1000000) RETURN DIVIDE(ActualMTD, IF(DaysElapsed > 0, DaysElapsed, 1))", MONEY_FORMAT),
+        measure("Hệ số gia tốc cần đạt", "VAR DailyActual = [Doanh thu ngày bình quân MTD] VAR DailyRequired = [Cần doanh thu mỗi ngày] RETURN IF(DailyActual > 0, DIVIDE(DailyRequired, DailyActual), BLANK())", "0.0x"),
         measure("Run-rate dự báo tháng", f"VAR HasDateFilter = {has_date_filter} VAR GlobalMaxDate = {latest_date} VAR MaxDataDate = IF(HasDateFilter, MAX(FactSellIn[InvoiceDate]), GlobalMaxDate) VAR DaysElapsed = DAY(MaxDataDate) VAR DaysInMonth = DAY(EOMONTH(MaxDataDate, 0)) VAR MonthStart = DATE(YEAR(MaxDataDate), MONTH(MaxDataDate), 1) VAR ActualMTD = DIVIDE(CALCULATE(SUM(FactSellIn[RevenueVND]), REMOVEFILTERS(DimDate), DATESBETWEEN(DimDate[Date], MonthStart, MaxDataDate)), 1000000) RETURN DIVIDE(ActualMTD, DaysElapsed) * DaysInMonth", MONEY_FORMAT),
+        measure("Dự báo EOM Mùa vụ", seasonality_forecast, MONEY_FORMAT),
         measure("Dự báo đạt Target", "DIVIDE([Run-rate dự báo tháng], [Target])", "0.0%;(0.0%);-"),
         measure("Còn thiếu để đạt Target", "MAX(0, [Target] - [Doanh thu Sell In])", MONEY_FORMAT),
         measure("Cần doanh thu mỗi ngày", f"VAR HasDateFilter = {has_date_filter} VAR GlobalMaxDate = {latest_date} VAR MaxDataDate = IF(HasDateFilter, MAX(FactSellIn[InvoiceDate]), GlobalMaxDate) VAR DaysLeft = DAY(EOMONTH(MaxDataDate, 0)) - DAY(MaxDataDate) RETURN DIVIDE([Còn thiếu để đạt Target], DaysLeft)", MONEY_FORMAT),
@@ -596,17 +696,39 @@ def build_measures() -> list[dict[str, Any]]:
         measure("Tỷ trọng Vikoda", "DIVIDE([Doanh thu Vikoda], [Doanh thu Sell In])", "0.0%;(0.0%);-"),
         measure("Xếp hạng vùng", "RANKX(ALL(DimTerritory[Vung]), [Doanh thu Sell In],, DESC, Dense)", "#,##0"),
         measure("Lũy kế Pareto", "VAR CurrentRank = [Xếp hạng vùng] VAR TotalRevenue = CALCULATE([Doanh thu Sell In], ALL(DimTerritory[Vung])) RETURN DIVIDE(CALCULATE([Doanh thu Sell In], FILTER(ALL(DimTerritory[Vung]), [Xếp hạng vùng] <= CurrentRank)), TotalRevenue)", "0.0%;(0.0%);-"),
+        # --- Cơ cấu bao bì Két / Thùng / Bình ---
         measure("Sản lượng quy đổi KTB", converted_expression, QUANTITY_FORMAT),
         measure("SL Két (K)", "CALCULATE([Sản lượng quy đổi KTB], KEEPFILTERS(DimProduct[PackUnit] = \"Két\"))", QUANTITY_FORMAT),
         measure("SL Thùng (T)", "CALCULATE([Sản lượng quy đổi KTB], KEEPFILTERS(DimProduct[PackUnit] = \"Thùng\"))", QUANTITY_FORMAT),
         measure("SL Bình (B)", "CALCULATE([Sản lượng quy đổi KTB], KEEPFILTERS(DimProduct[PackUnit] = \"Bình\"))", QUANTITY_FORMAT),
+        measure("Tỷ trọng Két %", "DIVIDE([SL Két (K)], [Sản lượng quy đổi KTB])", "0.0%"),
+        measure("Tỷ trọng Thùng %", "DIVIDE([SL Thùng (T)], [Sản lượng quy đổi KTB])", "0.0%"),
+        measure("Tỷ trọng Bình %", "DIVIDE([SL Bình (B)], [Sản lượng quy đổi KTB])", "0.0%"),
         measure("SL Két (K) LY", cases_ly, QUANTITY_FORMAT),
         measure("SL Thùng (T) LY", cartons_ly, QUANTITY_FORMAT),
         measure("SL Bình (B) LY", bottles_ly, QUANTITY_FORMAT),
-        measure("Tăng trưởng Két (K)", "DIVIDE([SL Két (K)] - [SL Két (K) LY], [SL Két (K) LY])", "0.0%;(0.0%);-"),
-        measure("Tăng trưởng Thùng (T)", "DIVIDE([SL Thùng (T)] - [SL Thùng (T) LY], [SL Thùng (T) LY])", "0.0%;(0.0%);-"),
-        measure("Tăng trưởng Bình (B)", "DIVIDE([SL Bình (B)] - [SL Bình (B) LY], [SL Bình (B) LY])", "0.0%;(0.0%);-"),
+        measure("Tăng trưởng Két (K)", "DIVIDE([SL Két (K)] - [SL Két (K) LY], [SL Két (K) LY])", GROWTH_FORMAT),
+        measure("Tăng trưởng Thùng (T)", "DIVIDE([SL Thùng (T)] - [SL Thùng (T) LY], [SL Thùng (T) LY])", GROWTH_FORMAT),
+        measure("Tăng trưởng Bình (B)", "DIVIDE([SL Bình (B)] - [SL Bình (B) LY], [SL Bình (B) LY])", GROWTH_FORMAT),
         measure("SL chưa quy đổi", unconverted_expression, QUANTITY_FORMAT),
+        # --- Vikoda vs KDT: tách riêng cùng kỳ và tăng trưởng cho từng nhánh hàng ---
+        measure("Doanh thu Vikoda LY", "CALCULATE([Doanh thu LY], KEEPFILTERS(DimProduct[IsVikoda] = TRUE()))", MONEY_FORMAT),
+        measure("Tăng trưởng Vikoda", "DIVIDE([Doanh thu Vikoda] - [Doanh thu Vikoda LY], [Doanh thu Vikoda LY])", GROWTH_FORMAT),
+        measure("Doanh thu KDT LY", "CALCULATE([Doanh thu LY], KEEPFILTERS(DimProduct[IsKDT] = TRUE()))", MONEY_FORMAT),
+        measure("Tăng trưởng KDT", "DIVIDE([Doanh thu KDT] - [Doanh thu KDT LY], [Doanh thu KDT LY])", GROWTH_FORMAT),
+        measure("Tỷ trọng KDT", "DIVIDE([Doanh thu KDT], [Doanh thu Sell In])", "0.0%;(0.0%);-"),
+        # --- Độ phủ danh mục và tệp khách hàng ---
+        measure("Số SKU", sku_expression, "#,##0;(#,##0);-"),
+        measure("Số khách hàng LY", customers_ly_expression, "#,##0;(#,##0);-"),
+        measure("Tăng trưởng số khách hàng", "DIVIDE([Số khách hàng] - [Số khách hàng LY], [Số khách hàng LY])", GROWTH_FORMAT),
+        measure("Doanh thu bình quân KH", "DIVIDE([Doanh thu Sell In], [Số khách hàng])", MONEY_FORMAT),
+        measure("Doanh thu / Điểm bán Active", "DIVIDE([Doanh thu Sell In], [Số khách hàng])", MONEY_FORMAT),
+        measure("Khách hàng mới", customer_movement_expression("new"), "#,##0;(#,##0);-"),
+        measure("Khách hàng ngừng mua", customer_movement_expression("churn"), "#,##0;(#,##0);-"),
+        # --- Xếp hạng và đóng góp, dùng cho bảng Top/Bottom ---
+        measure("Doanh thu hệ thống MT", 'CALCULATE([Doanh thu Sell In], KEEPFILTERS(NOT ISBLANK(DimCustomer[SystemMT])), KEEPFILTERS(DimCustomer[SystemMT] <> ""))', MONEY_FORMAT),
+        measure("Xếp hạng SKU", "RANKX(ALL(DimProduct[ProductShortName]), [Doanh thu Sell In],, DESC, Dense)", "#,##0"),
+        measure("Đóng góp doanh thu", "DIVIDE([Doanh thu Sell In], CALCULATE([Doanh thu Sell In], ALLSELECTED()))", "0.0%;(0.0%);-"),
     ]
 
 
@@ -622,7 +744,7 @@ def model_definition(csv_dir: Path, row_counts: dict[str, int]) -> dict[str, Any
     schemas: dict[str, list[tuple[str, str]]] = {
         "DimDate": [("Date", "dateTime"), ("DateKey", "string"), ("PeriodKey", "string"), ("Year", "int64"), ("Quarter", "string"), ("MonthNumber", "int64"), ("MonthName", "string"), ("MonthLabel", "string"), ("MonthAxis", "string"), ("MonthStart", "dateTime"), ("IsCurrentYTD", "boolean"), ("IsPriorYTD", "boolean"), ("IsCurrentMonth", "boolean"), ("IsLastYearMonth", "boolean"), ("IsPriorMonth", "boolean")],
         "DimCustomer": [("CustomerKey", "string"), ("CustomerCode", "string"), ("CustomerName", "string"), ("CustomerNameFull", "string"), ("Channel", "string"), ("CustomerType", "string"), ("SystemMT", "string"), ("Mien", "string"), ("Vung", "string"), ("Province", "string"), ("District", "string")],
-        "DimProduct": [("ProductKey", "string"), ("ProductCode", "string"), ("ProductName", "string"), ("ProductShortName", "string"), ("ProductGroup", "string"), ("PackSize", "double"), ("PackUnit", "string"), ("CoBrand", "string"), ("ProductType", "string"), ("PackagingType", "string"), ("IsVikoda", "boolean"), ("IsKDT", "boolean")],
+        "DimProduct": [("ProductKey", "string"), ("ProductCode", "string"), ("ProductName", "string"), ("ProductShortName", "string"), ("ProductAxisLabel", "string"), ("ProductGroup", "string"), ("PackSize", "double"), ("PackUnit", "string"), ("CoBrand", "string"), ("ProductType", "string"), ("PackagingType", "string"), ("IsVikoda", "boolean"), ("IsKDT", "boolean")],
         "DimTerritory": [("TerritoryKey", "int64"), ("Mien", "string"), ("Vung", "string"), ("MienSort", "int64"), ("VungSort", "int64")],
         "FactSellIn": [("Date", "dateTime"), ("InvoiceDate", "dateTime"), ("DateKey", "string"), ("PeriodKey", "string"), ("Year", "int64"), ("MonthNumber", "int64"), ("CustomerKey", "string"), ("CustomerCode", "string"), ("ProductKey", "string"), ("ProductCode", "string"), ("TerritoryKey", "int64"), ("Mien", "string"), ("Vung", "string"), ("Quantity", "double"), ("ConvertedQuantity", "double"), ("PackUnit", "string"), ("RevenueVND", "double"), ("InvoiceType", "string"), ("IsReturn", "boolean"), ("IsVikoda", "boolean"), ("IsKDT", "boolean"), ("ProductName", "string"), ("CustomerName", "string")],
         "FactTarget": [("Date", "dateTime"), ("DateKey", "string"), ("PeriodKey", "string"), ("Year", "int64"), ("MonthNumber", "int64"), ("CustomerKey", "string"), ("CustomerCode", "string"), ("TerritoryKey", "int64"), ("Mien", "string"), ("Vung", "string"), ("TargetTotalVND", "double"), ("TargetVikodaVND", "double"), ("SourceFile", "string")],
@@ -891,7 +1013,12 @@ MATRIX_LABELS = {
     "Còn thiếu để đạt Target": "Còn thiếu",
     "Cần doanh thu mỗi ngày": "Cần/ngày",
     "Run-rate dự báo tháng": "Dự báo",
+    "Dự báo EOM Mùa vụ": "Dự báo mùa vụ",
     "Dự báo đạt Target": "Dự báo %",
+    "Nhịp độ bán hàng": "Pacing %",
+    "% Thời gian tháng đã qua": "Thời gian %",
+    "Doanh thu ngày bình quân MTD": "DT/ngày MTD",
+    "Hệ số gia tốc cần đạt": "Gia tốc req",
     "Doanh thu Vikoda": "Vikoda",
     "Target Vikoda": "Target VKD",
     "Đạt Target Vikoda": "% đạt VKD",
@@ -907,6 +1034,9 @@ MATRIX_LABELS = {
     "SL Két (K)": "SL Két (K)",
     "SL Thùng (T)": "SL Thùng (T)",
     "SL Bình (B)": "SL Bình (B)",
+    "Tỷ trọng Két %": "Két %",
+    "Tỷ trọng Thùng %": "Thùng %",
+    "Tỷ trọng Bình %": "Bình %",
     "SL Két (K) LY": "Két LY",
     "SL Thùng (T) LY": "Thùng LY",
     "SL Bình (B) LY": "Bình LY",
@@ -914,20 +1044,42 @@ MATRIX_LABELS = {
     "Tăng trưởng Thùng (T)": "Thùng YoY %",
     "Tăng trưởng Bình (B)": "Bình YoY %",
     "SL chưa quy đổi": "SL chưa đổi",
+    "Doanh thu Vikoda LY": "Vikoda LY",
+    "Tăng trưởng Vikoda": "Vikoda YoY %",
+    "Doanh thu KDT LY": "KDT LY",
+    "Tăng trưởng KDT": "KDT YoY %",
+    "Tỷ trọng KDT": "Tỷ trọng KDT",
+    "Số SKU": "Số SKU",
+    "Số khách hàng LY": "KH cùng kỳ LY",
+    "Tăng trưởng số khách hàng": "KH YoY %",
+    "Doanh thu bình quân KH": "DT/KH",
+    "Doanh thu / Điểm bán Active": "Drop Size",
+    "Khách hàng mới": "KH mới",
+    "Khách hàng ngừng mua": "KH ngừng mua",
+    "Doanh thu hệ thống MT": "DT hệ thống MT",
+    "Xếp hạng SKU": "Hạng",
+    "Đóng góp doanh thu": "% đóng góp",
 }
 
 MONEY_MEASURES = {
     "Doanh thu Sell In", "Doanh thu bán", "Doanh thu trả hàng", "Target", "Target Vikoda",
     "Khoảng cách Target", "Doanh thu LY", "Doanh thu tháng trước", "Doanh thu Vikoda",
-    "Khoảng cách Vikoda", "Doanh thu KDT", "Run-rate dự báo tháng", "Còn thiếu để đạt Target",
-    "Cần doanh thu mỗi ngày", "Target 3 tháng tới",
+    "Khoảng cách Vikoda", "Doanh thu KDT", "Run-rate dự báo tháng", "Dự báo EOM Mùa vụ",
+    "Còn thiếu để đạt Target", "Cần doanh thu mỗi ngày", "Doanh thu ngày bình quân MTD",
+    "Target 3 tháng tới", "Doanh thu Vikoda LY", "Doanh thu KDT LY", "Doanh thu bình quân KH",
+    "Doanh thu / Điểm bán Active", "Doanh thu hệ thống MT",
 }
 PERCENT_MEASURES = {
     "Tỷ lệ đạt Target", "Đạt Target Vikoda", "Tăng trưởng YoY", "Tăng trưởng MoM",
-    "Dự báo đạt Target", "Tỷ lệ trả hàng", "Tỷ trọng Vikoda", "Tăng trưởng Két (K)",
-    "Tăng trưởng Thùng (T)", "Tăng trưởng Bình (B)",
+    "Dự báo đạt Target", "Nhịp độ bán hàng", "% Thời gian tháng đã qua", "Tỷ lệ trả hàng",
+    "Tỷ trọng Vikoda", "Tăng trưởng Két (K)", "Tăng trưởng Thùng (T)", "Tăng trưởng Bình (B)",
+    "Tỷ trọng Két %", "Tỷ trọng Thùng %", "Tỷ trọng Bình %", "Tăng trưởng Vikoda",
+    "Tăng trưởng KDT", "Tỷ trọng KDT", "Tăng trưởng số khách hàng", "Đóng góp doanh thu",
 }
-INTEGER_MEASURES = {"Số khách hàng"}
+INTEGER_MEASURES = {
+    "Số khách hàng", "Số SKU", "Số khách hàng LY", "Khách hàng mới",
+    "Khách hàng ngừng mua", "Xếp hạng SKU",
+}
 QUANTITY_MEASURES = {
     "Sản lượng", "Sản lượng quy đổi KTB", "SL Két (K)", "SL Thùng (T)", "SL Bình (B)",
     "SL Két (K) LY", "SL Thùng (T) LY", "SL Bình (B) LY", "SL chưa quy đổi",
@@ -937,7 +1089,10 @@ QUANTITY_MEASURES = {
 def _axis_title(entity: str, column: str) -> str:
     titles = {
         "MonthLabel": "Kỳ báo cáo", "MonthAxis": "Kỳ YY/MM", "MonthStart": "Kỳ báo cáo", "Year": "Năm", "Mien": "Miền", "Vung": "Vùng",
-        "CustomerName": "Khách hàng", "ProductShortName": "Sản phẩm", "PackUnit": "ĐVT",
+        "CustomerName": "Khách hàng", "ProductShortName": "Sản phẩm", "ProductAxisLabel": "Sản phẩm", "PackUnit": "ĐVT",
+        "Channel": "Kênh", "CustomerType": "Loại khách hàng", "SystemMT": "Hệ thống MT",
+        "Province": "Tỉnh/Thành", "ProductGroup": "Nhóm sản phẩm", "CoBrand": "Thương hiệu",
+        "PackagingType": "Kiểu bao bì", "ProductType": "Loại hàng",
     }
     return titles.get(column, column)
 
@@ -947,6 +1102,8 @@ def _value_axis_title(measures: list[str]) -> str:
         return "%"
     if any(item in MONEY_MEASURES for item in measures):
         return "Triệu đồng"
+    if measures and all(item in INTEGER_MEASURES for item in measures):
+        return "Số lượng"
     return "Sản lượng quy đổi"
 
 
@@ -1047,19 +1204,23 @@ def executive_nav_button(
     }
 
 
+NAV_PAGES: tuple[tuple[str, str], ...] = (
+    ("CEO_TongQuan", "01  TỔNG QUAN"),
+    ("Kenh_KhachHang", "02  KÊNH & KH"),
+    ("SanPham", "03  SẢN PHẨM"),
+    ("Vung_Mien", "04  VÙNG MIỀN"),
+    ("KhachHang_SanPham", "05  CHI TIẾT"),
+    ("KeHoach_KhuyenNghi", "06  KHUYẾN NGHỊ"),
+)
+
+
 def executive_nav_buttons(active_page: str, start_tab_order: int = 2) -> list[dict[str, Any]]:
-    pages = [
-        ("CEO_TongQuan", "01  TỔNG QUAN"),
-        ("KeHoach_DuBao", "02  KẾ HOẠCH"),
-        ("Vung_Mien", "03  SẢN LƯỢNG"),
-        ("KhachHang_SanPham", "04  CHI TIẾT"),
-    ]
     return [
         executive_nav_button(
-            f"nav_to_{target}", label, target, 14, 128 + index * 32, 192, 28,
+            f"nav_to_{target}", label, target, 14, NAV_BUTTON_Y + index * NAV_BUTTON_STEP, 192, NAV_BUTTON_HEIGHT,
             start_tab_order + index, active=(target == active_page),
         )
-        for index, (target, label) in enumerate(pages)
+        for index, (target, label) in enumerate(NAV_PAGES)
     ]
 
 
@@ -1176,18 +1337,82 @@ def executive_card(
                 field_measure("FactSellIn", measure_name), f"FactSellIn.{measure_name}", title
             )]}}},
             "objects": {
-            "labels": [{"properties": {
-                "color": solid_color(accent), "fontSize": literal("22D"), "bold": literal("true"), "fontFamily": literal("'Segoe UI Semibold'"),
+                # Chiều cao khả dụng của thẻ chỉ còn ~42 px sau tiêu đề và
+                # padding. Chữ 22pt cao hơn khoảng đó nên phần chân số bị cắt;
+                # 17pt vừa khít mà vẫn đọc rõ từ xa.
+                "labels": [{"properties": {
+                    "color": solid_color(accent), "fontSize": literal("17D"), "bold": literal("true"),
+                    "fontFamily": literal("'Segoe UI Semibold'"),
                     "labelDisplayUnits": literal("1D"), "labelPrecision": literal(f"{precision}L"),
+                    "horizontalAlignment": literal("'left'"),
                 }}],
                 "categoryLabels": [{"properties": {"show": literal("false")}}],
+                "wordWrap": [{"properties": {"show": literal("false")}}],
             },
             "visualContainerObjects": executive_container(
-                title, background=tint, title_color=EXECUTIVE_COLORS["muted"], border_color=accent, padding=9, title_size=9
+                title, background=tint, title_color=EXECUTIVE_COLORS["muted"], border_color=accent,
+                padding=6, title_size=8, radius=8, shadow=False,
             ),
             "drillFilterOtherVisuals": True,
         },
     }
+
+
+def executive_date_range_slicer(
+    name: str,
+    title: str,
+    x: int,
+    y: int,
+    width: int,
+    height: int,
+    tab_order: int,
+    *,
+    entity: str = "DimDate",
+    column: str = "Date",
+) -> dict[str, Any]:
+    card_bg = "#FFFFFF"
+    card_border = "#93C5FD"
+    title_color = "#0369A1"
+    result = {
+        "$schema": f"{REPORT_SCHEMA}/visualContainer/2.8.0/schema.json",
+        "name": name,
+        "position": {"x": x, "y": y, "z": tab_order, "width": width, "height": height, "tabOrder": tab_order},
+        "visual": {
+            "visualType": "slicer",
+            "query": {"queryState": {"Values": {"projections": [projection(
+                field_column(entity, column), f"{entity}.{column}", title
+            )]}}},
+            "objects": {
+                "data": [{"properties": {"mode": literal("'Between'")}}],
+                "header": [{"properties": {"show": literal("false")}}],
+                "slider": [{"properties": {
+                    "show": literal("true"),
+                    "color": solid_color("#0284C7"),
+                }}],
+                "input": [{"properties": {
+                    "fontColor": solid_color("#0F172A"),
+                    "backColor": solid_color("#FFFFFF"),
+                    "fontSize": literal("9D"),
+                    "fontFamily": literal("'Segoe UI Semibold'"),
+                    "outlineColor": solid_color("#CBD5E1"),
+                    "outlineWeight": literal("1D"),
+                }}],
+            },
+            "visualContainerObjects": executive_container(
+                title,
+                background=card_bg,
+                title_color=title_color,
+                border_color=card_border,
+                shadow=False,
+                radius=8,
+                padding=6,
+                title_size=8,
+            ),
+            "syncGroup": {"groupName": f"sync_{entity}_{column}", "fieldChanges": True, "filterChanges": True},
+            "drillFilterOtherVisuals": True,
+        },
+    }
+    return result
 
 
 def executive_slicer(
@@ -1256,6 +1481,9 @@ def executive_bar(
     palette: list[str],
     horizontal: bool = True,
     show_labels: bool = True,
+    sort_ascending: bool = False,
+    subtitle: str | None = None,
+    long_labels: bool = False,
 ) -> dict[str, Any]:
     measure_projections = [projection(field_measure("FactSellIn", item), f"FactSellIn.{item}", MATRIX_LABELS.get(item, item)) for item in measures]
     percent_only = bool(measures) and all(item in PERCENT_MEASURES for item in measures)
@@ -1275,6 +1503,20 @@ def executive_bar(
             point["selector"] = {"metadata": item["queryRef"]}
         data_points.append(point)
     axis_note = f"X · {_axis_title(category_entity, category)}   |   Y · {_value_axis_title(measures)}"
+    # Power BI chỉ dành 25% chiều rộng visual cho nhãn trục phân loại. Tên SKU
+    # và tên khách hàng dài 40-50 ký tự nên bị cắt thành dấu ba chấm. Nới hạn
+    # mức này và giảm cỡ chữ để nhãn hiện trọn.
+    category_font = 9 if long_labels else 10
+    category_axis_properties: dict[str, Any] = {
+        "show": literal("true"), "fontSize": literal(f"{category_font}D"), "fontColor": solid_color(EXECUTIVE_COLORS["ink"]),
+        "titleShow": literal("true"), "titleText": literal(quote_dax_literal(_axis_title(category_entity, category))),
+        "showAxisTitle": literal("true"), "labelColor": solid_color(EXECUTIVE_COLORS["ink"]),
+        "titleFontSize": literal("10D"), "titleFontColor": solid_color(EXECUTIVE_COLORS["ink"]),
+    }
+    if long_labels:
+        category_axis_properties["maxMarginFactor"] = literal("48D")
+        category_axis_properties["concatenateLabels"] = literal("false")
+        category_axis_properties["innerPadding"] = literal("18D")
     return {
         "$schema": f"{REPORT_SCHEMA}/visualContainer/2.8.0/schema.json",
         "name": name,
@@ -1286,18 +1528,13 @@ def executive_bar(
                     "Category": {"projections": [projection(field_column(category_entity, category), f"{category_entity}.{category}", category)]},
                     "Y": {"projections": measure_projections},
                 },
-                "sortDefinition": {"sort": [{"field": measure_projections[0]["field"], "direction": "Descending"}], "isDefaultSort": True},
+                "sortDefinition": {"sort": [{"field": measure_projections[0]["field"], "direction": "Ascending" if sort_ascending else "Descending"}], "isDefaultSort": True},
             },
             "objects": {
                 "legend": [{"properties": {"show": literal("true" if len(measures) > 1 else "false"), "position": literal("'Top'")}}],
                 "dataPoint": data_points,
                 "labels": [{"properties": label_properties}],
-                "categoryAxis": [{"properties": {
-                    "show": literal("true"), "fontSize": literal("10D"), "fontColor": solid_color(EXECUTIVE_COLORS["ink"]),
-                    "titleShow": literal("true"), "titleText": literal(quote_dax_literal(_axis_title(category_entity, category))),
-                    "showAxisTitle": literal("true"), "labelColor": solid_color(EXECUTIVE_COLORS["ink"]),
-                    "titleFontSize": literal("10D"), "titleFontColor": solid_color(EXECUTIVE_COLORS["ink"]),
-                }}],
+                "categoryAxis": [{"properties": category_axis_properties}],
                 "valueAxis": [{"properties": {
                     "show": literal("true"), "labelDisplayUnits": literal("1D"), "labelPrecision": literal(f"{precision}L"),
                     "fontSize": literal("10D"), "fontColor": solid_color(EXECUTIVE_COLORS["ink"]),
@@ -1307,7 +1544,7 @@ def executive_bar(
                     "gridlineShow": literal("true"), "gridlineColor": solid_color("#D4DCE6"),
                 }}],
             },
-            "visualContainerObjects": executive_container(title, subtitle=axis_note, shadow=False),
+            "visualContainerObjects": executive_container(title, subtitle=subtitle or axis_note, shadow=False),
             "drillFilterOtherVisuals": True,
         },
     }
@@ -1346,7 +1583,8 @@ def executive_combo(
             "properties": {"fill": solid_color(line_palette[index % len(line_palette)])},
             "selector": {"metadata": item["queryRef"]},
         })
-    axis_note = f"X · {_axis_title(category_entity, category)}   |   CỘT · {_value_axis_title(column_measures)}   |   ĐƯỜNG · % đạt"
+    line_axis_title = " / ".join(MATRIX_LABELS.get(item, item) for item in line_measures)
+    axis_note = f"X · {_axis_title(category_entity, category)}   |   CỘT · {_value_axis_title(column_measures)}   |   ĐƯỜNG · {line_axis_title}"
     category_projection = projection(
         field_column(category_entity, category),
         f"{category_entity}.{category}",
@@ -1408,7 +1646,7 @@ def executive_combo(
                     "titleFontColor": solid_color(EXECUTIVE_COLORS["ink"]), "gridlineShow": literal("true"),
                     "gridlineColor": solid_color("#D4DCE6"), "secShow": literal("true"),
                     "secShowAxisTitle": literal("true"), "secTitleShow": literal("true"),
-                    "secTitleText": literal(quote_dax_literal("% đạt Target")), "secLabelDisplayUnits": literal("1D"),
+                    "secTitleText": literal(quote_dax_literal(line_axis_title)), "secLabelDisplayUnits": literal("1D"),
                     "secLabelPrecision": literal("1L"), "secFontSize": literal("11D"),
                     "secFontColor": solid_color(EXECUTIVE_COLORS["purple"]), "secGridlineShow": literal("false"),
                 }}],
@@ -1619,8 +1857,10 @@ def executive_waterfall(
                 "categoryAxis": [{"properties": {
                     "show": literal("true"), "showAxisTitle": literal("true"), "titleShow": literal("true"),
                     "titleText": literal(quote_dax_literal(_axis_title(category_entity, category))),
-                    "fontSize": literal("10D"), "fontColor": solid_color(EXECUTIVE_COLORS["ink"]),
+                    "fontSize": literal("9D"), "fontColor": solid_color(EXECUTIVE_COLORS["ink"]),
                     "labelColor": solid_color(EXECUTIVE_COLORS["ink"]), "titleFontSize": literal("10D"),
+                    # Tên miền dài hơn 25% chiều rộng mặc định dành cho nhãn trục.
+                    "maxMarginFactor": literal("48D"), "concatenateLabels": literal("false"),
                 }}],
                 "valueAxis": [{"properties": {
                     "show": literal("true"), "showAxisTitle": literal("true"), "titleShow": literal("true"),
@@ -1646,6 +1886,114 @@ def executive_waterfall(
     }
 
 
+def executive_treemap(
+    name: str,
+    group_entity: str,
+    group_column: str,
+    detail_entity: str,
+    detail_column: str,
+    measure_name: str,
+    title: str,
+    x: int,
+    y: int,
+    width: int,
+    height: int,
+    tab_order: int,
+    *,
+    subtitle: str | None = None,
+) -> dict[str, Any]:
+    """Bản đồ tỷ trọng hai cấp — thay cho bản đồ địa lý khi cột Tỉnh/Thành còn trống."""
+    group_projection = projection(
+        field_column(group_entity, group_column), f"{group_entity}.{group_column}", _axis_title(group_entity, group_column)
+    )
+    detail_projection = projection(
+        field_column(detail_entity, detail_column), f"{detail_entity}.{detail_column}", _axis_title(detail_entity, detail_column)
+    )
+    value_projection = projection(
+        field_measure("FactSellIn", measure_name), f"FactSellIn.{measure_name}", MATRIX_LABELS.get(measure_name, measure_name)
+    )
+    precision = 1 if measure_name in PERCENT_MEASURES else 0
+    return {
+        "$schema": f"{REPORT_SCHEMA}/visualContainer/2.8.0/schema.json",
+        "name": name,
+        "position": {"x": x, "y": y, "z": tab_order, "width": width, "height": height, "tabOrder": tab_order},
+        "visual": {
+            "visualType": "treemap",
+            "query": {
+                # Treemap dùng bộ vai riêng: Group / Details / Values. Đặt nhầm
+                # thành Category / Y như biểu đồ cột sẽ ra một khung trắng.
+                "queryState": {
+                    "Group": {"projections": [group_projection]},
+                    "Details": {"projections": [detail_projection]},
+                    "Values": {"projections": [value_projection]},
+                },
+                "sortDefinition": {"sort": [{"field": value_projection["field"], "direction": "Descending"}], "isDefaultSort": True},
+            },
+            "objects": {
+                "legend": [{"properties": {
+                    "show": literal("true"), "position": literal("'Top'"), "fontSize": literal("9D"),
+                    "fontColor": solid_color(EXECUTIVE_COLORS["muted"]),
+                }}],
+                "labels": [{"properties": {
+                    "show": literal("true"), "fontSize": literal("9D"), "bold": literal("true"),
+                    "color": solid_color(EXECUTIVE_COLORS["white"]),
+                    "labelDisplayUnits": literal("1D"), "labelPrecision": literal(f"{precision}L"),
+                }}],
+                "categoryLabels": [{"properties": {
+                    "show": literal("true"), "fontSize": literal("9D"), "color": solid_color(EXECUTIVE_COLORS["white"]),
+                }}],
+                "dataPoint": [{"properties": {
+                    "borderShow": literal("true"), "borderColor": solid_color(EXECUTIVE_COLORS["white"]), "borderSize": literal("2D"),
+                }}],
+            },
+            "visualContainerObjects": executive_container(
+                title,
+                subtitle=subtitle or f"Ô lớn = đóng góp lớn · {_axis_title(group_entity, group_column)} → {_axis_title(detail_entity, detail_column)}",
+                background="#F8FBFF",
+                border_color="#B8C7DB",
+                shadow=False,
+            ),
+            "drillFilterOtherVisuals": True,
+        },
+    }
+
+
+def executive_insight_panel(
+    name: str,
+    title: str,
+    bullets: list[tuple[str, str]],
+    x: int,
+    y: int,
+    width: int,
+    height: int,
+    tab_order: int,
+) -> dict[str, Any]:
+    """Khối chữ tĩnh nêu cách đọc số và việc cần làm — chốt lại mạch kể chuyện."""
+    paragraphs: list[dict[str, Any]] = []
+    for heading, body in bullets:
+        paragraphs.append({"textRuns": [{"value": heading, "textStyle": {
+            "fontFamily": "Segoe UI Semibold", "fontSize": "10pt", "fontWeight": "600", "color": EXECUTIVE_COLORS["navy"],
+        }}]})
+        paragraphs.append({"textRuns": [{"value": body, "textStyle": {
+            "fontFamily": "Segoe UI", "fontSize": "9pt", "fontWeight": "400", "color": "#41556B",
+        }}]})
+        paragraphs.append({"textRuns": [{"value": " ", "textStyle": {"fontFamily": "Segoe UI", "fontSize": "4pt", "color": "#FFFFFF"}}]})
+    return {
+        "$schema": f"{REPORT_SCHEMA}/visualContainer/2.8.0/schema.json",
+        "name": name,
+        "position": {"x": x, "y": y, "z": tab_order, "width": width, "height": height, "tabOrder": tab_order},
+        "visual": {
+            "visualType": "textbox",
+            "objects": {"general": [{"properties": {"paragraphs": paragraphs}}]},
+            "visualContainerObjects": executive_container(
+                title, subtitle="Đọc số theo thứ tự này rồi giao việc", background="#FFFBEB",
+                border_color="#D97706", shadow=False, padding=12,
+            ),
+            "drillFilterOtherVisuals": False,
+        },
+    }
+
+
 def executive_matrix(
     name: str,
     rows: list[tuple[str, str, str]],
@@ -1656,10 +2004,15 @@ def executive_matrix(
     width: int,
     height: int,
     tab_order: int,
+    *,
+    sort_measure: str | None = None,
+    sort_ascending: bool = False,
+    subtitle: str | None = None,
 ) -> dict[str, Any]:
     row_projections = [projection(field_column(entity, field), f"{entity}.{field}", display) for entity, field, display in rows]
     value_projections = [projection(field_measure("FactSellIn", item), f"FactSellIn.{item}", MATRIX_LABELS.get(item, item)) for item in measures]
     all_projections = row_projections + value_projections
+    sort_index = measures.index(sort_measure) if sort_measure in measures else 0
     return {
         "$schema": f"{REPORT_SCHEMA}/visualContainer/2.8.0/schema.json",
         "name": name,
@@ -1668,7 +2021,7 @@ def executive_matrix(
             "visualType": "tableEx",
             "query": {
                 "queryState": {"Values": {"projections": all_projections}},
-                "sortDefinition": {"sort": [{"field": value_projections[0]["field"], "direction": "Descending"}], "isDefaultSort": True},
+                "sortDefinition": {"sort": [{"field": value_projections[sort_index]["field"], "direction": "Ascending" if sort_ascending else "Descending"}], "isDefaultSort": True},
             },
             "objects": {
                 "columnHeaders": [{"properties": {
@@ -1681,7 +2034,8 @@ def executive_matrix(
                 "values": [{"properties": {
                     "fontColorPrimary": solid_color(EXECUTIVE_COLORS["ink"]), "fontColorSecondary": solid_color(EXECUTIVE_COLORS["ink"]),
                     "backColorPrimary": solid_color("#FFFFFF"), "backColorSecondary": solid_color("#EAF2FB"),
-                    "fontSize": literal("10D"), "fontFamily": literal("'Segoe UI'"), "wordWrap": literal("false"), "outline": literal("'BottomOnly'"),
+                    # Tên khách hàng dài tới 51 ký tự: cho xuống dòng thay vì cắt bằng dấu ba chấm.
+                    "fontSize": literal("9D"), "fontFamily": literal("'Segoe UI'"), "wordWrap": literal("true"), "outline": literal("'BottomOnly'"),
                 }}],
                 "grid": [{"properties": {
                     "gridVertical": literal("true"), "gridVerticalColor": solid_color("#D7E0EA"), "gridVerticalWeight": literal("1D"),
@@ -1693,7 +2047,7 @@ def executive_matrix(
                     "bold": literal("true"), "fontSize": literal("10D"),
                 }}],
             },
-            "visualContainerObjects": executive_container(title, background="#FCFDFF", border_color="#94A3B8", shadow=False, radius=8, padding=6, title_size=11),
+            "visualContainerObjects": executive_container(title, subtitle=subtitle, background="#FCFDFF", border_color="#94A3B8", shadow=False, radius=8, padding=6, title_size=11),
             "drillFilterOtherVisuals": True,
         },
     }
@@ -1710,113 +2064,235 @@ def build_pages(
     c = EXECUTIVE_COLORS
     page_specs: OrderedDict[str, tuple[str, list[dict[str, Any]]]] = OrderedDict()
 
-    overview: list[dict[str, Any]] = [
-        executive_header("title_overview", "VIKODA SELL-IN | DASHBOARD CEO", subtitle),
-        executive_nav_panel("nav_overview", "CEO_TongQuan", 1),
-        *executive_nav_buttons("CEO_TongQuan", 2),
-        executive_slicer("overview_year", "DimDate", "Year", "NĂM", SIDEBAR_X, SIDEBAR_SLICER_Y, SIDEBAR_WIDTH, SIDEBAR_SLICER_HEIGHT, 10, single_select=True),
-        executive_slicer("overview_month", "DimDate", "MonthLabel", "KỲ BÁO CÁO", SIDEBAR_X, SIDEBAR_SLICER_Y + SIDEBAR_SLICER_STEP, SIDEBAR_WIDTH, SIDEBAR_SLICER_HEIGHT, 11, single_select=True),
-    ]
+    def rail(
+        prefix: str,
+        page: str,
+        title: str,
+        slicers: list[tuple[str, str, str, str]],
+        *,
+        include_date_range: bool = True,
+    ) -> list[dict[str, Any]]:
+        """Header + rail điều hướng + bộ lọc dọc, dùng chung cho cả sáu trang."""
+        items: list[dict[str, Any]] = [
+            executive_header(f"title_{prefix}", title, subtitle),
+            executive_nav_panel(f"nav_{prefix}", page, 1),
+            *executive_nav_buttons(page, 2),
+        ]
+        slicer_y = SIDEBAR_SLICER_Y
+        tab_order = 10
+        if include_date_range:
+            items.append(executive_date_range_slicer(
+                f"{prefix}_date_range", "KHOẢNG THỜI GIAN",
+                SIDEBAR_X, slicer_y, SIDEBAR_WIDTH, SIDEBAR_DATE_SLICER_HEIGHT,
+                tab_order,
+            ))
+            slicer_y += SIDEBAR_DATE_SLICER_HEIGHT + 8
+            tab_order += 1
+
+        for index, (name, entity, column, label) in enumerate(slicers):
+            items.append(executive_slicer(
+                name, entity, column, label,
+                SIDEBAR_X, slicer_y + index * SIDEBAR_SLICER_STEP, SIDEBAR_WIDTH, SIDEBAR_SLICER_HEIGHT,
+                tab_order + index, single_select=(column in {"Year", "MonthLabel"}),
+            ))
+        return items
+
+    # ------------------------------------------------------------------ 01
+    # DASHBOARD: trả lời "tháng này có đạt không, tiền đến từ đâu, ai kéo lùi".
+    overview: list[dict[str, Any]] = rail("overview", "CEO_TongQuan", "VIKODA SELL-IN | TỔNG QUAN ĐIỀU HÀNH", [])
+    # Màu thẻ mã hóa loại thông tin, không phải trang trí: số thực tế · so với
+    # kế hoạch · so với cùng kỳ · dự báo. Trước đây hai thẻ đầu cùng màu xanh
+    # nên nhìn như bị trùng.
     overview_cards = [
-        ("actual", "Doanh thu Sell In", "ACTUAL MTD", c["blue"], "#EEF4FF"),
-        ("attainment", "Tỷ lệ đạt Target", "% ĐẠT TARGET", c["blue"], "#F4F7FF"),
-        ("yoy", "Tăng trưởng YoY", "TĂNG TRƯỞNG YOY", c["purple"], "#F5F0FF"),
-        ("forecast", "Dự báo đạt Target", "DỰ BÁO % TARGET", c["teal"], "#ECF9F6"),
+        ("actual", "Doanh thu Sell In", "ACTUAL MTD", "#1D4ED8", "#EEF3FF"),
+        ("attainment", "Tỷ lệ đạt Target", "% ĐẠT TARGET", "#0F766E", "#ECF8F6"),
+        ("yoy", "Tăng trưởng YoY", "TĂNG TRƯỞNG YOY", "#6D28D9", "#F3EEFF"),
+        ("forecast", "Dự báo đạt Target", "DỰ BÁO % TARGET", "#B45309", "#FEF6EC"),
     ]
     for index, (name, measure_name, title, accent, tint) in enumerate(overview_cards):
         overview.append(executive_card(f"overview_card_{name}", measure_name, title, SIDEBAR_X, SIDEBAR_CARD_Y + index * SIDEBAR_CARD_STEP, SIDEBAR_CARD_WIDTH, SIDEBAR_CARD_HEIGHT, 20 + index, accent=accent, tint=tint))
     overview.extend([
         executive_combo(
-            "overview_trend", "DimDate", "MonthAxis", ["Doanh thu Sell In", "Target"], ["Tỷ lệ đạt Target"],
-            "1 · DOANH THU SO VỚI KẾ HOẠCH THEO THÁNG", 236, 92, 1028, 294, 30,
-            column_palette=[c["blue"], "#B9C5D3"], line_palette=[c["purple"]],
+            "overview_trend", "DimDate", "MonthAxis", ["Doanh thu Sell In", "Doanh thu LY", "Target"], ["Tỷ lệ đạt Target", "Tăng trưởng YoY"],
+            "1 · DOANH THU ACTUAL SO VỚI CÙNG KỲ NĂM TRƯỚC VÀ KẾ HOẠCH", CONTENT_X, CONTENT_Y, CONTENT_WIDTH, ROW1_HEIGHT, 30,
+            column_palette=[c["blue"], c["amber"], "#B9C5D3"], line_palette=[c["purple"], c["green"]],
             show_labels=False, scalar_axis=False, sort_by_category=True,
         ),
         executive_donut(
             "overview_mix", "DimProduct", "ProductGroup", "Doanh thu Sell In",
-            "2 · CƠ CẤU DOANH THU THEO NHÓM SẢN PHẨM", 236, 402, 356, 302, 31,
+            "2 · CƠ CẤU DOANH THU THEO NHÓM SẢN PHẨM", COL3_X[0], ROW2_Y, COL3_WIDTH, ROW2_HEIGHT, 31,
+        ),
+        executive_donut(
+            "overview_channel_mix", "DimCustomer", "Channel", "Doanh thu Sell In",
+            "3 · CƠ CẤU DOANH THU THEO KÊNH", COL3_X[1], ROW2_Y, COL3_WIDTH, ROW2_HEIGHT, 32,
         ),
         executive_waterfall(
             "overview_gap_region", "DimTerritory", "Mien", "Khoảng cách Target",
-            "3 · MIỀN NÀO TẠO CHÊNH LỆCH TARGET?", 608, 402, 656, 302, 32,
+            "4 · MIỀN NÀO TẠO CHÊNH LỆCH TARGET?", COL3_X[2], ROW2_Y, COL3_WIDTH, ROW2_HEIGHT, 33,
         ),
     ])
-    page_specs["CEO_TongQuan"] = ("01. CEO | Tổng quan", overview)
+    page_specs["CEO_TongQuan"] = ("01. Tổng quan điều hành", overview)
 
-    plan: list[dict[str, Any]] = [
-        executive_header("title_plan", "VIKODA SELL-IN | KẾ HOẠCH & CẢNH BÁO", subtitle),
-        executive_nav_panel("nav_plan", "KeHoach_DuBao", 1),
-        *executive_nav_buttons("KeHoach_DuBao", 2),
-        executive_slicer("plan_year", "DimDate", "Year", "NĂM", SIDEBAR_X, SIDEBAR_SLICER_Y, SIDEBAR_WIDTH, SIDEBAR_SLICER_HEIGHT, 10, single_select=True),
-        executive_slicer("plan_month", "DimDate", "MonthLabel", "KỲ BÁO CÁO", SIDEBAR_X, SIDEBAR_SLICER_Y + SIDEBAR_SLICER_STEP, SIDEBAR_WIDTH, SIDEBAR_SLICER_HEIGHT, 11, single_select=True),
-        executive_slicer("plan_region", "DimTerritory", "Mien", "MIỀN", SIDEBAR_X, SIDEBAR_SLICER_Y + 2 * SIDEBAR_SLICER_STEP, SIDEBAR_WIDTH, SIDEBAR_SLICER_HEIGHT, 12),
-        executive_slicer("plan_area", "DimTerritory", "Vung", "VÙNG", SIDEBAR_X, SIDEBAR_SLICER_Y + 3 * SIDEBAR_SLICER_STEP, SIDEBAR_WIDTH, SIDEBAR_SLICER_HEIGHT, 13),
-    ]
-    plan.extend([
-        executive_line(
-            "plan_trend", "DimDate", "MonthAxis", ["Doanh thu Sell In", "Target", "Run-rate dự báo tháng"],
-            "1 · XU HƯỚNG ACTUAL · TARGET · RUN-RATE", 236, 92, 1028, 294, 30,
-            palette=[c["blue"], "#B9C5D3", c["teal"]], show_labels=False, scalar_axis=False,
+    # ------------------------------------------------------------------ 02
+    # ANALYSIS: tiền đi qua kênh nào, hệ thống MT nào, khách nào giữ được.
+    channel: list[dict[str, Any]] = rail("channel", "Kenh_KhachHang", "VIKODA SELL-IN | KÊNH & KHÁCH HÀNG", [
+        ("channel_region", "DimTerritory", "Mien", "MIỀN"),
+        ("channel_name", "DimCustomer", "Channel", "KÊNH"),
+        ("channel_type", "DimCustomer", "CustomerType", "LOẠI KHÁCH HÀNG"),
+    ])
+    channel.extend([
+        executive_combo(
+            "channel_performance", "DimCustomer", "Channel", ["Doanh thu Sell In", "Doanh thu LY"], ["Tăng trưởng YoY"],
+            "1 · DOANH THU VÀ TĂNG TRƯỞNG THEO KÊNH", COL2_X[0], CONTENT_Y, COL2_WIDTH, ROW1_HEIGHT, 30,
+            column_palette=[c["blue"], c["amber"]], line_palette=[c["purple"]],
+            show_labels=False, scalar_axis=False,
         ),
         executive_bar(
-            "plan_shortfall", "DimTerritory", "Mien", ["Còn thiếu để đạt Target"],
-            "2 · GAP CẦN BÙ THEO MIỀN", 236, 402, 506, 302, 31,
-            palette=[c["red"]], horizontal=True,
+            "channel_system_mt", "DimCustomer", "SystemMT", ["Doanh thu hệ thống MT"],
+            "2 · DOANH THU THEO HỆ THỐNG MT", COL2_X[1], CONTENT_Y, COL2_WIDTH, ROW1_HEIGHT, 31,
+            palette=[c["cyan"]], horizontal=True, long_labels=True,
+            subtitle="Chỉ khách đã gắn hệ thống · 90% doanh thu còn lại chưa khai báo trong DMKH",
+        ),
+        executive_matrix(
+            "channel_top_customers",
+            [("DimCustomer", "CustomerName", "Khách hàng"), ("DimCustomer", "Channel", "Kênh"), ("DimTerritory", "Mien", "Miền")],
+            ["Doanh thu Sell In", "Doanh thu LY", "Tăng trưởng YoY", "Đóng góp doanh thu", "Doanh thu / Điểm bán Active", "Target", "Tỷ lệ đạt Target"],
+            "3 · XẾP HẠNG KHÁCH HÀNG & QUY MÔ ĐƠN HÀNG (DROP SIZE)", COL2_X[0], ROW2_Y, 678, ROW2_HEIGHT, 32,
+            sort_measure="Doanh thu Sell In",
+            subtitle="Sắp xếp giảm dần · Xem Doanh thu bình quân/Điểm bán & Bấm YoY % để xem khách đang tụt",
         ),
         executive_bar(
-            "plan_forecast", "DimTerritory", "Mien", ["Dự báo đạt Target"],
-            "3 · DỰ BÁO KHẢ NĂNG HOÀN THÀNH", 758, 402, 506, 302, 32,
-            palette=[c["teal"]], horizontal=False,
+            "channel_movement", "DimCustomer", "Channel", ["Khách hàng mới", "Khách hàng ngừng mua"],
+            "4 · KHÁCH MỚI VÀ KHÁCH NGỪNG MUA", 922, ROW2_Y, 342, ROW2_HEIGHT, 33,
+            palette=[c["green"], c["red"]], horizontal=False,
+            subtitle="So với cùng kỳ năm trước",
         ),
     ])
-    page_specs["KeHoach_DuBao"] = ("02. Kế hoạch & cảnh báo", plan)
+    page_specs["Kenh_KhachHang"] = ("02. Kênh & khách hàng", channel)
 
-    region: list[dict[str, Any]] = [
-        executive_header("title_region", "VIKODA SELL-IN | VÙNG & SẢN LƯỢNG", subtitle),
-        executive_nav_panel("nav_region", "Vung_Mien", 1),
-        *executive_nav_buttons("Vung_Mien", 2),
-        executive_slicer("region_year", "DimDate", "Year", "NĂM", SIDEBAR_X, SIDEBAR_SLICER_Y, SIDEBAR_WIDTH, SIDEBAR_SLICER_HEIGHT, 10, single_select=True),
-        executive_slicer("region_month", "DimDate", "MonthLabel", "KỲ BÁO CÁO", SIDEBAR_X, SIDEBAR_SLICER_Y + SIDEBAR_SLICER_STEP, SIDEBAR_WIDTH, SIDEBAR_SLICER_HEIGHT, 11, single_select=True),
-        executive_slicer("region_name", "DimTerritory", "Mien", "MIỀN", SIDEBAR_X, SIDEBAR_SLICER_Y + 2 * SIDEBAR_SLICER_STEP, SIDEBAR_WIDTH, SIDEBAR_SLICER_HEIGHT, 12),
-        executive_slicer("region_area", "DimTerritory", "Vung", "VÙNG", SIDEBAR_X, SIDEBAR_SLICER_Y + 3 * SIDEBAR_SLICER_STEP, SIDEBAR_WIDTH, SIDEBAR_SLICER_HEIGHT, 13),
-    ]
+    # ------------------------------------------------------------------ 03
+    # ANALYSIS: hàng Vikoda so với hàng thương mại KDT, SKU nào sống, SKU nào chết.
+    product: list[dict[str, Any]] = rail("product", "SanPham", "VIKODA SELL-IN | SẢN PHẨM & DANH MỤC", [
+        ("product_region", "DimTerritory", "Mien", "MIỀN"),
+        ("product_group", "DimProduct", "ProductGroup", "NHÓM SẢN PHẨM"),
+        ("product_unit", "DimProduct", "PackUnit", "ĐƠN VỊ TÍNH"),
+    ])
+    product.extend([
+        # Tên SKU dài tới 52 ký tự, nên hai biểu đồ SKU được xếp thành hai cột
+        # rộng 510 px ở hàng dưới thay vì ba cột 338 px — đủ chỗ cho nhãn.
+        executive_combo(
+            "product_vikoda_kdt", "DimDate", "MonthAxis", ["Doanh thu Vikoda", "Doanh thu KDT"], ["Tỷ trọng Vikoda"],
+            "1 · HÀNG VIKODA SO VỚI HÀNG THƯƠNG MẠI KDT", CONTENT_X, CONTENT_Y, 678, ROW1_HEIGHT, 30,
+            column_palette=[c["blue"], c["amber"]], line_palette=[c["teal"]],
+            show_labels=False, scalar_axis=False, sort_by_category=True,
+        ),
+        executive_donut(
+            "product_brand_mix", "DimProduct", "CoBrand", "Doanh thu Sell In",
+            "2 · CƠ CẤU DOANH THU THEO THƯƠNG HIỆU", 922, CONTENT_Y, 342, ROW1_HEIGHT, 31,
+        ),
+        executive_bar(
+            "product_top_sku", "DimProduct", "ProductAxisLabel", ["Doanh thu Sell In"],
+            "3 · HERO SKUS DẪN ĐẦU DOANH THU", COL2_X[0], ROW2_Y, COL2_WIDTH, ROW2_HEIGHT, 32,
+            palette=[c["blue"]], horizontal=True, long_labels=True,
+        ),
+        executive_bar(
+            "product_declining_sku", "DimProduct", "ProductAxisLabel", ["Tăng trưởng YoY"],
+            "4 · SKU TỤT MẠNH NHẤT SO VỚI CÙNG KỲ", COL2_X[1], ROW2_Y, COL2_WIDTH, ROW2_HEIGHT, 33,
+            palette=[c["red"]], horizontal=True, sort_ascending=True, long_labels=True,
+            subtitle="Sắp xếp tăng dần · SKU âm nhiều nhất nằm trên cùng",
+        ),
+    ])
+    page_specs["SanPham"] = ("03. Sản phẩm & danh mục", product)
+
+    # ------------------------------------------------------------------ 04
+    # ANALYSIS: địa bàn và sản lượng quy đổi Két/Thùng/Bình.
+    region: list[dict[str, Any]] = rail("region", "Vung_Mien", "VIKODA SELL-IN | VÙNG MIỀN & SẢN LƯỢNG", [
+        ("region_name", "DimTerritory", "Mien", "MIỀN"),
+        ("region_area", "DimTerritory", "Vung", "VÙNG"),
+        ("region_unit", "DimProduct", "PackUnit", "ĐƠN VỊ TÍNH"),
+    ])
     region.extend([
         executive_line(
             "region_volume_trend", "DimDate", "MonthAxis", ["SL Két (K)", "SL Thùng (T)", "SL Bình (B)"],
-            "1 · SẢN LƯỢNG QUY ĐỔI THEO THỜI GIAN", 236, 92, 1028, 294, 30,
+            "1 · SẢN LƯỢNG QUY ĐỔI THEO THỜI GIAN", COL2_X[0], CONTENT_Y, COL2_WIDTH, ROW1_HEIGHT, 30,
             palette=[c["cyan"], c["teal"], c["purple"]], show_labels=False, scalar_axis=False,
         ),
-        executive_donut(
-            "region_volume_mix", "DimProduct", "PackUnit", "Sản lượng quy đổi KTB",
-            "2 · CƠ CẤU SẢN LƯỢNG KÉT · THÙNG · BÌNH", 236, 402, 356, 302, 31,
+        executive_treemap(
+            "region_map", "DimTerritory", "Mien", "DimTerritory", "Vung", "Doanh thu Sell In",
+            "2 · BẢN ĐỒ TỶ TRỌNG DOANH THU MIỀN → VÙNG", COL2_X[1], CONTENT_Y, COL2_WIDTH, ROW1_HEIGHT, 31,
         ),
         executive_bar(
             "region_target_risk", "DimTerritory", "Vung", ["Tỷ lệ đạt Target"],
-            "3 · VÙNG CẦN ƯU TIÊN XỬ LÝ", 608, 402, 656, 302, 32,
-            palette=[c["amber"]], horizontal=True,
+            "3 · VÙNG CẦN ƯU TIÊN XỬ LÝ", COL3_X[0], ROW2_Y, COL3_WIDTH, ROW2_HEIGHT, 32,
+            palette=[c["amber"]], horizontal=True, sort_ascending=True, long_labels=True,
+            subtitle="Sắp xếp tăng dần · vùng đạt thấp nhất nằm trên cùng",
+        ),
+        executive_donut(
+            "region_volume_mix", "DimProduct", "PackUnit", "Sản lượng quy đổi KTB",
+            "4 · CƠ CẤU BAO BÌ: KÉT · THÙNG · BÌNH (%)", COL3_X[1], ROW2_Y, COL3_WIDTH, ROW2_HEIGHT, 33,
+        ),
+        executive_bar(
+            "region_coverage", "DimTerritory", "Vung", ["Số khách hàng", "Số SKU"],
+            "5 · ĐỘ PHỦ KHÁCH HÀNG VÀ DANH MỤC", COL3_X[2], ROW2_Y, COL3_WIDTH, ROW2_HEIGHT, 34,
+            palette=[c["teal"], c["cyan"]], horizontal=False, long_labels=True,
         ),
     ])
-    page_specs["Vung_Mien"] = ("03. Vùng & sản lượng", region)
+    page_specs["Vung_Mien"] = ("04. Vùng miền & sản lượng", region)
 
-    detail: list[dict[str, Any]] = [
-        executive_header("title_detail", "VIKODA SELL-IN | REPORTING CHI TIẾT", subtitle),
-        executive_nav_panel("nav_detail", "KhachHang_SanPham", 1),
-        *executive_nav_buttons("KhachHang_SanPham", 2),
-        executive_slicer("detail_year", "DimDate", "Year", "NĂM", SIDEBAR_X, SIDEBAR_SLICER_Y, SIDEBAR_WIDTH, SIDEBAR_SLICER_HEIGHT, 10, single_select=True),
-        executive_slicer("detail_month", "DimDate", "MonthLabel", "KỲ BÁO CÁO", SIDEBAR_X, SIDEBAR_SLICER_Y + SIDEBAR_SLICER_STEP, SIDEBAR_WIDTH, SIDEBAR_SLICER_HEIGHT, 11, single_select=True),
-        executive_slicer("detail_region", "DimTerritory", "Mien", "MIỀN", SIDEBAR_X, SIDEBAR_SLICER_Y + 2 * SIDEBAR_SLICER_STEP, SIDEBAR_WIDTH, SIDEBAR_SLICER_HEIGHT, 12),
-        executive_slicer("detail_area", "DimTerritory", "Vung", "VÙNG", SIDEBAR_X, SIDEBAR_SLICER_Y + 3 * SIDEBAR_SLICER_STEP, SIDEBAR_WIDTH, SIDEBAR_SLICER_HEIGHT, 13),
-        executive_slicer("detail_group", "DimProduct", "ProductGroup", "NHÓM SẢN PHẨM", SIDEBAR_X, SIDEBAR_SLICER_Y + 4 * SIDEBAR_SLICER_STEP, SIDEBAR_WIDTH, SIDEBAR_SLICER_HEIGHT, 14),
-    ]
+    # ------------------------------------------------------------------ 05
+    # REPORTING: bảng phẳng để lọc, sort và xuất số.
+    detail: list[dict[str, Any]] = rail("detail", "KhachHang_SanPham", "VIKODA SELL-IN | REPORTING CHI TIẾT", [
+        ("detail_region", "DimTerritory", "Mien", "MIỀN"),
+        ("detail_area", "DimTerritory", "Vung", "VÙNG"),
+        ("detail_group", "DimProduct", "ProductGroup", "NHÓM SẢN PHẨM"),
+    ])
     detail.extend([
         executive_matrix(
             "detail_matrix",
-            [("DimCustomer", "CustomerName", "Khách hàng"), ("DimProduct", "ProductShortName", "Sản phẩm"), ("DimProduct", "PackUnit", "ĐVT")],
-            ["Doanh thu Sell In", "SL Két (K)", "SL Thùng (T)", "SL Bình (B)", "Tăng trưởng Két (K)", "Tăng trưởng Thùng (T)", "Tăng trưởng Bình (B)", "Tỷ lệ trả hàng"],
-            "REPORTING · CHI TIẾT KHÁCH HÀNG & SẢN PHẨM", 236, 92, 1028, 612, 30,
+            [("DimCustomer", "CustomerName", "Khách hàng"), ("DimCustomer", "Channel", "Kênh"), ("DimProduct", "ProductShortName", "Sản phẩm"), ("DimProduct", "PackUnit", "ĐVT")],
+            ["Doanh thu Sell In", "Doanh thu LY", "Tăng trưởng YoY", "SL Két (K)", "SL Thùng (T)", "SL Bình (B)", "Tỷ lệ trả hàng"],
+            "REPORTING · CHI TIẾT KHÁCH HÀNG & SẢN PHẨM", CONTENT_X, CONTENT_Y, CONTENT_WIDTH, 612, 30,
+            sort_measure="Doanh thu Sell In",
+            subtitle="Bấm tiêu đề cột để đổi chiều sắp xếp · dùng bộ lọc bên trái để thu hẹp phạm vi",
         ),
     ])
-    page_specs["KhachHang_SanPham"] = ("04. Chi tiết KH & SP", detail)
+    page_specs["KhachHang_SanPham"] = ("05. Chi tiết KH & SP", detail)
+
+    # ------------------------------------------------------------------ 06
+    # CLOSER: còn thiếu bao nhiêu, ai phải bù, và đọc báo cáo theo thứ tự nào.
+    plan: list[dict[str, Any]] = rail("plan", "KeHoach_KhuyenNghi", "VIKODA SELL-IN | KẾ HOẠCH & KHUYẾN NGHỊ", [
+        ("plan_region", "DimTerritory", "Mien", "MIỀN"),
+        ("plan_area", "DimTerritory", "Vung", "VÙNG"),
+    ])
+    plan.extend([
+        executive_line(
+            "plan_trend", "DimDate", "MonthAxis", ["Doanh thu Sell In", "Target", "Run-rate dự báo tháng"],
+            "1 · XU HƯỚNG ACTUAL · TARGET · RUN-RATE", COL2_X[0], CONTENT_Y, 678, ROW1_HEIGHT, 30,
+            palette=[c["blue"], "#B9C5D3", c["teal"]], show_labels=False, scalar_axis=False,
+        ),
+        executive_bar(
+            "plan_forecast", "DimTerritory", "Mien", ["Dự báo đạt Target"],
+            "2 · DỰ BÁO KHẢ NĂNG HOÀN THÀNH", 922, CONTENT_Y, 342, ROW1_HEIGHT, 31,
+            palette=[c["teal"]], horizontal=False, sort_ascending=True, long_labels=True,
+        ),
+        executive_bar(
+            "plan_shortfall", "DimTerritory", "Vung", ["Còn thiếu để đạt Target", "Cần doanh thu mỗi ngày"],
+            "3 · GAP CẦN BÙ VÀ ÁP LỰC MỖI NGÀY THEO VÙNG", COL2_X[0], ROW2_Y, COL2_WIDTH, ROW2_HEIGHT, 32,
+            palette=[c["red"], c["amber"]], horizontal=True, long_labels=True,
+        ),
+        executive_insight_panel(
+            "plan_recommendation",
+            "4 · HƯỚNG DẪN ĐIỀU HÀNH 4 BƯỚC (BEVERAGE ACTION PLAYBOOK)",
+            [
+                ("Bước 1 — Đánh giá Nhịp độ & Dự báo Mùa vụ", "Trang 01 & 06: Xem 'Nhịp độ bán hàng (Pacing %)' và 'Dự báo EOM Mùa vụ'. Nếu Pacing < 100% kết hợp Hệ số gia tốc > 1.3x thì vùng đang chậm nhịp nghiêm trọng, cần kích hoạt chương trình Trade Promotion."),
+                ("Bước 2 — Truy nguyên nhân theo Kênh & Bao bì", "Trang 02 xem kênh GT/MT/KA nào tụt YoY; trang 03 rà soát Hero SKUs (Vikoda 500ml, 1.5L, Bình 19L); trang 04 kiểm tra cơ cấu Két - Thùng - Bình và vòng quay cọc vỏ."),
+                ("Bước 3 — Giao chỉ tiêu & Áp lực ngày", "Biểu đồ 3 bên trái chỉ rõ Gap doanh thu cần bù và Mức doanh thu mỗi ngày phải đạt cho từng Quản lý vùng (RSM) để kịp cán đích trước khi đóng sổ tháng."),
+                ("Bước 4 — Bảo vệ tệp Điểm bán & Khách hàng", "Rà soát danh sách NPP ngừng mua ở trang 02 để sales rep tiếp cận ngay, đồng thời theo dõi Quy mô đơn hàng (Drop Size) để nâng giá trị đơn trên mỗi khách hàng active."),
+            ],
+            COL2_X[1], ROW2_Y, COL2_WIDTH, ROW2_HEIGHT, 33,
+        ),
+    ])
+    page_specs["KeHoach_KhuyenNghi"] = ("06. Kế hoạch & khuyến nghị", plan)
 
     page_names = list(page_specs.keys())
     for page_name, (display_name, visuals) in page_specs.items():
@@ -2008,14 +2484,23 @@ Ngày dữ liệu mới nhất: {sell_in.get('as_of_date', '')}. Kỳ báo cáo:
 
 ## Các trang báo cáo
 
-- **Dashboard CEO** — bốn KPI cốt lõi, Actual–Target–% đạt theo tháng, cơ cấu doanh thu và miền tạo gap.
-- **Kế hoạch & cảnh báo** — run-rate, doanh thu còn thiếu và khả năng hoàn thành theo miền.
-- **Vùng & sản lượng** — xu hướng Két/Thùng/Bình, cơ cấu sản lượng và vùng cần ưu tiên.
-- **Chi tiết KH & SP** — trang Reporting dạng bảng đầy đủ để lọc, sắp xếp và ra quyết định.
+Sáu trang kể một mạch liền: đạt hay hụt → vì kênh nào → vì sản phẩm nào → vì địa
+bàn nào → số chi tiết → làm gì tiếp.
 
-Giao diện dùng canvas executive 1280×720 theo phương pháp DAR của Datapot: Dashboard → Analysis → Reporting. KPI chỉ nằm ở sidebar trang CEO; các trang sau dành toàn bộ vùng nội dung cho một chủ đề phân tích. Sidebar có bốn nút Page Navigation có thể bấm, tô cyan cho trang hiện tại. Slicer dùng nền navy, giá trị chọn màu cyan và cùng lưới 196×60 px; dropdown hiện trọn chữ, cách đều 8 px và tách khỏi KPI. Trục X/Y có tiêu đề, gridline và mật độ nhãn rõ; trục tháng dùng nhãn phân loại `YY/MM` để loại khoảng trắng giữa các kỳ. Bảng Reporting tự giãn gần kín trang, dùng zebra fill và dòng tổng navy. Doanh thu theo triệu đồng và sản lượng quản trị đều hiển thị không có phần thập phân.
+1. **Tổng quan điều hành** — bốn KPI, Actual–cùng kỳ LY–Target theo tháng kèm `% đạt` và `YoY %`, cơ cấu doanh thu theo nhóm sản phẩm và theo kênh, waterfall miền tạo chênh lệch.
+2. **Kênh & khách hàng** — doanh thu và tăng trưởng theo kênh, doanh thu theo hệ thống MT, bảng xếp hạng khách hàng, khách mới so với khách ngừng mua.
+3. **Sản phẩm & danh mục** — hàng Vikoda so với hàng thương mại KDT theo tháng, SKU dẫn đầu, SKU tụt mạnh nhất, cơ cấu theo thương hiệu.
+4. **Vùng miền & sản lượng** — xu hướng Két/Thùng/Bình, treemap tỷ trọng Miền → Vùng, vùng đạt Target thấp nhất, cơ cấu sản lượng, độ phủ khách hàng và danh mục.
+5. **Chi tiết KH & SP** — trang Reporting dạng bảng đầy đủ để lọc, sắp xếp và xuất số.
+6. **Kế hoạch & khuyến nghị** — run-rate so với Target, dự báo hoàn thành theo miền, gap cần bù và áp lực doanh thu mỗi ngày theo vùng, kèm khối hướng dẫn đọc số và giao việc.
 
-Package gồm sáu bảng theo mô hình hình sao, 38 measure DAX và bảy quan hệ. Sản lượng K/T/B lấy `Số lượng ÷ Quy cách` từ DMSP, có cùng kỳ và tăng trưởng YoY riêng cho từng đơn vị. So sánh Target dùng cột dọc kết hợp đường `% đạt`; donut chỉ dùng cho cơ cấu, waterfall dùng để chỉ ra đóng góp dương/âm vào gap.
+Giao diện dùng canvas executive 1280×720 theo phương pháp DAR của Datapot: Dashboard → Analysis → Reporting. KPI chỉ nằm ở sidebar trang Tổng quan; các trang sau dành toàn bộ vùng nội dung cho một chủ đề phân tích. Sidebar có sáu nút Page Navigation có thể bấm, tô cyan cho trang hiện tại. Slicer dùng nền navy, giá trị chọn màu cyan và cùng lưới 196×60 px; dropdown hiện trọn chữ, cách đều 8 px và tách khỏi KPI. Trục X/Y có tiêu đề, gridline và mật độ nhãn rõ; trục tháng dùng nhãn phân loại `YY/MM` để loại khoảng trắng giữa các kỳ. Bảng Reporting tự giãn gần kín trang, dùng zebra fill và dòng tổng navy. Doanh thu theo triệu đồng và sản lượng quản trị đều hiển thị không có phần thập phân.
+
+Package gồm sáu bảng theo mô hình hình sao, 51 measure DAX và bảy quan hệ. Sản lượng K/T/B lấy `Số lượng ÷ Quy cách` từ DMSP, có cùng kỳ và tăng trưởng YoY riêng cho từng đơn vị. Trang Tổng quan so sánh Actual, cùng kỳ LY và Target bằng cột dọc, đồng thời hiển thị `% đạt` và `YoY %`; donut chỉ dùng cho cơ cấu, waterfall dùng để chỉ ra đóng góp dương/âm vào gap, treemap thay cho bản đồ địa lý.
+
+Chưa dựng được bản đồ tỉnh/thành vì cột `Tỉnh/Thành` trong DMKH gần như bỏ trống
+(hiện chỉ vài khách có giá trị). Khi DMKH khai báo đủ tỉnh, đổi treemap trang 04
+sang `filledMap` là dùng được ngay, không phải sửa mô hình.
 
 Sau khi thay ERP/Target/DMKH/DMSP, chạy `Chay CT\\Bao cao Power BI.cmd` hoặc `Chay CT\\Bao cao Target.cmd` — cả hai đều tự phát hiện chặng nào bị cũ và chạy lại đúng phần cần thiết. Không chỉnh tay các file trong `Data/` vì lần chạy sau sẽ ghi lại.
 

@@ -1,9 +1,34 @@
 ---
 name: skill-bao-cao
-description: Xây dựng và vận hành Bao_Cao_Sell_in.xlsx cùng dashboard Vikoda_SellIn_PowerBI.pbip trong dự án "Bao cao Sell in"; tạo Target đủ 12 tháng từ Target sellin YYYY.xlsx và Target MT KA.xlsx, áp dụng cách nhóm MT/KA của VBA Final V6, tổng hợp Sell In năm nay/cùng kỳ, DMKH, PVT_DATA và PIVOT theo Miền/Vùng. Dùng khi cần chạy hoặc kiểm tra báo cáo, cập nhật Target/Sell In/DMKH, phân tích Actual so với Target, YoY, MoM, Vikoda/KDT, dự báo, đóng gói hoặc di chuyển dự án.
+description: Chặng ĐẦU RA của dự án "Bao cao Sell in" - dựng workbook Bao_Cao_Sell_in.xlsx gồm 13 sheet (Target, Data, DMKH, PIVOT theo 20 vùng, PVT_DATA và 8 sheet BC_ theo miền) cùng dashboard Vikoda_SellIn_PowerBI.pbip bốn trang; tạo Target đủ 12 tháng từ Target sellin YYYY.xlsx và Target MT KA.xlsx theo cách nhóm MT/KA của VBA Final V6, tổng hợp Sell In năm nay so cùng kỳ. Dùng skill này BẤT CỨ KHI NÀO người dùng muốn chạy hoặc sửa báo cáo Sell In, cập nhật Target, dựng lại dashboard Power BI, sửa công thức hay bố cục PIVOT/BC_/PVT_DATA, đối soát Actual so Target, phân tích YoY, MoM, Vikoda so KDT, hoặc sửa bước tự phát hiện dữ liệu cũ. Trigger cả khi chỉ nói "chạy báo cáo", "cập nhật dashboard", "số trên Power BI sai", "PIVOT lệch tổng", "Target tháng này bao nhiêu", "mở báo cáo Excel" mà không nêu tên file. KHÔNG dùng cho việc đọc file ERP hay dựng workbook "Sell in TMM_YYYY.xlsx" theo tháng - đó là skill sell-in-monthly, chặng chạy trước skill này.
 ---
 
 # Skill báo cáo Sell In
+
+## Nguồn chuẩn của skill này
+
+Bản gốc nằm trong repo tại `code/Skill/skill-bao-cao` của dự án
+`D:\Vikoda\Bao cao Sell in`. File `.skill` đã cài vào Claude chỉ là **bản phát
+hành**, một bản chụp.
+
+Mọi sửa đổi làm trong repo, chạy `.\Chay CT\Kiem tra.cmd`, commit, rồi đóng gói
+lại và cài đè. Sửa trực tiếp vào bản đã cài thì thay đổi không có test bảo vệ,
+không vào git, và sẽ mất ở lần cài đè kế tiếp.
+
+Skill này chỉ chạy được khi thư mục dự án có sẵn: mã chạy và dữ liệu đều nằm
+trong repo, `.skill` không mang theo chúng.
+
+## Vị trí trong dây chuyền
+
+Dự án có hai skill nối tiếp nhau, đừng nhầm:
+
+1. **`sell-in-monthly`** — ERP → workbook `Sell in TMM_YYYY.xlsx` theo tháng →
+   CSV Looker → Google Drive.
+2. **`skill-bao-cao`** (skill này) — đọc các workbook tháng đó →
+   `Bao_Cao_Sell_in.xlsx` và dashboard Power BI.
+
+Nếu số trong báo cáo sai vì workbook tháng chưa cập nhật, đó là việc của skill
+`sell-in-monthly`; `pipeline_freshness.py` sẽ tự phát hiện và gọi lại chặng đó.
 
 ## Phạm vi
 
@@ -20,8 +45,9 @@ Tạo `Data/File bao cao/Excel/Bao_Cao_Sell_in.xlsx` với 13 sheet, đúng th�
   cáo chi tiết ba cấp Vùng → Khách hàng → Sản phẩm, có thể thu gọn.
 
 Đồng thời tạo `Data/File bao cao/PowerBI/Vikoda_SellIn_PowerBI.pbip` gồm semantic
-model và bốn trang `CEO | Tổng quan`, `Kế hoạch & dự báo`, `Vùng & miền`,
-`Khách hàng & sản phẩm`.
+model và sáu trang theo mạch DAR: `01. Tổng quan điều hành`, `02. Kênh & khách hàng`,
+`03. Sản phẩm & danh mục`, `04. Vùng miền & sản lượng`, `05. Chi tiết KH & SP`,
+`06. Kế hoạch & khuyến nghị`.
 
 Đọc reference liên quan trước khi thay đổi:
 

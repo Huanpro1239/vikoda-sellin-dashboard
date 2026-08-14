@@ -63,6 +63,10 @@ chạy tự động và cũng cần `@oai/artifact-tool`.
 - `Data/File bao cao`: file phục vụ báo cáo Excel/Power BI.
 - `Data/Logs`: nhật ký chạy ổn định cần lưu.
 - `Data/Work`: staging, preview, verification và file build tạm có thể tạo lại.
+- `Data/Work/sell_in/looker/Sell in tong hop.csv`: CSV gộp tất cả các tháng,
+  dựng lại mỗi lần chạy và chép lên Drive để làm nguồn Looker Studio. Đây là file
+  dẫn xuất, xóa được, lần chạy sau sẽ tạo lại từ các workbook trong
+  `Data/out put`.
 
 Ngoại lệ: `Data/Work/sell_in/new_customers` chứa quyết định duyệt và ghi chú của
 người dùng. Giữ thư mục này cho đến khi các dòng đã duyệt được áp dụng hoặc

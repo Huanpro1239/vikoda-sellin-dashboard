@@ -55,6 +55,19 @@ class CleanupWorkspaceTests(unittest.TestCase):
         write(root / "Data/File bao cao/PowerBI/Data/FactSellIn.csv")
         write(root / "Data/Work/bao_cao/data/staging/sell_in_data.json")
         write(root / "code/Skill/skill-bao-cao/scripts/build_powerbi_package.py")
+        write(root / "Chay CT/drive.conf", "folder_id = ABC\nremote = vikoda-drive\n")
+        write(root / "Data/Work/sell_in/staging/audit.json", "{}")
+
+        # Rác tái tạo được nhưng lại có đuôi .csv/.json: chỉ xóa được nhờ cờ
+        # allow_data_suffix, nên phải có mẫu để khóa đúng ranh giới đó.
+        write(root / "Data/Work/sell_in/looker/Sell in tong hop.csv", "KyBaoCao\n")
+        write(root / "Data/Work/sell_in/staging/sell_in_2026_07.json", "[]")
+        write(root / "Data/Work/sell_in/previews/Sell_in_T07_2026.png")
+        write(root / "Data/Work/sell_in/verification/looker_report.json", "{}")
+        write(
+            root / "Data/Work/sell_in/verification/verification_report_canonical.json",
+            "{}",
+        )
 
     def paths_of(self, report) -> set[str]:
         return {item.path.relative_to(self.root).as_posix() for item in report.candidates}
@@ -106,6 +119,36 @@ class CleanupWorkspaceTests(unittest.TestCase):
             "Data/File bao cao/Power bi",
         ):
             self.assertIn(junk, selected)
+
+    def test_chon_rac_tai_tao_duoc_co_duoi_du_lieu(self) -> None:
+        """Cờ `allow_data_suffix` phải mở đúng các mục đã khai báo."""
+        selected = self.paths_of(cleanup_workspace.collect(self.root))
+        for junk in (
+            "Data/Work/sell_in/looker/Sell in tong hop.csv",
+            "Data/Work/sell_in/staging/sell_in_2026_07.json",
+            "Data/Work/sell_in/previews/Sell_in_T07_2026.png",
+            "Data/Work/sell_in/verification/looker_report.json",
+            "Data/Work/sell_in/verification/verification_report_canonical.json",
+        ):
+            self.assertIn(junk, selected)
+
+    def test_co_allow_data_suffix_khong_lam_ro_ri_sang_cho_khac(self) -> None:
+        """Mở cờ cho vài mẫu không được kéo theo file dữ liệu lân cận.
+
+        `audit.json` nằm cùng thư mục staging nhưng `verify_outputs.py` còn đọc;
+        staging của pipeline báo cáo là đầu vào thật, không phải rác.
+        """
+        selected = self.paths_of(cleanup_workspace.collect(self.root))
+        for protected in (
+            "Data/Work/sell_in/staging/audit.json",
+            "Data/Work/bao_cao/data/staging/sell_in_data.json",
+        ):
+            self.assertNotIn(protected, selected)
+
+    def test_khong_dung_cau_hinh_dich_drive(self) -> None:
+        """Xóa drive.conf thì lần chạy sau tải file lên sai thư mục Drive."""
+        report = cleanup_workspace.collect(self.root)
+        self.assertNotIn("Chay CT/drive.conf", self.paths_of(report))
 
     def test_khong_liet_ke_file_nam_trong_thu_muc_da_chon(self) -> None:
         """.pyc bên trong __pycache__ đã chọn thì không được đếm lần nữa."""

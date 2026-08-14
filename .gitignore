@@ -9,6 +9,14 @@
 # nên tạm để nguyên chỗ cũ; nếu sau này đưa vào quy trình thì chuyển vào /Data/.
 /Chiet khau tra sau/
 
+# Cau hinh dich Drive rieng cua tung may. Thuong khong can, vi thu muc dung
+# chung da la mac dinh trong code; ai tao file nay la dang doi dich cho rieng may
+# do nen khong commit. Ban mau drive.conf.example thi van theo doi.
+/Chay CT/drive.conf
+
+# rclone.exe tai ve: file nhi phan ben thu ba, moi may tu tai.
+/.runtime/rclone/
+
 # Thư mục nháp của agent và runtime cục bộ
 /.codex_work/
 /.runtime/

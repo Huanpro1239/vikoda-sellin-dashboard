@@ -147,9 +147,68 @@ Các thư mục trong `Data/Work` có thể tạo lại, ngoại trừ
 `Data/Work/sell_in/new_customers` khi còn trạng thái hoặc ghi chú đang chờ áp
 dụng. Không dùng các file staging/preview làm nguồn dữ liệu chính thức.
 
-## 10. Google Drive
+## 10. Google Drive và nguồn dữ liệu Looker
 
-Đích mặc định: `G:/My Drive/Bao cao Sell in/Sell in hang thang`.
+Mỗi lần chạy, bước đồng bộ tải **toàn bộ** file `Sell in T*.xlsx` trong thư mục
+output lên Drive, kể cả các tháng `SKIP`, để Drive luôn là bản đầy đủ và khớp
+local. Bước này chạy dù không có tháng nào `REBUILD`.
 
-Chỉ chép các file `REBUILD` sau khi kiểm tra đạt. Không chép lại các file
-`SKIP`. Dùng `-SkipGoogleDrive` khi chỉ cần tạo và kiểm tra file cục bộ.
+Đích là thư mục Drive dùng chung, xác định bằng **folder ID**
+`1zJHdr3L9g9VAQVYM8KR_Bl0jpV2FClv5`, không phải đường dẫn ổ đĩa. Tải lên bằng
+`rclone` gọi Drive API, nên máy đích **không cần cài Google Drive for Desktop** và
+mọi máy chắc chắn đẩy vào đúng một thư mục.
+
+Dùng `rclone copy`, tuyệt đối không `sync`: `sync` sẽ xóa mọi thứ trong thư mục
+Drive mà local không có, kể cả Google Sheet đang dùng để vẽ Looker. `copy` cũng tự
+bỏ qua file không đổi, nên vẫn đối chiếu cả thư mục mà chỉ truyền phần khác — vì
+vậy tham số `-SyncChangedOnly` cũ đã bỏ.
+
+Thứ tự giải đích: `-DriveFolderId` → `TACH_DATA_DRIVE_FOLDER_ID` →
+`Chay CT/drive.conf` → mặc định trong `drive_sync.py`. Logic nằm ở `drive_sync.py`,
+dùng chung với luồng chuyển giao; luồng chính gọi qua CLI `sync_drive.py`.
+
+Sau khi tải, script gọi `rclone lsjson` đếm lại số file trong thư mục Drive và so
+với số mong đợi — không xem được Drive bằng mắt từ trong script nên đây là cách duy
+nhất biết file đã thật sự lên. Kết quả ghi ở
+`Data/Work/sell_in/verification/drive_sync_report.json`.
+
+Chưa cài rclone thì chỉ in hướng dẫn rồi vẫn hoàn tất lần tách data, vì file cục bộ
+đã đủ. Cách cài và cấu hình: `references/google-drive-rclone.md`.
+
+Kèm theo là một CSV gộp tất cả các tháng:
+
+- Tạo bởi `build_looker_dataset.py`, ghi ra
+  `Data/Work/sell_in/looker/Sell in tong hop.csv` rồi chép lên Drive.
+- Cột: `KyBaoCao` (YYYY-MM) + đúng 14 cột của `OUTPUT_COLUMNS`.
+- `NgayHoaDon` chuẩn hoá `YYYY-MM-DD`; số ghi thuần, không tách nghìn.
+- UTF-8 **không BOM**, kết dòng CRLF. Không để BOM vì Looker Studio sẽ dính ký
+  tự lạ vào tên cột đầu tiên.
+- Báo cáo đối soát: `Data/Work/sell_in/verification/looker_dataset_report.json`
+  (số dòng, tổng `SoLuong`, tổng `ThanhTien` theo từng kỳ).
+
+Lý do phải có CSV: Looker Studio **không** đọc được `.xlsx` trên Drive. Nguồn
+dùng được chỉ có Google Sheets, connector File Upload (CSV), hoặc BigQuery.
+
+Cách nối vào Looker, chọn một trong hai:
+
+1. **Google Sheets (khuyến nghị, tự cập nhật).** Tạo một Google Sheet, dùng
+   `Tệp > Nhập > chọn CSV trên Drive > Thay thế trang tính hiện tại`, rồi trong
+   Looker chọn connector Google Sheets. Mỗi tháng chỉ cần nhập lại đúng file đó,
+   báo cáo Looker giữ nguyên.
+2. **File Upload.** Tải CSV trực tiếp trong Looker Studio. Phải tải lại tay mỗi
+   lần dữ liệu đổi.
+
+Tuỳ chọn dòng lệnh:
+
+- `-SkipGoogleDrive`: chỉ tạo và kiểm tra file cục bộ, không tải lên Drive.
+- `-SkipLookerDataset`: không dựng CSV gộp.
+- `-LookerCsvName "<tên>.csv"`: đổi tên file CSV gộp.
+- `-DriveFolderId "<ID hoặc URL>"`: đổi thư mục Drive đích. Khi kiểm thử luôn
+  truyền tham số này để không ghi vào thư mục dùng chung thật.
+- `-RcloneRemote "<tên>"`, `-RclonePath "<đường dẫn>"`: đổi remote hoặc chỉ định
+  `rclone.exe`.
+
+Trên máy chuyển giao, tham số tương ứng là `--skip-google-drive`,
+`--skip-looker-dataset`, `--looker-csv-name`, `--drive-folder-id`,
+`--rclone-remote`, `--rclone`; hoặc đặt `TACH_DATA_SKIP_DRIVE=1`,
+`TACH_DATA_DRIVE_FOLDER_ID`, `TACH_DATA_RCLONE_REMOTE`, `TACH_DATA_RCLONE`.

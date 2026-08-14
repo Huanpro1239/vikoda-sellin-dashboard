@@ -33,6 +33,11 @@ class CleanupRule:
     reason: str
     patterns: tuple[str, ...]
     directories: bool = False
+    # Mac dinh chot chan thu hai tu choi moi file co duoi thuoc
+    # NEVER_TOUCH_SUFFIXES. Mot so rac tai tao duoc lai dung chinh nhung duoi do
+    # (.csv, .json trong Data/Work), nen phai bat co nay thi quy tac moi cham
+    # duoc. Bat co la hanh dong co y, doc code thay ngay, khong the vo tinh.
+    allow_data_suffix: bool = False
 
 
 CLEANUP_RULES: tuple[CleanupRule, ...] = (
@@ -79,6 +84,52 @@ CLEANUP_RULES: tuple[CleanupRule, ...] = (
         patterns=("Data/File bao cao/Power bi",),
         directories=True,
     ),
+    CleanupRule(
+        name="CSV gop nguon Looker",
+        reason=(
+            "Dung xuat ra Looker, dung lai duoc tu Data/out put trong ~30 giay. "
+            "Chiem ~19 MB nen khong nen giu khi sao chep du an."
+        ),
+        patterns=("Data/Work/sell_in/looker/*.csv",),
+        allow_data_suffix=True,
+    ),
+    CleanupRule(
+        name="Staging JSON cua thang Sell In",
+        reason=(
+            "Ban trung gian trong cung mot lan chay: extract_sources ghi ra, "
+            "build_outputs doc xong la het viec. Workbook trong Data/out put "
+            "moi la ban chinh thuc."
+        ),
+        # Chi lay sell_in_*.json. `audit.json` cung thu muc thi verify_outputs
+        # con doc, va staging cua bao_cao la dau vao cua pipeline bao cao —
+        # test_cleanup_workspace.py khoa ca hai thu do.
+        patterns=("Data/Work/sell_in/staging/sell_in_*.json",),
+        allow_data_suffix=True,
+    ),
+    CleanupRule(
+        name="Anh va report preview Sell In",
+        reason=(
+            "Chi de soi mat thuong sau khi dung file, khong script nao doc lai. "
+            "Can Node moi render lai duoc."
+        ),
+        patterns=(
+            "Data/Work/sell_in/previews/*.png",
+            "Data/Work/sell_in/previews/*.json",
+        ),
+        allow_data_suffix=True,
+    ),
+    CleanupRule(
+        name="Report doi soat cua lan chay truoc",
+        reason=(
+            "Moi lan chay ghi de lai. Giu lai ban cu chi gay nham khi doi soat, "
+            "vi khong biet so nao thuoc lan chay nao."
+        ),
+        patterns=(
+            "Data/Work/sell_in/verification/verification_report_canonical.json",
+            "Data/Work/sell_in/verification/looker_report.json",
+        ),
+        allow_data_suffix=True,
+    ),
 )
 
 # Hàng rào cứng. Bất kỳ ứng viên nào nằm trong (hoặc chính là) các đường dẫn
@@ -86,6 +137,11 @@ CLEANUP_RULES: tuple[CleanupRule, ...] = (
 PROTECTED_PATHS: tuple[str, ...] = (
     "Data/Logs/Tach data logs/incremental_state.json",
     "Data/Work/sell_in/new_customers",
+    # Cau hinh dich Drive rieng cua may nay. Xoa di thi lan chay sau day file
+    # len sai thu muc.
+    "Chay CT/drive.conf",
+    # rclone.exe va cau hinh remote: mat thi phai tai lai va dang nhap lai.
+    ".runtime/rclone",
     "Data/Data ERP",
     "Data/Target",
     "Data/Danh muc KH",
@@ -168,6 +224,7 @@ def collect(root: Path) -> CleanupReport:
                 # nguồn hay dữ liệu, trừ khi chính quy tắc đó nói rõ là PBIX.
                 if (
                     not rule.directories
+                    and not rule.allow_data_suffix
                     and path.suffix.lower() in NEVER_TOUCH_SUFFIXES
                     and ".tmp" not in path.name
                     and not path.name.startswith("~$")
