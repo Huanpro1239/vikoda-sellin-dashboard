@@ -38,20 +38,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: ⚙️ Kiểm tra dữ liệu và chạy Export (nếu có staging)
+      - name: ⚙️ Tự động chạy Tách data & Xuất dữ liệu Web
         run: |
-          if [ -f "Data/Work/bao_cao/data/staging/sell_in_data.json" ]; then
-            echo "Tim thay staging data, dang chay ETL..."
-            python code/Skill/skill-bao-cao/scripts/export_web_data.py --project-root .
-            git config --global user.name "Vikoda Automation Bot"
-            git config --global user.email "bot@vikoda.com.vn"
-            git add web/data/
-            if ! git diff --staged --quiet; then
-              git commit -m "🤖 Tự động cập nhật dữ liệu Web Dashboard [skip ci]"
-              git push
-            fi
-          else
-            echo "Su dung goi web/data hien tai da dong goi san."
+          python code/Skill/skill-bao-cao/scripts/run_cloud_pipeline.py --project-root .
+          git config --global user.name "Vikoda Automation Bot"
+          git config --global user.email "bot@vikoda.com.vn"
+          git add web/data/ Data/File\ bao\ cao/ Data/Work/ || true
+          if ! git diff --staged --quiet; then
+            git commit -m "🤖 Tự động Tách data & Cập nhật Web Dashboard [skip ci]"
+            git push
           fi
 
       - name: 🌐 Cấu hình GitHub Pages
