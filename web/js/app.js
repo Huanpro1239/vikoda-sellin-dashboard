@@ -17,16 +17,17 @@ class VikodaApp {
     try {
       this.initAuth();
       await window.dataEngine.load();
-      this.initDateSlicer();
-      this.initSidebarDropdowns();
-      this.initNavigation();
-      this.initFilterPills();
-      this.initTableControls();
 
       // Đăng ký nhận sự kiện khi bộ lọc thay đổi -> Tự động re-render tức thì
       window.dataEngine.subscribe(() => {
         this.render();
       });
+
+      this.initDateSlicer();
+      this.initSidebarDropdowns();
+      this.initNavigation();
+      this.initFilterPills();
+      this.initTableControls();
 
       // Lần render đầu tiên
       this.render();
