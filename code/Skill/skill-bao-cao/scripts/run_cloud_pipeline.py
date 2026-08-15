@@ -77,6 +77,14 @@ def run_pipeline(project_root: Path) -> None:
                     "--output-dir", str(output_dir),
                     "--period", period_key,
                 ], cwd=project_root)
+
+            # Sao chép các file tháng đã tách vào thư mục Data_Goc trên hệ thống / SharePoint
+            data_goc_dir = project_root / "Data/Data_Goc"
+            data_goc_dir.mkdir(parents=True, exist_ok=True)
+            for out_f in output_dir.glob("*.xlsx"):
+                import shutil
+                shutil.copy2(out_f, data_goc_dir / out_f.name)
+            print(f"  -> Da sao chep toan bo file Sell In Thang vao: {data_goc_dir.name}")
     else:
         print("Khong co file moi trong Data/Nguon/ hoac da co staging data san.")
 
