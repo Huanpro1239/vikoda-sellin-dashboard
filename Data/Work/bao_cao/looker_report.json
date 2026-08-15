@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-08-15T09:18:32",
-  "output_dir": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/File bao cao/Sell In Thang",
-  "csv_file": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/File bao cao/Sell in tong hop.csv",
+  "generated_at": "2026-08-15T17:03:22",
+  "output_dir": "D:\\Vikoda\\Bao cao Sell in\\Data\\File bao cao\\Sell In Thang",
+  "csv_file": "D:\\Vikoda\\Bao cao Sell in\\Data\\File bao cao\\Sell in tong hop.csv",
   "columns": [
     "KyBaoCao",
     "Vung",
@@ -21,9 +21,9 @@
   ],
   "encoding": "utf-8 (no BOM)",
   "workbook_count": 20,
-  "row_count": 104300,
-  "quantity_total": 155069375.0,
-  "amount_total": 689333562969.0,
+  "row_count": 104434,
+  "quantity_total": 156236940.0,
+  "amount_total": 694452311968.0,
   "periods": [
     {
       "period": "2025-01",
@@ -161,10 +161,10 @@
     {
       "period": "2026-08",
       "file": "Sell in T08_2026.xlsx",
-      "row_count": 3098,
-      "quantity_total": 5782423.08,
-      "amount_total": 27382879889.0
+      "row_count": 3232,
+      "quantity_total": 6949988.08,
+      "amount_total": 32501628888.0
     }
   ],
-  "size_bytes": 20655535
+  "size_bytes": 20679951
 }

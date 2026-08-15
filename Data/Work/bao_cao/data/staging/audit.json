@@ -1,125 +1,125 @@
 {
-  "source_dir": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/Data ERP",
+  "source_dir": "D:\\onedrive\\Vikoda\\Planning - Vikoda_Sales_Data\\Data ERP",
   "monthly_files": [
     {
       "year": 2025,
       "month": 1,
-      "staging_file": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/Work/bao_cao/data/staging/sell_in_2025_01.json",
+      "staging_file": "D:\\Vikoda\\Bao cao Sell in\\Data\\Work\\bao_cao\\data\\staging\\sell_in_2025_01.json",
       "output_rows": 5858
     },
     {
       "year": 2025,
       "month": 2,
-      "staging_file": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/Work/bao_cao/data/staging/sell_in_2025_02.json",
+      "staging_file": "D:\\Vikoda\\Bao cao Sell in\\Data\\Work\\bao_cao\\data\\staging\\sell_in_2025_02.json",
       "output_rows": 5196
     },
     {
       "year": 2025,
       "month": 3,
-      "staging_file": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/Work/bao_cao/data/staging/sell_in_2025_03.json",
+      "staging_file": "D:\\Vikoda\\Bao cao Sell in\\Data\\Work\\bao_cao\\data\\staging\\sell_in_2025_03.json",
       "output_rows": 5385
     },
     {
       "year": 2025,
       "month": 4,
-      "staging_file": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/Work/bao_cao/data/staging/sell_in_2025_04.json",
+      "staging_file": "D:\\Vikoda\\Bao cao Sell in\\Data\\Work\\bao_cao\\data\\staging\\sell_in_2025_04.json",
       "output_rows": 6173
     },
     {
       "year": 2025,
       "month": 5,
-      "staging_file": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/Work/bao_cao/data/staging/sell_in_2025_05.json",
+      "staging_file": "D:\\Vikoda\\Bao cao Sell in\\Data\\Work\\bao_cao\\data\\staging\\sell_in_2025_05.json",
       "output_rows": 6108
     },
     {
       "year": 2025,
       "month": 6,
-      "staging_file": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/Work/bao_cao/data/staging/sell_in_2025_06.json",
+      "staging_file": "D:\\Vikoda\\Bao cao Sell in\\Data\\Work\\bao_cao\\data\\staging\\sell_in_2025_06.json",
       "output_rows": 5405
     },
     {
       "year": 2025,
       "month": 7,
-      "staging_file": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/Work/bao_cao/data/staging/sell_in_2025_07.json",
+      "staging_file": "D:\\Vikoda\\Bao cao Sell in\\Data\\Work\\bao_cao\\data\\staging\\sell_in_2025_07.json",
       "output_rows": 5067
     },
     {
       "year": 2025,
       "month": 8,
-      "staging_file": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/Work/bao_cao/data/staging/sell_in_2025_08.json",
+      "staging_file": "D:\\Vikoda\\Bao cao Sell in\\Data\\Work\\bao_cao\\data\\staging\\sell_in_2025_08.json",
       "output_rows": 6127
     },
     {
       "year": 2025,
       "month": 9,
-      "staging_file": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/Work/bao_cao/data/staging/sell_in_2025_09.json",
+      "staging_file": "D:\\Vikoda\\Bao cao Sell in\\Data\\Work\\bao_cao\\data\\staging\\sell_in_2025_09.json",
       "output_rows": 4676
     },
     {
       "year": 2025,
       "month": 10,
-      "staging_file": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/Work/bao_cao/data/staging/sell_in_2025_10.json",
+      "staging_file": "D:\\Vikoda\\Bao cao Sell in\\Data\\Work\\bao_cao\\data\\staging\\sell_in_2025_10.json",
       "output_rows": 4941
     },
     {
       "year": 2025,
       "month": 11,
-      "staging_file": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/Work/bao_cao/data/staging/sell_in_2025_11.json",
+      "staging_file": "D:\\Vikoda\\Bao cao Sell in\\Data\\Work\\bao_cao\\data\\staging\\sell_in_2025_11.json",
       "output_rows": 4321
     },
     {
       "year": 2025,
       "month": 12,
-      "staging_file": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/Work/bao_cao/data/staging/sell_in_2025_12.json",
+      "staging_file": "D:\\Vikoda\\Bao cao Sell in\\Data\\Work\\bao_cao\\data\\staging\\sell_in_2025_12.json",
       "output_rows": 4264
     },
     {
       "year": 2026,
       "month": 1,
-      "staging_file": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/Work/bao_cao/data/staging/sell_in_2026_01.json",
+      "staging_file": "D:\\Vikoda\\Bao cao Sell in\\Data\\Work\\bao_cao\\data\\staging\\sell_in_2026_01.json",
       "output_rows": 4225
     },
     {
       "year": 2026,
       "month": 2,
-      "staging_file": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/Work/bao_cao/data/staging/sell_in_2026_02.json",
+      "staging_file": "D:\\Vikoda\\Bao cao Sell in\\Data\\Work\\bao_cao\\data\\staging\\sell_in_2026_02.json",
       "output_rows": 3594
     },
     {
       "year": 2026,
       "month": 3,
-      "staging_file": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/Work/bao_cao/data/staging/sell_in_2026_03.json",
+      "staging_file": "D:\\Vikoda\\Bao cao Sell in\\Data\\Work\\bao_cao\\data\\staging\\sell_in_2026_03.json",
       "output_rows": 5071
     },
     {
       "year": 2026,
       "month": 4,
-      "staging_file": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/Work/bao_cao/data/staging/sell_in_2026_04.json",
+      "staging_file": "D:\\Vikoda\\Bao cao Sell in\\Data\\Work\\bao_cao\\data\\staging\\sell_in_2026_04.json",
       "output_rows": 5400
     },
     {
       "year": 2026,
       "month": 5,
-      "staging_file": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/Work/bao_cao/data/staging/sell_in_2026_05.json",
+      "staging_file": "D:\\Vikoda\\Bao cao Sell in\\Data\\Work\\bao_cao\\data\\staging\\sell_in_2026_05.json",
       "output_rows": 4938
     },
     {
       "year": 2026,
       "month": 6,
-      "staging_file": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/Work/bao_cao/data/staging/sell_in_2026_06.json",
+      "staging_file": "D:\\Vikoda\\Bao cao Sell in\\Data\\Work\\bao_cao\\data\\staging\\sell_in_2026_06.json",
       "output_rows": 7168
     },
     {
       "year": 2026,
       "month": 7,
-      "staging_file": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/Work/bao_cao/data/staging/sell_in_2026_07.json",
+      "staging_file": "D:\\Vikoda\\Bao cao Sell in\\Data\\Work\\bao_cao\\data\\staging\\sell_in_2026_07.json",
       "output_rows": 7285
     },
     {
       "year": 2026,
       "month": 8,
-      "staging_file": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/Work/bao_cao/data/staging/sell_in_2026_08.json",
-      "output_rows": 3098
+      "staging_file": "D:\\Vikoda\\Bao cao Sell in\\Data\\Work\\bao_cao\\data\\staging\\sell_in_2026_08.json",
+      "output_rows": 3232
     }
   ],
   "source_audits": [
@@ -402,9 +402,9 @@
       "year": 2026,
       "sheet": "Sheet1",
       "header_row": 9,
-      "source_rows": 325,
+      "source_rows": 344,
       "excluded_blank": 0,
-      "excluded_customer_vkd3": 216,
+      "excluded_customer_vkd3": 235,
       "excluded_product_prefix": 11,
       "transformed_product_prefix": 0,
       "invalid_invoice_date": 0,
@@ -742,15 +742,15 @@
       "year": 2026,
       "sheet": "Sheet1",
       "header_row": 9,
-      "source_rows": 3407,
+      "source_rows": 3552,
       "excluded_blank": 0,
       "excluded_customer_vkd3": 0,
-      "excluded_product_prefix": 407,
-      "transformed_product_prefix": 3000,
+      "excluded_product_prefix": 418,
+      "transformed_product_prefix": 3134,
       "invalid_invoice_date": 0,
-      "output_rows": 3000,
-      "sum_quantity": 5730818.0,
-      "sum_revenue": 27185981887.0
+      "output_rows": 3134,
+      "sum_quantity": 6898383.0,
+      "sum_revenue": 32304730886.0
     },
     {
       "file": "BCDonHangBanTrongKyNPP_VKD_T9_2025.xlsm",

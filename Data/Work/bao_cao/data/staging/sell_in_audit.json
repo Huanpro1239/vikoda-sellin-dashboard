@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-08-15T09:17:55.970772+00:00",
-  "source_dir": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/File bao cao/Sell In Thang",
-  "data_file": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/Work/bao_cao/data/staging/sell_in_data.json",
+  "generated_at": "2026-08-15T17:02:47.025585+07:00",
+  "source_dir": "D:\\Vikoda\\Bao cao Sell in\\Data\\File bao cao\\Sell In Thang",
+  "data_file": "D:\\Vikoda\\Bao cao Sell in\\Data\\Work\\bao_cao\\data\\staging\\sell_in_data.json",
   "as_of_date": "2026-08-15",
   "expected_periods": [
     "202501",
@@ -760,10 +760,10 @@
     {
       "period": "202608",
       "file": "Sell in T08_2026.xlsx",
-      "source_rows": 3098,
-      "rows": 3003,
-      "quantity": "5696863.08",
-      "amount": 27110363883,
+      "source_rows": 3232,
+      "rows": 3137,
+      "quantity": "6864428.08",
+      "amount": 32229112882,
       "excluded_rows": 95,
       "excluded_quantity": "8.556E+4",
       "excluded_amount": 272516006,
@@ -778,9 +778,9 @@
         {
           "invoice_type": "Đơn hàng bán",
           "included": true,
-          "rows": 3003,
-          "quantity": "5696863.08",
-          "amount": 27110363883
+          "rows": 3137,
+          "quantity": "6864428.08",
+          "amount": 32229112882
         },
         {
           "invoice_type": "Đơn hàng sampling",
@@ -792,11 +792,11 @@
       ]
     }
   ],
-  "total_rows": 78973,
-  "total_source_rows": 86098,
+  "total_rows": 79107,
+  "total_source_rows": 86232,
   "total_excluded_rows": 7125,
-  "total_quantity": "116857281.00",
-  "total_amount": 538910941469,
+  "total_quantity": "118024846.00",
+  "total_amount": 544029690468,
   "total_excluded_quantity": "5529946",
   "total_excluded_amount": 4427264841,
   "warnings": [],

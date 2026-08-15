@@ -1,15 +1,15 @@
 [
   {
     "period": "2026-08",
-    "outputPath": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/File bao cao/Sell In Thang/Sell in T08_2026.xlsx",
-    "outputRows": 3098,
+    "outputPath": "D:\\Vikoda\\Bao cao Sell in\\Data\\File bao cao\\Sell In Thang\\Sell in T08_2026.xlsx",
+    "outputRows": 3232,
     "verification": {
-      "file": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/File bao cao/Sell In Thang/Sell in T08_2026.xlsx",
+      "file": "D:\\Vikoda\\Bao cao Sell in\\Data\\File bao cao\\Sell In Thang\\Sell in T08_2026.xlsx",
       "sheet_count": 1,
       "sheet_name": "Sell in",
       "headers_ok": true,
-      "row_count": 3098,
-      "expected_rows": 3098,
+      "row_count": 3232,
+      "expected_rows": 3232,
       "invalid_dates": 0,
       "invalid_product_prefix": 0,
       "nontext_product_codes": 0,
@@ -18,8 +18,8 @@
       "invalid_quantity_type": 0,
       "invalid_quantity_number_format": 0,
       "trailing_quantity_text": 0,
-      "sum_quantity": 5782423.08,
-      "sum_revenue": 27382879889.0,
+      "sum_quantity": 6949988.08,
+      "sum_revenue": 32501628888.0,
       "ok": true
     }
   }
