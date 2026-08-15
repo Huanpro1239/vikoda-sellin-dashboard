@@ -335,17 +335,16 @@ html, body {
 .date-inputs-row {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-bottom: 8px;
+  gap: 8px;
+  margin-bottom: 10px;
   width: 100%;
   box-sizing: border-box;
 }
 
 .date-field {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  flex-direction: column;
+  gap: 3px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -355,21 +354,17 @@ html, body {
   color: #475569;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
-  min-width: 58px;
-  flex-shrink: 0;
+  letter-spacing: 0.03em;
 }
 
 .date-input {
-  flex: 1;
   width: 100%;
-  min-width: 0;
   box-sizing: border-box;
-  padding: 5px 8px;
+  padding: 6px 10px;
   border: 1px solid #CBD5E1;
   border-radius: var(--radius-sm);
-  font-size: 11.5px;
-  font-weight: 600;
+  font-size: 12.5px;
+  font-weight: 700;
   color: #0F172A;
   background: #FFFFFF;
   font-family: inherit;
@@ -379,8 +374,8 @@ html, body {
 
 .date-input::-webkit-calendar-picker-indicator {
   cursor: pointer;
-  padding: 0;
-  margin-left: 4px;
+  padding: 2px;
+  margin-right: 2px;
 }
 
 .date-input:focus {
@@ -392,9 +387,30 @@ html, body {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 4px;
-  margin-top: 8px;
+  margin-top: 4px;
   width: 100%;
   box-sizing: border-box;
+}
+
+.quick-btn {
+  background: #F1F5F9;
+  border: 1px solid #CBD5E1;
+  color: #334155;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 5px 2px;
+  text-align: center;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.quick-btn:hover, .quick-btn.active {
+  background: var(--primary-blue);
+  color: #FFFFFF;
+  border-color: var(--primary-blue);
 }
 
 .quick-btn {
