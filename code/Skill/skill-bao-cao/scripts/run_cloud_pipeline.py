@@ -36,8 +36,11 @@ def run_pipeline(project_root: Path) -> None:
     scripts_sellin = project_root / "code/Skill/sell-in-monthly/scripts"
     scripts_baocao = project_root / "code/Skill/skill-bao-cao/scripts"
     
-    # Tự động tìm thư mục nguồn ERP (Data_ERP, DataERP, Data ERP, Data_Goc, Nguon)
+    # Tự động tìm thư mục nguồn ERP (SharePoint OneDrive, Data_ERP, Data ERP)
+    onedrive_base = Path("D:/onedrive/Vikoda/Planning - Vikoda_Sales_Data")
     source_candidates = [
+        onedrive_base / "Data ERP",
+        onedrive_base / "Data_ERP",
         project_root / "Data/Data_ERP",
         project_root / "Data/DataERP",
         project_root / "Data/Data ERP",
@@ -56,7 +59,7 @@ def run_pipeline(project_root: Path) -> None:
     web_dir = project_root / "web/data"
 
     print("============================================================")
-    print(f" 1/4 - TACH DU LIEU SELL IN TU ERP ({source_dir.name})")
+    print(f" 1/4 - TACH DU LIEU SELL IN TU ERP ({source_dir})")
     print("============================================================")
     has_sources = source_dir.exists() and any(
         f.suffix.lower() in [".xlsm", ".xlsx"] for f in source_dir.iterdir() if f.is_file()
@@ -89,13 +92,17 @@ def run_pipeline(project_root: Path) -> None:
                     "--period", period_key,
                 ], cwd=project_root)
 
-            # Sao chep cac file thang da tach vao thu muc Data_Goc tren he thong / SharePoint
-            data_goc_dir = project_root / "Data/Data_Goc"
-            data_goc_dir.mkdir(parents=True, exist_ok=True)
-            for out_f in output_dir.glob("*.xlsx"):
-                import shutil
-                shutil.copy2(out_f, data_goc_dir / out_f.name)
-            print(f"  -> Da sao chep toan bo file Sell In Thang vao: {data_goc_dir.name}")
+            # Sao chep cac file thang da tach vao thu muc Data_Goc tren he thong va tren SharePoint OneDrive
+            dest_dirs = [project_root / "Data/Data_Goc"]
+            if onedrive_base.exists():
+                dest_dirs.append(onedrive_base / "Data_Goc")
+
+            for d in dest_dirs:
+                d.mkdir(parents=True, exist_ok=True)
+                for out_f in output_dir.glob("*.xlsx"):
+                    import shutil
+                    shutil.copy2(out_f, d / out_f.name)
+                print(f"  -> Da sao chep toan bo file Sell In Thang vao: {d}")
     else:
         print("Khong co file moi trong Data/Nguon/ hoac da co staging data san.")
 
