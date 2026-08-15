@@ -131,7 +131,12 @@ class VikodaDataEngine {
       if (f.customerType && cust.type !== f.customerType) return false;
       if (f.systemMT && cust.system_mt !== f.systemMT) return false;
 
-      if (f.productGroup && prod.group !== f.productGroup) return false;
+      if (f.productGroup) {
+        let pg = prod.group;
+        if (pg === 'Khoáng ngọt Đảnh Thạnh') pg = 'Đảnh Thạnh';
+        const targetGroup = f.productGroup === 'Khoáng ngọt Đảnh Thạnh' ? 'Đảnh Thạnh' : f.productGroup;
+        if (pg !== targetGroup) return false;
+      }
       if (f.packUnit && prod.unit !== f.packUnit) return false;
       if (f.isVikoda !== null && prod.is_vikoda !== f.isVikoda) return false;
       if (f.isKDT !== null && prod.is_kdt !== f.isKDT) return false;
@@ -330,7 +335,8 @@ class VikodaDataEngine {
     const map = {};
     facts.forEach((r) => {
       const prod = this.products[r[2]] || {};
-      const group = prod.group || 'Khác';
+      let group = prod.group || 'Khác';
+      if (group === 'Khoáng ngọt Đảnh Thạnh') group = 'Đảnh Thạnh';
       map[group] = (map[group] || 0) + (r[4] || 0) / 1000000;
     });
 

@@ -584,7 +584,7 @@ class VikodaCharts {
         },
       },
       legend: {
-        data: ['Khoáng kiềm Vikoda', 'Khoáng ngọt Đảnh Thạnh', 'Tỷ trọng Vikoda (%)'],
+        data: ['Khoáng kiềm Vikoda', 'Đảnh Thạnh', 'Tỷ trọng Vikoda (%)'],
         bottom: 0,
         left: 'center',
         itemWidth: 12,
@@ -632,7 +632,7 @@ class VikodaCharts {
           },
         },
         {
-          name: 'Khoáng ngọt Đảnh Thạnh',
+          name: 'Đảnh Thạnh',
           type: 'bar',
           barMaxWidth: 22,
           data: data.dtSeries,
