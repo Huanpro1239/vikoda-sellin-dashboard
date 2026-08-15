@@ -48,12 +48,12 @@ class VikodaDataEngine {
     this.facts = this.raw.fact_sell_in || [];
     this.targets = this.raw.fact_target || [];
 
-    // Khởi tạo ngày mặc định: YTD 2026
+    // Khởi tạo ngày mặc định: MTD Tháng 8/2026 (Kỳ mới nhất)
     const curYear = this.metadata.current_year || 2026;
     const maxMonth = this.metadata.through_month ? String(this.metadata.through_month).padStart(2, '0') : '08';
-    this.filters.startDate = `${curYear}-01-01`;
+    this.filters.startDate = `${curYear}-${maxMonth}-01`;
     this.filters.endDate = `${curYear}-${maxMonth}-31`;
-    this.filters.periodMode = 'ytd';
+    this.filters.periodMode = 'mtd';
   }
 
   subscribe(callback) {

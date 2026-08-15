@@ -149,55 +149,74 @@ class VikodaApp {
     }
 
     if (monthSelect) {
+      monthSelect.value = window.dataEngine.filters.startDate.slice(0, 7);
       monthSelect.addEventListener('change', (e) => {
-        const val = e.target.value;
-        if (!val) return;
-        document.querySelectorAll('.quick-btn').forEach((b) => b.classList.remove('active'));
-        const start = `${val}-01`;
-        const end = `${val}-31`;
-        if (startInput) startInput.value = start;
-        if (endInput) endInput.value = end;
-        window.dataEngine.setDateRange(start, end, 'mtd');
+        this.setMonthPeriod(e.target.value);
       });
     }
 
     // Nút chọn nhanh MTD / QTD / YTD / Tất cả
     document.querySelectorAll('.quick-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
         const type = btn.getAttribute('data-quick');
-        const curYear = window.dataEngine.metadata.current_year || 2026;
-        const maxMonth = window.dataEngine.metadata.through_month ? String(window.dataEngine.metadata.through_month).padStart(2, '0') : '08';
-
-        document.querySelectorAll('.quick-btn').forEach((b) => b.classList.toggle('active', b.getAttribute('data-quick') === type));
-
-        let start = `${curYear}-01-01`;
-        let end = `${curYear}-${maxMonth}-31`;
-
-        if (type === 'mtd') {
-          start = `${curYear}-${maxMonth}-01`;
-          end = `${curYear}-${maxMonth}-31`;
-          if (monthSelect) monthSelect.value = `${curYear}-${maxMonth}`;
-        } else if (type === 'qtd') {
-          const m = parseInt(maxMonth, 10);
-          const qStartMonth = String(Math.floor((m - 1) / 3) * 3 + 1).padStart(2, '0');
-          start = `${curYear}-${qStartMonth}-01`;
-          end = `${curYear}-${maxMonth}-31`;
-          if (monthSelect) monthSelect.value = '';
-        } else if (type === 'ytd') {
-          start = `${curYear}-01-01`;
-          end = `${curYear}-${maxMonth}-31`;
-          if (monthSelect) monthSelect.value = '';
-        } else if (type === 'all') {
-          start = '2025-01-01';
-          end = `${curYear}-${maxMonth}-31`;
-          if (monthSelect) monthSelect.value = '';
-        }
-
-        if (startInput) startInput.value = start;
-        if (endInput) endInput.value = end;
-        window.dataEngine.setDateRange(start, end, type);
+        if (type) this.setQuickPeriod(type);
       });
     });
+  }
+
+  setQuickPeriod(type) {
+    const curYear = window.dataEngine.metadata.current_year || 2026;
+    const maxMonth = window.dataEngine.metadata.through_month ? String(window.dataEngine.metadata.through_month).padStart(2, '0') : '08';
+
+    let start = `${curYear}-01-01`;
+    let end = `${curYear}-${maxMonth}-31`;
+
+    const startInput = document.getElementById('filter_start_date');
+    const endInput = document.getElementById('filter_end_date');
+    const monthSelect = document.getElementById('select_month');
+
+    if (type === 'mtd') {
+      start = `${curYear}-${maxMonth}-01`;
+      end = `${curYear}-${maxMonth}-31`;
+      if (monthSelect) monthSelect.value = `${curYear}-${maxMonth}`;
+    } else if (type === 'qtd') {
+      const m = parseInt(maxMonth, 10);
+      const qStartMonth = String(Math.floor((m - 1) / 3) * 3 + 1).padStart(2, '0');
+      start = `${curYear}-${qStartMonth}-01`;
+      end = `${curYear}-${maxMonth}-31`;
+      if (monthSelect) monthSelect.value = '';
+    } else if (type === 'ytd') {
+      start = `${curYear}-01-01`;
+      end = `${curYear}-${maxMonth}-31`;
+      if (monthSelect) monthSelect.value = '';
+    } else if (type === 'all') {
+      start = '2025-01-01';
+      end = `${curYear}-${maxMonth}-31`;
+      if (monthSelect) monthSelect.value = '';
+    }
+
+    if (startInput) startInput.value = start;
+    if (endInput) endInput.value = end;
+
+    document.querySelectorAll('.quick-btn').forEach((b) => {
+      b.classList.toggle('active', b.getAttribute('data-quick') === type);
+    });
+
+    window.dataEngine.setDateRange(start, end, type);
+  }
+
+  setMonthPeriod(val) {
+    if (!val) return;
+    const start = `${val}-01`;
+    const end = `${val}-31`;
+    const startInput = document.getElementById('filter_start_date');
+    const endInput = document.getElementById('filter_end_date');
+    if (startInput) startInput.value = start;
+    if (endInput) endInput.value = end;
+
+    document.querySelectorAll('.quick-btn').forEach((b) => b.classList.remove('active'));
+    window.dataEngine.setDateRange(start, end, 'mtd');
   }
 
   // ------------------------------------------------------------------------
