@@ -132,20 +132,11 @@ class VikodaApp {
       startInput.value = window.dataEngine.filters.startDate || '';
       endInput.value = window.dataEngine.filters.endDate || '';
 
-      const handleDateChange = () => {
-        const s = startInput.value;
-        const e = endInput.value;
-        if (s && e) {
-          document.querySelectorAll('.quick-btn').forEach((b) => b.classList.remove('active'));
-          if (monthSelect) monthSelect.value = '';
-          window.dataEngine.setDateRange(s, e, 'custom');
-        }
-      };
-
-      startInput.addEventListener('input', handleDateChange);
-      startInput.addEventListener('change', handleDateChange);
-      endInput.addEventListener('input', handleDateChange);
-      endInput.addEventListener('change', handleDateChange);
+      const handleEvt = () => this.handleDateInput();
+      startInput.addEventListener('input', handleEvt);
+      startInput.addEventListener('change', handleEvt);
+      endInput.addEventListener('input', handleEvt);
+      endInput.addEventListener('change', handleEvt);
     }
 
     if (monthSelect) {
@@ -163,6 +154,29 @@ class VikodaApp {
         if (type) this.setQuickPeriod(type);
       });
     });
+  }
+
+  handleDateInput() {
+    const startInput = document.getElementById('filter_start_date');
+    const endInput = document.getElementById('filter_end_date');
+    const monthSelect = document.getElementById('select_month');
+
+    if (!startInput || !endInput) return;
+    const s = startInput.value;
+    const e = endInput.value;
+
+    if (!s || !e) return;
+
+    document.querySelectorAll('.quick-btn').forEach((b) => b.classList.remove('active'));
+    if (monthSelect) {
+      if (s.slice(0, 7) === e.slice(0, 7)) {
+        monthSelect.value = s.slice(0, 7);
+      } else {
+        monthSelect.value = '';
+      }
+    }
+
+    window.dataEngine.setDateRange(s, e, 'custom');
   }
 
   setQuickPeriod(type) {

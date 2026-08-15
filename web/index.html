@@ -8,7 +8,7 @@
   <meta http-equiv="Expires" content="0">
   <title>Báo Cáo Sell In Vikoda | Hệ Thống Quản Trị Doanh Số</title>
   <meta name="description" content="Dashboard điều hành bán hàng Sell In thông minh Vikoda - Phân tích đa chiều, tự động hóa dự báo & nhịp độ kinh doanh">
-  <link rel="stylesheet" href="css/style.css?v=20260815_15">
+  <link rel="stylesheet" href="css/style.css?v=20260815_16">
   
   <!-- CDN Thư viện ECharts và SheetJS (Xuất Excel) -->
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -113,11 +113,11 @@
           <div class="date-inputs-row">
             <div class="date-field">
               <label>Từ ngày</label>
-              <input type="date" id="filter_start_date" class="date-input">
+              <input type="date" id="filter_start_date" class="date-input" oninput="window.app.handleDateInput()" onchange="window.app.handleDateInput()">
             </div>
             <div class="date-field">
               <label>Đến ngày</label>
-              <input type="date" id="filter_end_date" class="date-input">
+              <input type="date" id="filter_end_date" class="date-input" oninput="window.app.handleDateInput()" onchange="window.app.handleDateInput()">
             </div>
           </div>
           
@@ -562,10 +562,10 @@
   </div>
 
   <!-- NẠP DỮ LIỆU & LOGIC -->
-  <script src="js/auth.js?v=20260815_15"></script>
-  <script src="data/dashboard_data.js?v=20260815_15"></script>
-  <script src="js/data-engine.js?v=20260815_15"></script>
-  <script src="js/charts.js?v=20260815_15"></script>
-  <script src="js/app.js?v=20260815_15"></script>
+  <script src="js/auth.js?v=20260815_16"></script>
+  <script src="data/dashboard_data.js?v=20260815_16"></script>
+  <script src="js/data-engine.js?v=20260815_16"></script>
+  <script src="js/charts.js?v=20260815_16"></script>
+  <script src="js/app.js?v=20260815_16"></script>
 </body>
 </html>
