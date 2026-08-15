@@ -39,8 +39,23 @@ jobs:
           pip install -r requirements.txt
 
       - name: ⚙️ Tự động chạy Tách data & Xuất dữ liệu Web
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          SHAREPOINT_SITE_ID: ${{ secrets.SHAREPOINT_SITE_ID }}
+          SHAREPOINT_DRIVE_ID: ${{ secrets.SHAREPOINT_DRIVE_ID }}
         run: |
+          # 1. Tự động tải file mới từ thư mục SharePoint 'Data ERP' (nếu có cấu hình Azure Secret)
+          python code/Skill/skill-bao-cao/scripts/sharepoint_graph_sync.py --action download --folder "Data ERP" --local-dir "Data/Data ERP" || true
+          
+          # 2. Chạy chuỗi Tách Data ERP & Phân bổ số liệu & Xuất Dashboard
           python code/Skill/skill-bao-cao/scripts/run_cloud_pipeline.py --project-root .
+          
+          # 3. Tự động đẩy các file Sell In tháng đã tách lên thư mục SharePoint 'Data_Goc'
+          python code/Skill/skill-bao-cao/scripts/sharepoint_graph_sync.py --action upload --folder "Data_Goc" --local-dir "Data/Data_Goc" || true
+          
+          # 4. Ghi nhận dữ liệu mới vào kho GitHub
           git config --global user.name "Vikoda Automation Bot"
           git config --global user.email "bot@vikoda.com.vn"
           git add web/data/ Data/File\ bao\ cao/ Data/Work/ || true
