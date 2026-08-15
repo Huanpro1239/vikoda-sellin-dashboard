@@ -1,5 +1,6 @@
 /**
  * VIKODA WEB DASHBOARD - MAIN APPLICATION CONTROLLER
+ * Điều khiển tương tác, điều hướng 6 trang, lọc tức thì và xuất báo cáo.
  */
 
 class VikodaApp {
@@ -22,7 +23,7 @@ class VikodaApp {
       this.initFilterPills();
       this.initTableControls();
 
-      // Đăng ký nhận sự kiện khi bộ lọc thay đổi
+      // Đăng ký nhận sự kiện khi bộ lọc thay đổi -> Tự động re-render tức thì
       window.dataEngine.subscribe(() => {
         this.render();
       });
@@ -30,7 +31,7 @@ class VikodaApp {
       // Lần render đầu tiên
       this.render();
     } catch (err) {
-      console.error('Loi khoi tao Dashboard:', err);
+      console.error('Lỗi khởi tạo Dashboard:', err);
     }
   }
 
@@ -43,7 +44,7 @@ class VikodaApp {
 
     if (!overlay || !form) return;
 
-    if (window.auth.isAuthenticated()) {
+    if (window.auth && window.auth.isAuthenticated()) {
       overlay.style.display = 'none';
       return;
     }
@@ -76,7 +77,7 @@ class VikodaApp {
       btn.addEventListener('click', (e) => {
         e.preventDefault();
         const targetPage = btn.getAttribute('data-page');
-        this.switchPage(targetPage);
+        if (targetPage) this.switchPage(targetPage);
       });
     });
 
@@ -87,7 +88,8 @@ class VikodaApp {
       mobileFilterBtn.addEventListener('click', () => {
         sidebar.classList.toggle('mobile-open');
         const isOpen = sidebar.classList.contains('mobile-open');
-        mobileFilterBtn.querySelector('span').innerText = isOpen ? 'Đóng lọc' : 'Bộ lọc';
+        const span = mobileFilterBtn.querySelector('span');
+        if (span) span.innerText = isOpen ? 'Đóng lọc' : 'Bộ lọc';
       });
     }
   }
@@ -118,7 +120,7 @@ class VikodaApp {
   }
 
   // ------------------------------------------------------------------------
-  // BỘ LỌC NGÀY THÁNG
+  // BỘ LỌC NGÀY THÁNG - PHẢN HỒI TỨC THÌ (INSTANT REACTIVE SLICER)
   // ------------------------------------------------------------------------
   initDateSlicer() {
     const startInput = document.getElementById('filter_start_date');
@@ -129,19 +131,28 @@ class VikodaApp {
       endInput.value = window.dataEngine.filters.endDate || '';
 
       const handleDateChange = () => {
-        window.dataEngine.setDateRange(startInput.value, endInput.value);
+        const s = startInput.value;
+        const e = endInput.value;
+        if (s && e) {
+          // Bỏ active của các nút quick
+          document.querySelectorAll('.quick-btn').forEach((b) => b.classList.remove('active'));
+          window.dataEngine.setDateRange(s, e, 'custom');
+        }
       };
 
+      // Bắt cả sự kiện 'input' và 'change' để phản hồi ngay khi chọn trên lịch
+      startInput.addEventListener('input', handleDateChange);
       startInput.addEventListener('change', handleDateChange);
+      endInput.addEventListener('input', handleDateChange);
       endInput.addEventListener('change', handleDateChange);
     }
 
-    // Nút chọn nhanh
+    // Nút chọn nhanh MTD / QTD / YTD / Tất cả
     document.querySelectorAll('.quick-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         const type = btn.getAttribute('data-quick');
-        const curYear = window.dataEngine.metadata.current_year || new Date().getFullYear();
-        const asOf = window.dataEngine.metadata.as_of_date || `${curYear}-12-31`;
+        const curYear = window.dataEngine.metadata.current_year || 2026;
+        const asOf = window.dataEngine.metadata.as_of_date || `${curYear}-08-11`;
 
         document.querySelectorAll('.quick-btn').forEach((b) => b.classList.remove('active'));
         btn.classList.add('active');
@@ -152,19 +163,23 @@ class VikodaApp {
         if (type === 'mtd') {
           const m = asOf.slice(5, 7);
           start = `${curYear}-${m}-01`;
+          end = asOf;
         } else if (type === 'qtd') {
           const m = parseInt(asOf.slice(5, 7), 10);
           const qStartMonth = String(Math.floor((m - 1) / 3) * 3 + 1).padStart(2, '0');
           start = `${curYear}-${qStartMonth}-01`;
+          end = asOf;
         } else if (type === 'ytd') {
           start = `${curYear}-01-01`;
+          end = asOf;
         } else if (type === 'all') {
           start = '2025-01-01';
+          end = asOf;
         }
 
         if (startInput) startInput.value = start;
         if (endInput) endInput.value = end;
-        window.dataEngine.setDateRange(start, end);
+        window.dataEngine.setDateRange(start, end, type);
       });
     });
   }
@@ -202,12 +217,17 @@ class VikodaApp {
     if (clearBtn) {
       clearBtn.addEventListener('click', () => {
         window.dataEngine.clearAllFilters();
+
+        // Đồng bộ lại UI Slicer
         const startInput = document.getElementById('filter_start_date');
         const endInput = document.getElementById('filter_end_date');
         if (startInput) startInput.value = window.dataEngine.filters.startDate;
         if (endInput) endInput.value = window.dataEngine.filters.endDate;
 
-        // Reset dropdowns
+        document.querySelectorAll('.quick-btn').forEach((b) => {
+          b.classList.toggle('active', b.getAttribute('data-quick') === 'ytd');
+        });
+
         const mienSelect = document.getElementById('select_mien');
         const channelSelect = document.getElementById('select_channel');
         const groupSelect = document.getElementById('select_group');
@@ -236,9 +256,28 @@ class VikodaApp {
     container.innerHTML = pills.map((p) => `
       <span class="filter-pill">
         ${p.label}
-        <span class="remove-pill" onclick="window.dataEngine.setFilter('${p.key}', null)">✕</span>
+        <span class="remove-pill" data-key="${p.key}">✕</span>
       </span>
     `).join('');
+
+    container.querySelectorAll('.remove-pill').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const k = btn.getAttribute('data-key');
+        window.dataEngine.setFilter(k, null);
+
+        // Sync dropdowns
+        if (k === 'mien') {
+          const s = document.getElementById('select_mien');
+          if (s) s.value = '';
+        } else if (k === 'channel') {
+          const s = document.getElementById('select_channel');
+          if (s) s.value = '';
+        } else if (k === 'productGroup') {
+          const s = document.getElementById('select_group');
+          if (s) s.value = '';
+        }
+      });
+    });
   }
 
   // ------------------------------------------------------------------------
@@ -256,17 +295,23 @@ class VikodaApp {
   updateKPIs() {
     const kpis = window.dataEngine.getSummaryKPIs();
 
-    // Actual MTD
+    // Actual MTD / Selected Period
     const elActual = document.getElementById('kpi_actual');
-    if (elActual) elActual.innerText = `${Math.round(kpis.actualMillion).toLocaleString()} Tr.đ`;
+    if (elActual) {
+      elActual.innerText = `${Math.round(kpis.actualMillion).toLocaleString()} Tr.đ`;
+      this.pulseElement(elActual);
+    }
 
     // Target Attainment
     const elAttain = document.getElementById('kpi_attainment');
     if (elAttain) elAttain.innerText = `${kpis.attainment.toFixed(1)}%`;
 
-    // Attainment Sub (Target Value)
+    // Attainment Sub (Target Value & Gap)
     const elAttainSub = document.getElementById('kpi_attainment_sub');
-    if (elAttainSub) elAttainSub.innerText = `Target: ${Math.round(kpis.targetMillion).toLocaleString()} Tr.đ`;
+    if (elAttainSub) {
+      const gapText = kpis.shortfall > 0 ? ` (Hụt: ${Math.round(kpis.shortfall).toLocaleString()} Tr)` : ' (Đạt kế hoạch)';
+      elAttainSub.innerText = `Target: ${Math.round(kpis.targetMillion).toLocaleString()} Tr.đ${gapText}`;
+    }
 
     // YoY Growth
     const elYoY = document.getElementById('kpi_yoy');
@@ -277,25 +322,46 @@ class VikodaApp {
 
     // YoY Sub
     const elYoYSub = document.getElementById('kpi_yoy_sub');
-    if (elYoYSub) elYoYSub.innerText = `Cùng kỳ: ${Math.round(kpis.lyMillion).toLocaleString()} Tr.đ`;
+    if (elYoYSub) {
+      const absText = kpis.yoyAbsolute >= 0 ? `+${Math.round(kpis.yoyAbsolute).toLocaleString()}` : `${Math.round(kpis.yoyAbsolute).toLocaleString()}`;
+      elYoYSub.innerText = `Cùng kỳ: ${Math.round(kpis.lyMillion).toLocaleString()} Tr.đ (${absText} Tr)`;
+    }
 
-    // Pacing & Run-rate
-    const elForecast = document.getElementById('kpi_forecast');
-    if (elForecast) elForecast.innerText = `${kpis.pacing.toFixed(0)}%`;
+    // Converted Volume (Sản lượng Két/Thùng/Bình)
+    const elVolume = document.getElementById('kpi_volume');
+    if (elVolume) {
+      elVolume.innerText = `${Math.round(kpis.totalConvertedQty).toLocaleString()} Két/Thùng`;
+      this.pulseElement(elVolume);
+    }
 
-    const elForecastSub = document.getElementById('kpi_forecast_sub');
-    if (elForecastSub) elForecastSub.innerText = `Dự báo: ${Math.round(kpis.runRateForecast).toLocaleString()} Tr.đ (${kpis.forecastAttainment.toFixed(0)}%)`;
+    const elVolumeSub = document.getElementById('kpi_volume_sub');
+    if (elVolumeSub) {
+      elVolumeSub.innerText = `Tăng trưởng SL: ${kpis.volumeYoY >= 0 ? '+' : ''}${kpis.volumeYoY.toFixed(1)}% vs CK`;
+    }
+
+    // Cập nhật nhãn trạng thái khoảng thời gian
+    const elPeriodInfo = document.getElementById('period_info_badge');
+    if (elPeriodInfo) {
+      elPeriodInfo.innerText = `📅 ${kpis.periodLabel}`;
+    }
+  }
+
+  pulseElement(el) {
+    el.classList.remove('number-pulse');
+    void el.offsetWidth;
+    el.classList.add('number-pulse');
   }
 
   renderActivePageCharts() {
     setTimeout(() => {
+      if (!window.charts) return;
       if (this.activePage === 'page_01') window.charts.renderPage1();
       else if (this.activePage === 'page_02') window.charts.renderPage2();
       else if (this.activePage === 'page_03') window.charts.renderPage3();
       else if (this.activePage === 'page_04') window.charts.renderPage4();
       else if (this.activePage === 'page_06') window.charts.renderPage6();
       window.charts.resizeAll();
-    }, 50);
+    }, 40);
   }
 
   // ------------------------------------------------------------------------
@@ -331,111 +397,129 @@ class VikodaApp {
   }
 
   renderTablePage() {
-    const tbody = document.getElementById('detail_table_tbody');
-    if (!tbody) return;
+    const tbody = document.getElementById('table_tbody');
+    const pageInfo = document.getElementById('table_page_info');
+    const searchInput = document.getElementById('table_search_input');
+    const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
     let rows = window.dataEngine.getDetailRows();
-    const query = (document.getElementById('table_search_input')?.value || '').toLowerCase().trim();
 
+    // Lọc theo tìm kiếm bảng
     if (query) {
       rows = rows.filter((r) =>
-        (r.custName || '').toLowerCase().includes(query) ||
-        (r.prodName || '').toLowerCase().includes(query) ||
-        (r.channel || '').toLowerCase().includes(query) ||
-        (r.vung || '').toLowerCase().includes(query) ||
-        (r.unit || '').toLowerCase().includes(query)
+        r.custName.toLowerCase().includes(query) ||
+        r.custCode.toLowerCase().includes(query) ||
+        r.prodName.toLowerCase().includes(query) ||
+        r.mien.toLowerCase().includes(query) ||
+        r.vung.toLowerCase().includes(query)
       );
     }
 
-    // Sắp xếp an toàn
+    // Sắp xếp
     rows.sort((a, b) => {
-      const va = a[this.tableSortCol] ?? '';
-      const vb = b[this.tableSortCol] ?? '';
-      if (typeof va === 'string' || typeof vb === 'string') {
-        const sa = String(va).toLowerCase();
-        const sb = String(vb).toLowerCase();
-        return this.tableSortAsc ? sa.localeCompare(sb) : sb.localeCompare(sa);
+      const vA = a[this.tableSortCol];
+      const vB = b[this.tableSortCol];
+      if (typeof vA === 'string') {
+        return this.tableSortAsc ? vA.localeCompare(vB) : vB.localeCompare(vA);
       }
-      return this.tableSortAsc ? Number(va) - Number(vb) : Number(vb) - Number(va);
+      return this.tableSortAsc ? vA - vB : vB - vA;
     });
 
     this.tableData = rows;
-    const totalRows = rows.length;
-    const totalPages = Math.max(1, Math.ceil(totalRows / this.tablePageSize));
+
+    // Phân trang
+    const total = rows.length;
+    const totalPages = Math.max(1, Math.ceil(total / this.tablePageSize));
     if (this.tablePage > totalPages) this.tablePage = totalPages;
-    if (this.tablePage < 1) this.tablePage = 1;
 
     const startIdx = (this.tablePage - 1) * this.tablePageSize;
-    const pageRows = rows.slice(startIdx, startIdx + this.tablePageSize);
+    const endIdx = Math.min(startIdx + this.tablePageSize, total);
+    const pagedRows = rows.slice(startIdx, endIdx);
 
-    if (pageRows.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="13" style="text-align: center; padding: 28px; color: #64748B; font-weight: 500;">Không có dữ liệu phù hợp với bộ lọc hiện tại.</td></tr>`;
-    } else {
-      tbody.innerHTML = pageRows.map((r, i) => `
-        <tr>
-          <td><strong>${startIdx + i + 1}</strong></td>
-          <td><strong>${r.custName || ''}</strong></td>
-          <td><span class="meta-badge">${r.channel || 'GT'}</span></td>
-          <td>${r.vung || ''}</td>
-          <td>${r.prodName || ''}</td>
-          <td>${r.unit || ''}</td>
-          <td class="num"><strong>${Number(r.actual || 0).toLocaleString()}</strong></td>
-          <td class="num">${Number(r.ly || 0).toLocaleString()}</td>
-          <td class="num" style="color: ${(r.yoy || 0) >= 0 ? '#16A34A' : '#DC2626'}; font-weight: 700;">${(r.yoy || 0) >= 0 ? '+' : ''}${r.yoy || 0}%</td>
-          <td class="num">${Number(r.qtyKet || 0).toLocaleString()}</td>
-          <td class="num">${Number(r.qtyThung || 0).toLocaleString()}</td>
-          <td class="num">${Number(r.qtyBinh || 0).toLocaleString()}</td>
-          <td class="num">${r.returnRate || 0}%</td>
-        </tr>
-      `).join('');
+    if (pageInfo) {
+      pageInfo.innerText = `Hiển thị ${startIdx + 1} - ${endIdx} trên tổng số ${total.toLocaleString()} dòng (Trang ${this.tablePage}/${totalPages})`;
     }
 
-    // Pagination info
-    const info = document.getElementById('table_page_info');
-    if (info) {
-      info.innerText = `Hiển thị ${totalRows > 0 ? startIdx + 1 : 0} - ${Math.min(startIdx + this.tablePageSize, totalRows)} trên tổng số ${totalRows.toLocaleString()} dòng (Trang ${this.tablePage}/${totalPages})`;
+    if (tbody) {
+      if (pagedRows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding: 24px; color: #94A3B8;">Không tìm thấy bản ghi nào phù hợp với bộ lọc.</td></tr>`;
+      } else {
+        tbody.innerHTML = pagedRows.map((r, i) => `
+          <tr>
+            <td>${startIdx + i + 1}</td>
+            <td><strong>${r.custName}</strong><br><small style="color:#64748B;">${r.custCode}</small></td>
+            <td><span class="meta-badge">${r.channel}</span></td>
+            <td>${r.mien} - ${r.vung}</td>
+            <td>${r.prodName}</td>
+            <td>${r.unit}</td>
+            <td class="num"><strong>${r.actual.toLocaleString()}</strong></td>
+            <td class="num">${r.ly.toLocaleString()}</td>
+            <td class="num" style="color: ${r.yoy >= 0 ? '#16A34A' : '#DC2626'}; font-weight: 700;">${r.yoy >= 0 ? '+' : ''}${r.yoy}%</td>
+            <td class="num">${(r.qtyKet + r.qtyThung + r.qtyBinh).toLocaleString()}</td>
+          </tr>
+        `).join('');
+      }
     }
 
-    const prevBtn = document.getElementById('btn_prev_page');
-    const nextBtn = document.getElementById('btn_next_page');
-    if (prevBtn) {
-      prevBtn.disabled = this.tablePage <= 1;
-      prevBtn.onclick = () => { if (this.tablePage > 1) { this.tablePage--; this.renderTablePage(); } };
+    // Cập nhật nút phân trang
+    this.renderPaginationControls(totalPages);
+  }
+
+  renderPaginationControls(totalPages) {
+    const container = document.getElementById('table_pagination');
+    if (!container) return;
+
+    let html = '';
+    html += `<button class="btn-page ${this.tablePage === 1 ? 'disabled' : ''}" onclick="window.app.setTablePage(${this.tablePage - 1})">‹ Trước</button>`;
+
+    for (let p = Math.max(1, this.tablePage - 2); p <= Math.min(totalPages, this.tablePage + 2); p++) {
+      html += `<button class="btn-page ${p === this.tablePage ? 'active' : ''}" onclick="window.app.setTablePage(${p})">${p}</button>`;
     }
-    if (nextBtn) {
-      nextBtn.disabled = this.tablePage >= totalPages;
-      nextBtn.onclick = () => { if (this.tablePage < totalPages) { this.tablePage++; this.renderTablePage(); } };
-    }
+
+    html += `<button class="btn-page ${this.tablePage === totalPages ? 'disabled' : ''}" onclick="window.app.setTablePage(${this.tablePage + 1})">Sau ›</button>`;
+    container.innerHTML = html;
+  }
+
+  setTablePage(p) {
+    if (p < 1 || p > Math.ceil(this.tableData.length / this.tablePageSize)) return;
+    this.tablePage = p;
+    this.renderTablePage();
   }
 
   exportTableToExcel() {
-    if (!window.XLSX || !this.tableData.length) return;
+    if (!window.XLSX || !this.tableData.length) {
+      alert('Không có dữ liệu để xuất Excel!');
+      return;
+    }
 
-    const exportRows = this.tableData.map((r) => ({
+    const exportRows = this.tableData.map((r, i) => ({
+      'STT': i + 1,
       'Mã Khách Hàng': r.custCode,
       'Tên Khách Hàng': r.custName,
-      'Kênh': r.channel,
+      'Kênh Phân Phối': r.channel,
       'Miền': r.mien,
       'Vùng': r.vung,
       'Tên Sản Phẩm': r.prodName,
       'Đơn Vị Tính': r.unit,
       'Doanh Thu Actual (Tr.đ)': r.actual,
-      'Doanh Thu Cùng Kỳ (Tr.đ)': r.ly,
+      'Doanh Thu LY (Tr.đ)': r.ly,
       'Tăng Trưởng YoY (%)': r.yoy,
       'SL Két': r.qtyKet,
       'SL Thùng': r.qtyThung,
       'SL Bình': r.qtyBinh,
-      'Tỷ Lệ Trả Hàng (%)': r.returnRate,
     }));
 
     const ws = XLSX.utils.json_to_sheet(exportRows);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Vikoda_SellIn_ChiTiet');
-    XLSX.writeFile(wb, `Vikoda_SellIn_ChiTiet_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, 'Chi_Tiet_Sell_In');
+
+    const f = window.dataEngine.filters;
+    const fileName = `Bao_Cao_Sell_In_Vikoda_${f.startDate}_den_${f.endDate}.xlsx`;
+    XLSX.writeFile(wb, fileName);
   }
 }
 
+window.app = new VikodaApp();
 document.addEventListener('DOMContentLoaded', () => {
-  window.app = new VikodaApp();
   window.app.init();
 });

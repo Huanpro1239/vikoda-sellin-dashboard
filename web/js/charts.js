@@ -1,5 +1,6 @@
 /**
- * VIKODA WEB DASHBOARD - APACHE ECHARTS BUILDER & CROSS-FILTERING BUS
+ * VIKODA WEB DASHBOARD - ADVANCED ECHARTS VISUALIZATION ENGINE
+ * Thiết kế giao diện biểu đồ điều hành cao cấp, thoáng đãng, sắc nét.
  */
 
 class VikodaCharts {
@@ -8,14 +9,20 @@ class VikodaCharts {
     this.instances = {};
     this.colors = {
       blue: '#2563EB',
+      blueLight: '#3B82F6',
       gray: '#94A3B8',
+      grayLight: '#CBD5E1',
       teal: '#0F766E',
+      tealLight: '#14B8A6',
       amber: '#D97706',
+      amberLight: '#F59E0B',
       red: '#DC2626',
+      redLight: '#EF4444',
       purple: '#7C3AED',
+      purpleLight: '#8B5CF6',
       cyan: '#0284C7',
-      sky: '#38BDF8',
-      palette: ['#2563EB', '#0F766E', '#D97706', '#7C3AED', '#0284C7', '#DC2626'],
+      cyanLight: '#38BDF8',
+      palette: ['#2563EB', '#0D9488', '#D97706', '#7C3AED', '#0284C7', '#DC2626'],
     };
 
     window.addEventListener('resize', () => this.resizeAll());
@@ -35,7 +42,7 @@ class VikodaCharts {
   }
 
   // ------------------------------------------------------------------------
-  // PAGE 01 CHARTS
+  // TRANG 01: TỔNG QUAN ĐIỀU HÀNH
   // ------------------------------------------------------------------------
   renderPage1() {
     this.renderP1Trend();
@@ -52,6 +59,7 @@ class VikodaCharts {
     const option = {
       tooltip: {
         trigger: 'axis',
+        axisPointer: { type: 'cross' },
         formatter: (params) => {
           let res = `<strong>${params[0].name}</strong><br/>`;
           params.forEach((p) => {
@@ -70,19 +78,75 @@ class VikodaCharts {
         itemHeight: 10,
         itemGap: 16,
         textStyle: { fontSize: 11, color: '#475569', fontWeight: 600 },
-        icon: 'circle'
+        icon: 'circle',
       },
       grid: { left: '3%', right: '3%', top: '36px', bottom: '40px', containLabel: true },
-      xAxis: { type: 'category', data: data.labels, axisLabel: { color: '#475569', fontSize: 11, fontWeight: 600 } },
+      xAxis: {
+        type: 'category',
+        data: data.labels,
+        axisLabel: { color: '#475569', fontSize: 11, fontWeight: 600 },
+        axisLine: { lineStyle: { color: '#E2E8F0' } },
+      },
       yAxis: [
-        { type: 'value', name: 'Triệu VNĐ', nameTextStyle: { color: '#64748B', fontSize: 11, padding: [0, 0, 4, 0] }, splitLine: { lineStyle: { color: '#F1F5F9' } }, axisLabel: { color: '#64748B', fontSize: 10 } },
-        { type: 'value', name: '% Đạt', nameTextStyle: { color: '#64748B', fontSize: 11, padding: [0, 0, 4, 0] }, splitLine: { show: false }, axisLabel: { color: '#0F766E', fontSize: 10, formatter: '{value}%' } },
+        {
+          type: 'value',
+          name: 'Doanh thu (Tr.đ)',
+          nameTextStyle: { color: '#64748B', fontSize: 11, padding: [0, 0, 4, 0] },
+          splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } },
+          axisLabel: { color: '#64748B', fontSize: 10 },
+        },
+        {
+          type: 'value',
+          name: '% Đạt',
+          nameTextStyle: { color: '#64748B', fontSize: 11, padding: [0, 0, 4, 0] },
+          splitLine: { show: false },
+          axisLabel: { color: '#0F766E', fontSize: 10, formatter: '{value}%' },
+        },
       ],
       series: [
-        { name: 'Doanh thu Actual', type: 'bar', barMaxWidth: 24, data: data.actualSeries, itemStyle: { color: this.colors.blue, borderRadius: [4, 4, 0, 0] } },
-        { name: 'Doanh thu LY', type: 'bar', barMaxWidth: 24, data: data.lySeries, itemStyle: { color: this.colors.gray, borderRadius: [4, 4, 0, 0] } },
-        { name: 'Target', type: 'line', data: data.targetSeries, lineStyle: { color: this.colors.amber, width: 2, type: 'dashed' }, itemStyle: { color: this.colors.amber } },
-        { name: '% Đạt Target', type: 'line', yAxisIndex: 1, data: data.attainmentSeries, lineStyle: { color: this.colors.teal, width: 2 }, itemStyle: { color: this.colors.teal } },
+        {
+          name: 'Doanh thu Actual',
+          type: 'bar',
+          barMaxWidth: 24,
+          data: data.actualSeries,
+          itemStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: this.colors.blueLight },
+              { offset: 1, color: this.colors.blue },
+            ]),
+            borderRadius: [4, 4, 0, 0],
+          },
+        },
+        {
+          name: 'Doanh thu LY',
+          type: 'bar',
+          barMaxWidth: 24,
+          data: data.lySeries,
+          itemStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: this.colors.grayLight },
+              { offset: 1, color: this.colors.gray },
+            ]),
+            borderRadius: [4, 4, 0, 0],
+          },
+        },
+        {
+          name: 'Target',
+          type: 'line',
+          data: data.targetSeries,
+          lineStyle: { color: this.colors.amber, width: 2, type: 'dashed' },
+          itemStyle: { color: this.colors.amber },
+        },
+        {
+          name: '% Đạt Target',
+          type: 'line',
+          yAxisIndex: 1,
+          data: data.attainmentSeries,
+          lineStyle: { color: this.colors.teal, width: 2.5 },
+          itemStyle: { color: this.colors.teal },
+          symbol: 'circle',
+          symbolSize: 6,
+        },
       ],
     };
     chart.setOption(option);
@@ -95,7 +159,7 @@ class VikodaCharts {
 
     const option = {
       tooltip: { trigger: 'item', formatter: '{b}: <strong>{c} Tr.đ</strong> ({d}%)' },
-      legend: { bottom: 0, icon: 'circle' },
+      legend: { bottom: 0, icon: 'circle', itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#475569' } },
       color: [this.colors.blue, this.colors.cyan, this.colors.amber],
       series: [{
         type: 'pie',
@@ -107,11 +171,8 @@ class VikodaCharts {
     };
     chart.setOption(option);
 
-    // Cross-filtering
     chart.off('click');
-    chart.on('click', (params) => {
-      this.engine.setFilter('productGroup', params.name);
-    });
+    chart.on('click', (params) => this.engine.setFilter('productGroup', params.name));
   }
 
   renderP1ChannelMix() {
@@ -121,7 +182,7 @@ class VikodaCharts {
 
     const option = {
       tooltip: { trigger: 'item', formatter: '{b}: <strong>{c} Tr.đ</strong> ({d}%)' },
-      legend: { bottom: 0, icon: 'circle' },
+      legend: { bottom: 0, icon: 'circle', itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#475569' } },
       color: [this.colors.blue, this.colors.teal, this.colors.purple, this.colors.amber, this.colors.gray],
       series: [{
         type: 'pie',
@@ -133,11 +194,8 @@ class VikodaCharts {
     };
     chart.setOption(option);
 
-    // Cross-filtering
     chart.off('click');
-    chart.on('click', (params) => {
-      this.engine.setFilter('channel', params.name);
-    });
+    chart.on('click', (params) => this.engine.setFilter('channel', params.name));
   }
 
   renderP1Waterfall() {
@@ -146,29 +204,54 @@ class VikodaCharts {
     const data = this.engine.getRegionGapWaterfall();
 
     const option = {
-      tooltip: { trigger: 'axis', formatter: (p) => `${p[0].name}: <strong>${p[0].value.toLocaleString()} Tr.đ</strong>` },
-      grid: { left: '3%', right: '4%', bottom: '8%', top: '10%', containLabel: true },
-      xAxis: { type: 'category', data: data.map((d) => d.name) },
-      yAxis: { type: 'value', name: 'Gap Target (Tr.đ)', splitLine: { lineStyle: { color: '#F1F5F9' } } },
+      tooltip: {
+        trigger: 'axis',
+        formatter: (p) => `${p[0].name}: <strong>${p[0].value.toLocaleString()} Tr.đ</strong> (${p[0].value >= 0 ? 'Vượt Target' : 'Hụt Target'})`,
+      },
+      grid: { left: '3%', right: '3%', bottom: '8%', top: '36px', containLabel: true },
+      xAxis: {
+        type: 'category',
+        data: data.map((d) => d.name),
+        axisLabel: { color: '#475569', fontSize: 11, fontWeight: 600 },
+        axisLine: { lineStyle: { color: '#E2E8F0' } },
+      },
+      yAxis: {
+        type: 'value',
+        name: 'Chênh lệch Target (Tr.đ)',
+        nameTextStyle: { color: '#64748B', fontSize: 11, padding: [0, 0, 4, 0] },
+        splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } },
+        axisLabel: { color: '#64748B', fontSize: 10 },
+      },
       series: [{
         type: 'bar',
+        barMaxWidth: 26,
         data: data.map((d) => ({
           value: d.value,
-          itemStyle: { color: d.value >= 0 ? this.colors.teal : this.colors.red, borderRadius: [4, 4, 0, 0] },
+          itemStyle: {
+            color: d.value >= 0
+              ? new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#14B8A6' }, { offset: 1, color: '#0F766E' }])
+              : new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#F87171' }, { offset: 1, color: '#DC2626' }]),
+            borderRadius: [4, 4, 0, 0],
+          },
         })),
+        label: {
+          show: true,
+          position: 'top',
+          formatter: (p) => `${p.value > 0 ? '+' : ''}${p.value.toLocaleString()}`,
+          fontSize: 10,
+          fontWeight: 700,
+          color: '#334155',
+        },
       }],
     };
     chart.setOption(option);
 
-    // Cross-filtering
     chart.off('click');
-    chart.on('click', (params) => {
-      this.engine.setFilter('mien', params.name);
-    });
+    chart.on('click', (params) => this.engine.setFilter('mien', params.name));
   }
 
   // ------------------------------------------------------------------------
-  // PAGE 02 CHARTS
+  // TRANG 02: KÊNH & KHÁCH HÀNG
   // ------------------------------------------------------------------------
   renderPage2() {
     this.renderP2Channel();
@@ -185,7 +268,7 @@ class VikodaCharts {
     const option = {
       tooltip: {
         trigger: 'axis',
-        axisPointer: { type: 'cross' }
+        axisPointer: { type: 'cross' },
       },
       legend: {
         data: ['Doanh thu Actual', 'Doanh thu LY', 'Tăng trưởng YoY %'],
@@ -195,14 +278,14 @@ class VikodaCharts {
         itemHeight: 10,
         itemGap: 16,
         textStyle: { fontSize: 11, color: '#475569', fontWeight: 600 },
-        icon: 'circle'
+        icon: 'circle',
       },
       grid: { left: '3%', right: '3%', top: '36px', bottom: '40px', containLabel: true },
       xAxis: {
         type: 'category',
         data: data.categories,
         axisLabel: { color: '#475569', fontWeight: 600, fontSize: 11 },
-        axisLine: { lineStyle: { color: '#E2E8F0' } }
+        axisLine: { lineStyle: { color: '#E2E8F0' } },
       },
       yAxis: [
         {
@@ -210,15 +293,15 @@ class VikodaCharts {
           name: 'Doanh thu (Tr.đ)',
           nameTextStyle: { color: '#64748B', fontSize: 11, padding: [0, 0, 4, 0] },
           splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } },
-          axisLabel: { color: '#64748B', fontSize: 10 }
+          axisLabel: { color: '#64748B', fontSize: 10 },
         },
         {
           type: 'value',
           name: 'YoY %',
           nameTextStyle: { color: '#64748B', fontSize: 11, padding: [0, 0, 4, 0] },
           splitLine: { show: false },
-          axisLabel: { color: '#D97706', fontSize: 10, formatter: '{value}%' }
-        }
+          axisLabel: { color: '#D97706', fontSize: 10, formatter: '{value}%' },
+        },
       ],
       series: [
         {
@@ -229,10 +312,10 @@ class VikodaCharts {
           itemStyle: {
             color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
               { offset: 0, color: '#3B82F6' },
-              { offset: 1, color: '#1D4ED8' }
+              { offset: 1, color: '#1D4ED8' },
             ]),
-            borderRadius: [4, 4, 0, 0]
-          }
+            borderRadius: [4, 4, 0, 0],
+          },
         },
         {
           name: 'Doanh thu LY',
@@ -242,10 +325,10 @@ class VikodaCharts {
           itemStyle: {
             color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
               { offset: 0, color: '#CBD5E1' },
-              { offset: 1, color: '#94A3B8' }
+              { offset: 1, color: '#94A3B8' },
             ]),
-            borderRadius: [4, 4, 0, 0]
-          }
+            borderRadius: [4, 4, 0, 0],
+          },
         },
         {
           name: 'Tăng trưởng YoY %',
@@ -255,7 +338,7 @@ class VikodaCharts {
           itemStyle: { color: '#F59E0B' },
           lineStyle: { width: 2.5, color: '#F59E0B' },
           symbol: 'circle',
-          symbolSize: 6
+          symbolSize: 6,
         },
       ],
     };
@@ -273,12 +356,29 @@ class VikodaCharts {
     const option = {
       tooltip: { trigger: 'axis', formatter: (p) => `${p[0].name}: <strong>${p[0].value.toLocaleString()} Tr.đ</strong>` },
       grid: { left: '3%', right: '6%', bottom: '5%', top: '5%', containLabel: true },
-      xAxis: { type: 'value', name: 'Triệu VNĐ' },
-      yAxis: { type: 'category', data: data.map((d) => d.name).reverse() },
+      xAxis: {
+        type: 'value',
+        name: 'Triệu VNĐ',
+        splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } },
+        axisLabel: { color: '#64748B', fontSize: 10 },
+      },
+      yAxis: {
+        type: 'category',
+        data: data.map((d) => d.name).reverse(),
+        axisLabel: { color: '#475569', fontSize: 11 },
+        axisLine: { lineStyle: { color: '#E2E8F0' } },
+      },
       series: [{
         type: 'bar',
+        barMaxWidth: 18,
         data: data.map((d) => d.value).reverse(),
-        itemStyle: { color: this.colors.cyan, borderRadius: [0, 4, 4, 0] },
+        itemStyle: {
+          color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [
+            { offset: 0, color: '#38BDF8' },
+            { offset: 1, color: '#0284C7' },
+          ]),
+          borderRadius: [0, 4, 4, 0],
+        },
       }],
     };
     chart.setOption(option);
@@ -302,7 +402,7 @@ class VikodaCharts {
             html += `${p.marker} ${p.seriesName}: <strong>${p.value.toLocaleString()} KH</strong><br/>`;
           });
           return html;
-        }
+        },
       },
       legend: {
         data: ['Khách hàng Mới', 'Ngừng mua (Churn)'],
@@ -312,62 +412,62 @@ class VikodaCharts {
         itemHeight: 10,
         itemGap: 20,
         textStyle: { fontSize: 11, color: '#475569', fontWeight: 600 },
-        icon: 'circle'
+        icon: 'circle',
       },
       grid: { left: '3%', right: '3%', top: '36px', bottom: '40px', containLabel: true },
       xAxis: {
         type: 'category',
         data: data.channels,
         axisLabel: { color: '#475569', fontWeight: 600, fontSize: 11 },
-        axisLine: { lineStyle: { color: '#E2E8F0' } }
+        axisLine: { lineStyle: { color: '#E2E8F0' } },
       },
       yAxis: {
         type: 'value',
         name: 'Số lượng KH (NPP/ĐL)',
         nameTextStyle: { color: '#64748B', fontSize: 11, padding: [0, 0, 4, 0] },
         splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } },
-        axisLabel: { color: '#64748B', fontSize: 10 }
+        axisLabel: { color: '#64748B', fontSize: 10 },
       },
       series: [
         {
           name: 'Khách hàng Mới',
           type: 'bar',
-          barMaxWidth: 26,
+          barMaxWidth: 24,
           data: data.newCustomers,
           itemStyle: {
             color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
               { offset: 0, color: '#14B8A6' },
-              { offset: 1, color: '#0D9488' }
+              { offset: 1, color: '#0D9488' },
             ]),
-            borderRadius: [4, 4, 0, 0]
+            borderRadius: [4, 4, 0, 0],
           },
           label: {
             show: true,
             position: 'top',
             color: '#0F766E',
             fontSize: 10,
-            fontWeight: 700
-          }
+            fontWeight: 700,
+          },
         },
         {
           name: 'Ngừng mua (Churn)',
           type: 'bar',
-          barMaxWidth: 26,
+          barMaxWidth: 24,
           data: data.churnCustomers,
           itemStyle: {
             color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
               { offset: 0, color: '#F87171' },
-              { offset: 1, color: '#DC2626' }
+              { offset: 1, color: '#DC2626' },
             ]),
-            borderRadius: [4, 4, 0, 0]
+            borderRadius: [4, 4, 0, 0],
           },
           label: {
             show: true,
             position: 'top',
             color: '#B91C1C',
             fontSize: 10,
-            fontWeight: 700
-          }
+            fontWeight: 700,
+          },
         },
       ],
     };
@@ -394,44 +494,56 @@ class VikodaCharts {
   }
 
   // ------------------------------------------------------------------------
-  // PAGE 03 CHARTS
+  // TRANG 03: SẢN PHẨM & DANH MỤC
   // ------------------------------------------------------------------------
   renderPage3() {
-    this.renderP3Trend();
-    this.renderP3Brand();
-    this.renderP3HeroSKUs();
-    this.renderP3DecliningSKUs();
+    this.renderP3VikodaVsKDT();
+    this.renderP3BrandMix();
+    this.renderP3HeroSKU();
+    this.renderP3DecliningSKU();
   }
 
-  renderP3Trend() {
+  renderP3VikodaVsKDT() {
     const chart = this.getOrCreate('chart_p3_trend');
     if (!chart) return;
     const data = this.engine.getVikodaVsKDTTrend();
 
     const option = {
-      tooltip: { trigger: 'axis' },
-      legend: { data: ['Vikoda Core', 'KDT Thương mại', 'Tỷ trọng Vikoda %'], top: 0 },
-      grid: { left: '3%', right: '4%', bottom: '8%', top: '15%', containLabel: true },
-      xAxis: { type: 'category', data: data.labels },
-      yAxis: [{ type: 'value', name: 'Triệu VNĐ' }, { type: 'value', name: '%', max: 100 }],
+      tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+      legend: {
+        data: ['Doanh thu Khoáng Kiềm Vikoda', 'Doanh thu Khoáng Ngọt Đảnh Thạnh', 'Tỷ trọng Vikoda %'],
+        bottom: 0,
+        left: 'center',
+        itemWidth: 10,
+        itemHeight: 10,
+        itemGap: 16,
+        textStyle: { fontSize: 11, color: '#475569', fontWeight: 600 },
+        icon: 'circle',
+      },
+      grid: { left: '3%', right: '3%', top: '36px', bottom: '40px', containLabel: true },
+      xAxis: { type: 'category', data: data.labels, axisLabel: { color: '#475569', fontSize: 11, fontWeight: 600 } },
+      yAxis: [
+        { type: 'value', name: 'Triệu VNĐ', splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } }, axisLabel: { color: '#64748B', fontSize: 10 } },
+        { type: 'value', name: '% Tỷ trọng', splitLine: { show: false }, axisLabel: { color: '#0284C7', fontSize: 10, formatter: '{value}%' } },
+      ],
       series: [
-        { name: 'Vikoda Core', type: 'line', stack: 'total', areaStyle: { color: 'rgba(37, 99, 235, 0.2)' }, itemStyle: { color: this.colors.blue }, data: data.vikodaSeries },
-        { name: 'KDT Thương mại', type: 'line', stack: 'total', areaStyle: { color: 'rgba(15, 118, 110, 0.2)' }, itemStyle: { color: this.colors.teal }, data: data.kdtSeries },
-        { name: 'Tỷ trọng Vikoda %', type: 'line', yAxisIndex: 1, lineStyle: { color: this.colors.amber, width: 2 }, itemStyle: { color: this.colors.amber }, data: data.vikodaShareSeries },
+        { name: 'Doanh thu Khoáng Kiềm Vikoda', type: 'bar', barMaxWidth: 24, data: data.vikodaSeries, itemStyle: { color: this.colors.blue, borderRadius: [4, 4, 0, 0] } },
+        { name: 'Doanh thu Khoáng Ngọt Đảnh Thạnh', type: 'bar', barMaxWidth: 24, data: data.kdtSeries, itemStyle: { color: this.colors.amber, borderRadius: [4, 4, 0, 0] } },
+        { name: 'Tỷ trọng Vikoda %', type: 'line', yAxisIndex: 1, data: data.vikodaShareSeries, lineStyle: { width: 2.5, color: this.colors.cyan }, itemStyle: { color: this.colors.cyan } },
       ],
     };
     chart.setOption(option);
   }
 
-  renderP3Brand() {
+  renderP3BrandMix() {
     const chart = this.getOrCreate('chart_p3_brand');
     if (!chart) return;
     const data = this.engine.getBrandMix();
 
     const option = {
       tooltip: { trigger: 'item', formatter: '{b}: <strong>{c} Tr.đ</strong> ({d}%)' },
-      legend: { bottom: 0, icon: 'circle' },
-      color: this.colors.palette,
+      legend: { bottom: 0, icon: 'circle', itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#475569' } },
+      color: [this.colors.blue, this.colors.cyan, this.colors.amber, this.colors.purple],
       series: [{
         type: 'pie',
         radius: ['45%', '70%'],
@@ -443,75 +555,92 @@ class VikodaCharts {
     chart.setOption(option);
   }
 
-  renderP3HeroSKUs() {
+  renderP3HeroSKU() {
     const chart = this.getOrCreate('chart_p3_hero_skus');
     if (!chart) return;
-    const data = this.engine.getHeroSKUs(10);
+    const data = this.engine.getHeroSKUs(8);
 
     const option = {
       tooltip: { trigger: 'axis', formatter: (p) => `${p[0].name}: <strong>${p[0].value.toLocaleString()} Tr.đ</strong>` },
       grid: { left: '3%', right: '6%', bottom: '5%', top: '5%', containLabel: true },
-      xAxis: { type: 'value', name: 'Triệu VNĐ' },
-      yAxis: { type: 'category', data: data.map((d) => d.name).reverse() },
+      xAxis: { type: 'value', name: 'Triệu VNĐ', splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } }, axisLabel: { color: '#64748B', fontSize: 10 } },
+      yAxis: { type: 'category', data: data.map((d) => d.name).reverse(), axisLabel: { color: '#475569', fontSize: 11 } },
       series: [{
         type: 'bar',
+        barMaxWidth: 18,
         data: data.map((d) => d.value).reverse(),
-        itemStyle: { color: this.colors.blue, borderRadius: [0, 4, 4, 0] },
+        itemStyle: {
+          color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [{ offset: 0, color: '#3B82F6' }, { offset: 1, color: '#1D4ED8' }]),
+          borderRadius: [0, 4, 4, 0],
+        },
       }],
     };
     chart.setOption(option);
   }
 
-  renderP3DecliningSKUs() {
+  renderP3DecliningSKU() {
     const chart = this.getOrCreate('chart_p3_declining_skus');
     if (!chart) return;
-    const data = this.engine.getDecliningSKUs(10);
+    const data = this.engine.getDecliningSKUs(8);
 
     const option = {
-      tooltip: { trigger: 'axis', formatter: (p) => `${p[0].name}: <strong>${p[0].value}%</strong>` },
+      tooltip: { trigger: 'axis', formatter: (p) => `${p[0].name}: <strong>${p[0].value}% YoY</strong>` },
       grid: { left: '3%', right: '6%', bottom: '5%', top: '5%', containLabel: true },
-      xAxis: { type: 'value', name: 'YoY %' },
-      yAxis: { type: 'category', data: data.map((d) => d.name).reverse() },
+      xAxis: { type: 'value', name: 'Tăng trưởng YoY (%)', splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } }, axisLabel: { color: '#64748B', fontSize: 10, formatter: '{value}%' } },
+      yAxis: { type: 'category', data: data.map((d) => d.name).reverse(), axisLabel: { color: '#475569', fontSize: 11 } },
       series: [{
         type: 'bar',
+        barMaxWidth: 18,
         data: data.map((d) => d.value).reverse(),
-        itemStyle: { color: this.colors.red, borderRadius: [0, 4, 4, 0] },
+        itemStyle: {
+          color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [{ offset: 0, color: '#F87171' }, { offset: 1, color: '#DC2626' }]),
+          borderRadius: [0, 4, 4, 0],
+        },
       }],
     };
     chart.setOption(option);
   }
 
   // ------------------------------------------------------------------------
-  // PAGE 04 CHARTS
+  // TRANG 04: VÙNG MIỀN & SẢN LƯỢNG
   // ------------------------------------------------------------------------
   renderPage4() {
-    this.renderP4VolumeTrend();
-    this.renderP4Treemap();
-    this.renderP4PriorityRegions();
-    this.renderP4PackMix();
+    this.renderP4PackagingTrend();
+    this.renderP4TerritoryTreemap();
+    this.renderP4PackagingMix();
+    this.renderP4RegionAttainment();
   }
 
-  renderP4VolumeTrend() {
+  renderP4PackagingTrend() {
     const chart = this.getOrCreate('chart_p4_volume_trend');
     if (!chart) return;
     const data = this.engine.getPackagingVolumeTrend();
 
     const option = {
-      tooltip: { trigger: 'axis' },
-      legend: { data: ['Két (K)', 'Thùng (T)', 'Bình 19L (B)'], top: 0 },
-      grid: { left: '3%', right: '4%', bottom: '8%', top: '15%', containLabel: true },
-      xAxis: { type: 'category', data: data.labels },
-      yAxis: { type: 'value', name: 'Sản lượng quy đổi' },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+      legend: {
+        data: ['Sản lượng Két', 'Sản lượng Thùng', 'Sản lượng Bình 19L'],
+        bottom: 0,
+        left: 'center',
+        itemWidth: 10,
+        itemHeight: 10,
+        itemGap: 16,
+        textStyle: { fontSize: 11, color: '#475569', fontWeight: 600 },
+        icon: 'circle',
+      },
+      grid: { left: '3%', right: '3%', top: '36px', bottom: '40px', containLabel: true },
+      xAxis: { type: 'category', data: data.labels, axisLabel: { color: '#475569', fontSize: 11, fontWeight: 600 } },
+      yAxis: { type: 'value', name: 'Số lượng Quy cách', splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } }, axisLabel: { color: '#64748B', fontSize: 10 } },
       series: [
-        { name: 'Két (K)', type: 'line', data: data.ketSeries, itemStyle: { color: this.colors.blue }, smooth: true },
-        { name: 'Thùng (T)', type: 'line', data: data.thungSeries, itemStyle: { color: this.colors.teal }, smooth: true },
-        { name: 'Bình 19L (B)', type: 'line', data: data.binhSeries, itemStyle: { color: this.colors.amber }, smooth: true },
+        { name: 'Sản lượng Két', type: 'line', data: data.ketSeries, lineStyle: { width: 2.5, color: this.colors.blue }, itemStyle: { color: this.colors.blue } },
+        { name: 'Sản lượng Thùng', type: 'line', data: data.thungSeries, lineStyle: { width: 2.5, color: this.colors.teal }, itemStyle: { color: this.colors.teal } },
+        { name: 'Sản lượng Bình 19L', type: 'line', data: data.binhSeries, lineStyle: { width: 2.5, color: this.colors.amber }, itemStyle: { color: this.colors.amber } },
       ],
     };
     chart.setOption(option);
   }
 
-  renderP4Treemap() {
+  renderP4TerritoryTreemap() {
     const chart = this.getOrCreate('chart_p4_treemap');
     if (!chart) return;
     const data = this.engine.getTerritoryTreemap();
@@ -524,49 +653,30 @@ class VikodaCharts {
         leafDepth: 1,
         levels: [
           { itemStyle: { borderColor: '#FFFFFF', borderWidth: 2, gapWidth: 2 } },
-          { colorSaturation: [0.35, 0.5], itemStyle: { borderColorSaturation: 0.6, gapWidth: 1 } },
+          { colorSaturation: [0.35, 0.7], itemStyle: { borderColorSaturation: 0.6, gapWidth: 1 } },
         ],
       }],
     };
     chart.setOption(option);
 
     chart.off('click');
-    chart.on('click', (params) => this.engine.setFilter('vung', params.name));
+    chart.on('click', (params) => {
+      if (params.data && params.data.name) {
+        if (params.data.children) this.engine.setFilter('mien', params.data.name);
+        else this.engine.setFilter('vung', params.data.name);
+      }
+    });
   }
 
-  renderP4PriorityRegions() {
-    const chart = this.getOrCreate('chart_p4_priority_regions');
-    if (!chart) return;
-    const data = this.engine.getRegionTargetAttainment().slice(0, 10);
-
-    const option = {
-      tooltip: { trigger: 'axis', formatter: (p) => `${p[0].name}: <strong>${p[0].value}% Đạt Target</strong>` },
-      grid: { left: '3%', right: '6%', bottom: '5%', top: '5%', containLabel: true },
-      xAxis: { type: 'value', name: '% Đạt' },
-      yAxis: { type: 'category', data: data.map((d) => d.name).reverse() },
-      series: [{
-        type: 'bar',
-        data: data.map((d) => ({
-          value: d.value,
-          itemStyle: { color: d.value < 80 ? this.colors.red : this.colors.amber, borderRadius: [0, 4, 4, 0] },
-        })).reverse(),
-      }],
-    };
-    chart.setOption(option);
-
-    chart.off('click');
-    chart.on('click', (params) => this.engine.setFilter('vung', params.name));
-  }
-
-  renderP4PackMix() {
+  renderP4PackagingMix() {
     const chart = this.getOrCreate('chart_p4_pack_mix');
     if (!chart) return;
     const data = this.engine.getPackagingMix();
 
     const option = {
-      tooltip: { trigger: 'item', formatter: '{b}: <strong>{c}</strong> ({d}%)' },
-      legend: { bottom: 0, icon: 'circle' },
-      color: [this.colors.blue, this.colors.teal, this.colors.amber, this.colors.gray],
+      tooltip: { trigger: 'item', formatter: '{b}: <strong>{c} đơn vị</strong> ({d}%)' },
+      legend: { bottom: 0, icon: 'circle', itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#475569' } },
+      color: [this.colors.blue, this.colors.teal, this.colors.amber, this.colors.purple],
       series: [{
         type: 'pie',
         radius: ['45%', '70%'],
@@ -576,18 +686,51 @@ class VikodaCharts {
       }],
     };
     chart.setOption(option);
+  }
+
+  renderP4RegionAttainment() {
+    const chart = this.getOrCreate('chart_p4_priority_regions');
+    if (!chart) return;
+    const data = this.engine.getRegionTargetAttainment();
+
+    const option = {
+      tooltip: { trigger: 'axis', formatter: (p) => `${p[0].name}: <strong>${p[0].value}% Target</strong>` },
+      grid: { left: '3%', right: '6%', bottom: '5%', top: '5%', containLabel: true },
+      xAxis: { type: 'value', name: '% Đạt Target', splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } }, axisLabel: { color: '#64748B', fontSize: 10, formatter: '{value}%' } },
+      yAxis: { type: 'category', data: data.map((d) => d.name), axisLabel: { color: '#475569', fontSize: 10 } },
+      series: [{
+        type: 'bar',
+        barMaxWidth: 16,
+        data: data.map((d) => ({
+          value: d.value,
+          itemStyle: {
+            color: d.value >= 100 ? '#10B981' : d.value >= 80 ? '#F59E0B' : '#EF4444',
+            borderRadius: [0, 4, 4, 0],
+          },
+        })),
+        label: {
+          show: true,
+          position: 'right',
+          formatter: '{c}%',
+          fontSize: 9,
+          fontWeight: 700,
+          color: '#475569',
+        },
+      }],
+    };
+    chart.setOption(option);
 
     chart.off('click');
-    chart.on('click', (params) => this.engine.setFilter('packUnit', params.name));
+    chart.on('click', (params) => this.engine.setFilter('vung', params.name));
   }
 
   // ------------------------------------------------------------------------
-  // PAGE 06 CHARTS
+  // TRANG 06: KẾ HOẠCH & DỰ BÁO
   // ------------------------------------------------------------------------
   renderPage6() {
     this.renderP6Trend();
-    this.renderP6Forecast();
-    this.renderP6Shortfall();
+    this.renderP6ForecastRegion();
+    this.renderP6ShortfallArea();
   }
 
   renderP6Trend() {
@@ -596,56 +739,99 @@ class VikodaCharts {
     const data = this.engine.getMonthlyTrend();
 
     const option = {
-      tooltip: { trigger: 'axis' },
-      legend: { data: ['Doanh thu Sell In', 'Target', 'Run-rate dự báo'], top: 0 },
-      grid: { left: '3%', right: '4%', bottom: '8%', top: '15%', containLabel: true },
-      xAxis: { type: 'category', data: data.labels },
-      yAxis: { type: 'value', name: 'Triệu VNĐ' },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+      legend: {
+        data: ['Doanh thu Thực tế', 'Target Kế hoạch'],
+        bottom: 0,
+        left: 'center',
+        itemWidth: 10,
+        itemHeight: 10,
+        itemGap: 16,
+        textStyle: { fontSize: 11, color: '#475569', fontWeight: 600 },
+        icon: 'circle',
+      },
+      grid: { left: '3%', right: '3%', top: '36px', bottom: '40px', containLabel: true },
+      xAxis: { type: 'category', data: data.labels, axisLabel: { color: '#475569', fontSize: 11, fontWeight: 600 } },
+      yAxis: { type: 'value', name: 'Triệu VNĐ', splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } }, axisLabel: { color: '#64748B', fontSize: 10 } },
       series: [
-        { name: 'Doanh thu Sell In', type: 'line', data: data.actualSeries, itemStyle: { color: this.colors.blue }, lineStyle: { width: 3 } },
-        { name: 'Target', type: 'line', data: data.targetSeries, itemStyle: { color: this.colors.gray }, lineStyle: { type: 'dashed' } },
-        { name: 'Run-rate dự báo', type: 'line', data: data.actualSeries.map((v, i) => i === 7 ? v * 1.05 : v), itemStyle: { color: this.colors.teal }, lineStyle: { width: 2 } },
+        {
+          name: 'Doanh thu Thực tế',
+          type: 'bar',
+          barMaxWidth: 24,
+          data: data.actualSeries,
+          itemStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#3B82F6' }, { offset: 1, color: '#1D4ED8' }]),
+            borderRadius: [4, 4, 0, 0],
+          },
+        },
+        {
+          name: 'Target Kế hoạch',
+          type: 'line',
+          data: data.targetSeries,
+          lineStyle: { color: '#D97706', width: 2.5, type: 'dashed' },
+          itemStyle: { color: '#D97706' },
+        },
       ],
     };
     chart.setOption(option);
   }
 
-  renderP6Forecast() {
+  renderP6ForecastRegion() {
     const chart = this.getOrCreate('chart_p6_forecast');
     if (!chart) return;
     const data = this.engine.getPlanForecastByRegion();
 
     const option = {
-      tooltip: { trigger: 'axis', formatter: (p) => `${p[0].name}: <strong>${p[0].value}% Dự báo đạt Target</strong>` },
-      grid: { left: '3%', right: '4%', bottom: '8%', top: '10%', containLabel: true },
-      xAxis: { type: 'category', data: data.map((d) => d.name) },
-      yAxis: { type: 'value', name: '% Dự báo' },
+      tooltip: { trigger: 'axis', formatter: (p) => `${p[0].name}: Dự báo hoàn thành <strong>${p[0].value}% Target</strong>` },
+      grid: { left: '3%', right: '3%', bottom: '8%', top: '36px', containLabel: true },
+      xAxis: { type: 'category', data: data.map((d) => d.name), axisLabel: { color: '#475569', fontSize: 11, fontWeight: 600 } },
+      yAxis: { type: 'value', name: '% Dự báo hoàn thành', splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } }, axisLabel: { color: '#64748B', fontSize: 10, formatter: '{value}%' } },
       series: [{
         type: 'bar',
+        barMaxWidth: 26,
         data: data.map((d) => ({
           value: d.value,
-          itemStyle: { color: d.value >= 100 ? this.colors.teal : this.colors.amber, borderRadius: [4, 4, 0, 0] },
+          itemStyle: {
+            color: d.value >= 100
+              ? new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#34D399' }, { offset: 1, color: '#059669' }])
+              : d.value >= 80
+              ? new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#FBBF24' }, { offset: 1, color: '#D97706' }])
+              : new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#F87171' }, { offset: 1, color: '#DC2626' }]),
+            borderRadius: [4, 4, 0, 0],
+          },
         })),
+        label: {
+          show: true,
+          position: 'top',
+          formatter: '{c}%',
+          fontSize: 10,
+          fontWeight: 700,
+          color: '#334155',
+        },
       }],
     };
     chart.setOption(option);
   }
 
-  renderP6Shortfall() {
+  renderP6ShortfallArea() {
     const chart = this.getOrCreate('chart_p6_shortfall');
     if (!chart) return;
     const data = this.engine.getPlanShortfallByArea();
 
     const option = {
-      tooltip: { trigger: 'axis' },
-      legend: { data: ['Còn thiếu để đạt Target', 'Cần doanh thu mỗi ngày'], top: 0 },
-      grid: { left: '3%', right: '6%', bottom: '5%', top: '15%', containLabel: true },
-      xAxis: { type: 'value', name: 'Triệu VNĐ' },
-      yAxis: { type: 'category', data: data.map((d) => d.vung).reverse() },
-      series: [
-        { name: 'Còn thiếu để đạt Target', type: 'bar', data: data.map((d) => d.shortfall).reverse(), itemStyle: { color: this.colors.red, borderRadius: [0, 4, 4, 0] } },
-        { name: 'Cần doanh thu mỗi ngày', type: 'bar', data: data.map((d) => d.dailyRequired).reverse(), itemStyle: { color: this.colors.amber, borderRadius: [0, 4, 4, 0] } },
-      ],
+      tooltip: { trigger: 'axis', formatter: (p) => `${p[0].name}: Hụt <strong>${p[0].value.toLocaleString()} Tr.đ</strong>` },
+      grid: { left: '3%', right: '6%', bottom: '5%', top: '5%', containLabel: true },
+      xAxis: { type: 'value', name: 'Khoảng hụt Target (Tr.đ)', splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } }, axisLabel: { color: '#64748B', fontSize: 10 } },
+      yAxis: { type: 'category', data: data.map((d) => d.vung).reverse(), axisLabel: { color: '#475569', fontSize: 10 } },
+      series: [{
+        type: 'bar',
+        barMaxWidth: 16,
+        data: data.map((d) => d.shortfall).reverse(),
+        itemStyle: {
+          color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [{ offset: 0, color: '#F87171' }, { offset: 1, color: '#DC2626' }]),
+          borderRadius: [0, 4, 4, 0],
+        },
+      }],
     };
     chart.setOption(option);
   }

@@ -543,6 +543,71 @@ html, body {
 }
 
 /* --------------------------------------------------------------------------
+   Period Status Banner (Executive High-Visibility Bar)
+   -------------------------------------------------------------------------- */
+.period-status-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #FFFFFF;
+  border-radius: 12px;
+  padding: 10px 18px;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  margin-bottom: 2px;
+}
+
+.period-badge-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.period-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+  color: #1E40AF;
+  border: 1px solid #BFDBFE;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.period-quick-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.period-quick-tabs .quick-btn {
+  background: #F1F5F9;
+  color: #475569;
+  border: 1px solid #CBD5E1;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.period-quick-tabs .quick-btn:hover {
+  background: #E2E8F0;
+  color: #0F172A;
+}
+
+.period-quick-tabs .quick-btn.active {
+  background: #2563EB;
+  color: #FFFFFF;
+  border-color: #1D4ED8;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+}
+
+/* --------------------------------------------------------------------------
    KPI Cards Grid
    -------------------------------------------------------------------------- */
 .kpi-cards-grid {
@@ -553,10 +618,10 @@ html, body {
 
 .kpi-card {
   background: var(--bg-card);
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   padding: 16px 20px;
   border: 1px solid var(--border-light);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -598,10 +663,24 @@ html, body {
   color: var(--text-main);
   font-family: 'Plus Jakarta Sans', sans-serif;
   letter-spacing: -0.02em;
+  transition: color 0.2s ease;
+}
+
+.kpi-card .kpi-value.positive { color: var(--accent-green); }
+.kpi-card .kpi-value.negative { color: var(--accent-red); }
+
+.number-pulse {
+  animation: numberPulseAnim 0.35s ease;
+}
+
+@keyframes numberPulseAnim {
+  0% { transform: scale(0.96); opacity: 0.8; }
+  50% { transform: scale(1.03); color: #2563EB; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 .kpi-card .kpi-sub {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-muted);
   display: flex;

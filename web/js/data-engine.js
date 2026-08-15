@@ -1,6 +1,6 @@
 /**
- * VIKODA WEB DASHBOARD - IN-MEMORY ANALYTICS DATA ENGINE
- * Cung cấp khả năng lọc đa chiều, tính toán DAX/SQL in-memory cực nhanh (<2ms)
+ * VIKODA WEB DASHBOARD - ADVANCED IN-MEMORY ANALYTICS DATA ENGINE
+ * Thiết kế chuẩn FMCG Commercial Analytics với tốc độ xử lý tức thì (<2ms).
  */
 
 class VikodaDataEngine {
@@ -15,8 +15,9 @@ class VikodaDataEngine {
 
     // Global Filter State
     this.filters = {
-      startDate: null,
-      endDate: null,
+      startDate: '2026-01-01',
+      endDate: '2026-08-11',
+      periodMode: 'ytd', // 'mtd', 'qtd', 'ytd', 'all', 'custom'
       mien: null,
       vung: null,
       channel: null,
@@ -36,7 +37,7 @@ class VikodaDataEngine {
     if (window.VIKODA_DATA) {
       this.raw = window.VIKODA_DATA;
     } else {
-      const res = await fetch('data/dashboard_data.json');
+      const res = await fetch('data/dashboard_data.json?v=' + Date.now());
       this.raw = await res.json();
     }
 
@@ -47,13 +48,12 @@ class VikodaDataEngine {
     this.facts = this.raw.fact_sell_in || [];
     this.targets = this.raw.fact_target || [];
 
-    // Khởi tạo ngày mặc định: toàn bộ năm hiện tại đến ngày as_of_date
-    if (this.metadata.as_of_date) {
-      const maxD = this.metadata.as_of_date;
-      const curYear = this.metadata.current_year || new Date().getFullYear();
-      this.filters.startDate = `${curYear}-01-01`;
-      this.filters.endDate = maxD;
-    }
+    // Khởi tạo ngày mặc định: YTD 2026
+    const curYear = this.metadata.current_year || 2026;
+    const maxD = this.metadata.as_of_date || `${curYear}-08-11`;
+    this.filters.startDate = `${curYear}-01-01`;
+    this.filters.endDate = maxD;
+    this.filters.periodMode = 'ytd';
   }
 
   subscribe(callback) {
@@ -66,7 +66,6 @@ class VikodaDataEngine {
 
   setFilter(key, value) {
     if (this.filters[key] === value) {
-      // Toggle off nếu click lại cùng 1 giá trị (như Power BI)
       this.filters[key] = null;
     } else {
       this.filters[key] = value;
@@ -74,16 +73,19 @@ class VikodaDataEngine {
     this.notify();
   }
 
-  setDateRange(start, end) {
+  setDateRange(start, end, mode = 'custom') {
+    if (!start || !end) return;
     this.filters.startDate = start;
     this.filters.endDate = end;
+    this.filters.periodMode = mode;
     this.notify();
   }
 
   clearAllFilters() {
-    const curYear = this.metadata.current_year || new Date().getFullYear();
+    const curYear = this.metadata.current_year || 2026;
     this.filters.startDate = `${curYear}-01-01`;
-    this.filters.endDate = this.metadata.as_of_date || `${curYear}-12-31`;
+    this.filters.endDate = this.metadata.as_of_date || `${curYear}-08-11`;
+    this.filters.periodMode = 'ytd';
     this.filters.mien = null;
     this.filters.vung = null;
     this.filters.channel = null;
@@ -98,15 +100,18 @@ class VikodaDataEngine {
   }
 
   // ------------------------------------------------------------------------
-  // Lọc tập dữ liệu FactSellIn theo Filter State
+  // LỌC TẬP DỮ LIỆU FACT SELL IN
   // ------------------------------------------------------------------------
   getFilteredFacts(customFilters = null) {
     const f = customFilters || this.filters;
+    const start = f.startDate;
+    const end = f.endDate;
+
     return this.facts.filter((row) => {
       const [d, custKey, prodKey, terrKey, rev, qty, convQty, isReturn] = row;
 
-      if (f.startDate && d < f.startDate) return false;
-      if (f.endDate && d > f.endDate) return false;
+      if (start && d < start) return false;
+      if (end && d > end) return false;
 
       const cust = this.customers[custKey] || {};
       const prod = this.products[prodKey] || {};
@@ -135,7 +140,7 @@ class VikodaDataEngine {
   }
 
   // ------------------------------------------------------------------------
-  // Lọc tập dữ liệu Cùng kỳ năm trước (LY)
+  // LỌC TẬP DỮ LIỆU CÙNG KỲ NĂM TRƯỚC (LY)
   // ------------------------------------------------------------------------
   getLYFilteredFacts() {
     if (!this.filters.startDate || !this.filters.endDate) return [];
@@ -147,6 +152,7 @@ class VikodaDataEngine {
   }
 
   shiftYear(dateStr, offsetYears) {
+    if (!dateStr) return '';
     const [y, m, d] = dateStr.split('-').map(Number);
     const newY = y + offsetYears;
     const pad = (n) => String(n).padStart(2, '0');
@@ -154,7 +160,7 @@ class VikodaDataEngine {
   }
 
   // ------------------------------------------------------------------------
-  // Lọc tập dữ liệu Target
+  // LỌC TẬP DỮ LIỆU TARGET (KẾ HOẠCH DOANH SỐ)
   // ------------------------------------------------------------------------
   getFilteredTargets() {
     const f = this.filters;
@@ -178,47 +184,64 @@ class VikodaDataEngine {
   }
 
   // ------------------------------------------------------------------------
-  // TÍNH TOÁN CÁC CHỈ SỐ KPI CHÍNH
+  // TÍNH TOÁN CÁC CHỈ SỐ KPI ĐIỀU HÀNH CHÍNH (HERO EXECUTIVE KPIS)
   // ------------------------------------------------------------------------
   getSummaryKPIs() {
     const facts = this.getFilteredFacts();
     const lyFacts = this.getLYFilteredFacts();
     const targets = this.getFilteredTargets();
 
-    const actualVND = facts.reduce((sum, r) => sum + r[4], 0);
+    const actualVND = facts.reduce((sum, r) => sum + (r[4] || 0), 0);
     const actualMillion = actualVND / 1000000;
 
-    const lyVND = lyFacts.reduce((sum, r) => sum + r[4], 0);
+    const lyVND = lyFacts.reduce((sum, r) => sum + (r[4] || 0), 0);
     const lyMillion = lyVND / 1000000;
 
-    const targetTotalVND = targets.reduce((sum, r) => sum + r[3], 0);
+    const targetTotalVND = targets.reduce((sum, r) => sum + (r[3] || 0), 0);
     const targetMillion = targetTotalVND / 1000000;
 
     const attainment = targetMillion > 0 ? (actualMillion / targetMillion) * 100 : 0;
     const yoy = lyMillion > 0 ? ((actualMillion - lyMillion) / lyMillion) * 100 : 0;
+    const yoyAbsolute = actualMillion - lyMillion;
 
     const distinctCustomers = new Set(facts.map((r) => r[1])).size;
     const distinctLYCustomers = new Set(lyFacts.map((r) => r[1])).size;
 
-    const totalConvertedQty = facts.reduce((sum, r) => sum + (r[6] || 0), 0);
+    // Sản lượng quy đổi (Két/Thùng/Bình)
+    const totalConvertedQty = facts.reduce((sum, r) => sum + (r[6] || r[5] || 0), 0);
+    const lyConvertedQty = lyFacts.reduce((sum, r) => sum + (r[6] || r[5] || 0), 0);
+    const volumeYoY = lyConvertedQty > 0 ? ((totalConvertedQty - lyConvertedQty) / lyConvertedQty) * 100 : 0;
 
-    // Tính Pacing % & Run-rate
-    const endDate = new Date(this.filters.endDate || this.metadata.as_of_date);
-    const dayOfMonth = endDate.getDate();
-    const lastDayOfMonth = new Date(endDate.getFullYear(), endDate.getMonth() + 1, 0).getDate();
+    // Tính Pacing & Dự báo Run-rate
+    const sDate = new Date(this.filters.startDate);
+    const eDate = new Date(this.filters.endDate);
+    const timeDiffDays = Math.max(1, Math.round((eDate - sDate) / (1000 * 60 * 60 * 24)) + 1);
+
+    const dayOfMonth = eDate.getDate();
+    const lastDayOfMonth = new Date(eDate.getFullYear(), eDate.getMonth() + 1, 0).getDate();
     const timeElapsedPercent = (dayOfMonth / lastDayOfMonth) * 100;
     const pacing = timeElapsedPercent > 0 ? (attainment / timeElapsedPercent) * 100 : 0;
 
-    const dailyActual = dayOfMonth > 0 ? actualMillion / dayOfMonth : 0;
-    const runRateForecast = dailyActual * lastDayOfMonth;
+    const dailyActual = timeDiffDays > 0 ? actualMillion / timeDiffDays : 0;
+    const daysInMonth = lastDayOfMonth;
+    const runRateForecast = dailyActual * daysInMonth;
     const forecastAttainment = targetMillion > 0 ? (runRateForecast / targetMillion) * 100 : 0;
 
     const shortfall = Math.max(0, targetMillion - actualMillion);
-    const daysLeft = Math.max(1, lastDayOfMonth - dayOfMonth);
-    const dailyRequired = shortfall / daysLeft;
-    const accelerationFactor = dailyActual > 0 ? dailyRequired / dailyActual : 1;
-
     const dropSize = distinctCustomers > 0 ? actualMillion / distinctCustomers : 0;
+
+    // Xác định nhãn khoảng thời gian đang lọc
+    let periodLabel = `${this.formatDateVN(this.filters.startDate)} - ${this.formatDateVN(this.filters.endDate)}`;
+    if (this.filters.periodMode === 'mtd') {
+      periodLabel = `MTD Tháng ${eDate.getMonth() + 1}/${eDate.getFullYear()} (${periodLabel})`;
+    } else if (this.filters.periodMode === 'qtd') {
+      const q = Math.floor(eDate.getMonth() / 3) + 1;
+      periodLabel = `QTD Quý ${q}/${eDate.getFullYear()} (${periodLabel})`;
+    } else if (this.filters.periodMode === 'ytd') {
+      periodLabel = `YTD Năm ${eDate.getFullYear()} (${periodLabel})`;
+    } else if (this.filters.periodMode === 'all') {
+      periodLabel = `Toàn bộ 20 kỳ 2025 - 2026 (${periodLabel})`;
+    }
 
     return {
       actualMillion,
@@ -226,26 +249,35 @@ class VikodaDataEngine {
       attainment,
       lyMillion,
       yoy,
+      yoyAbsolute,
       distinctCustomers,
       distinctLYCustomers,
       totalConvertedQty,
+      volumeYoY,
       pacing,
       runRateForecast,
       forecastAttainment,
       shortfall,
-      dailyRequired,
-      accelerationFactor,
       dropSize,
+      timeDiffDays,
+      periodLabel,
     };
   }
 
+  formatDateVN(str) {
+    if (!str) return '';
+    const parts = str.split('-');
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return str;
+  }
+
   // ------------------------------------------------------------------------
-  // LẤY DỮ LIỆU BIỂU ĐỒ TRANG 01: TỔNG QUAN
+  // TRANG 01: BIỂU ĐỒ TỔNG QUAN ĐIỀU HÀNH
   // ------------------------------------------------------------------------
   getMonthlyTrend() {
-    const curYear = this.metadata.current_year || new Date().getFullYear();
+    const curYear = this.metadata.current_year || 2026;
     const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
-    const labels = months.map((m) => `${curYear % 100}/${m}`);
+    const labels = months.map((m) => `T${parseInt(m, 10)}`);
 
     const actualMap = {};
     const lyMap = {};
@@ -257,7 +289,7 @@ class VikodaDataEngine {
       targetMap[`${curYear}${m}`] = 0;
     });
 
-    // Tính Actual & LY
+    // Lọc theo các bộ lọc khác (Miền, Kênh, Nhóm SP...) nhưng quét qua toàn bộ các tháng
     this.facts.forEach((r) => {
       const [d, custKey, prodKey, terrKey, rev] = r;
       const period = d.slice(0, 7).replace('-', '');
@@ -269,11 +301,10 @@ class VikodaDataEngine {
       if (this.filters.channel && cust.channel !== this.filters.channel) return;
       if (this.filters.productGroup && prod.group !== this.filters.productGroup) return;
 
-      if (actualMap[period] !== undefined) actualMap[period] += rev / 1000000;
-      if (lyMap[period] !== undefined) lyMap[period] += rev / 1000000;
+      if (actualMap[period] !== undefined) actualMap[period] += (rev || 0) / 1000000;
+      if (lyMap[period] !== undefined) lyMap[period] += (rev || 0) / 1000000;
     });
 
-    // Tính Target
     this.targets.forEach((r) => {
       const [periodKey, terrKey, custKey, targetTotal] = r;
       const cust = this.customers[custKey] || {};
@@ -281,7 +312,7 @@ class VikodaDataEngine {
       if (this.filters.vung && cust.vung !== this.filters.vung) return;
       if (this.filters.channel && cust.channel !== this.filters.channel) return;
 
-      if (targetMap[periodKey] !== undefined) targetMap[periodKey] += targetTotal / 1000000;
+      if (targetMap[periodKey] !== undefined) targetMap[periodKey] += (targetTotal || 0) / 1000000;
     });
 
     const actualSeries = months.map((m) => Math.round(actualMap[`${curYear}${m}`] || 0));
@@ -302,7 +333,7 @@ class VikodaDataEngine {
     facts.forEach((r) => {
       const prod = this.products[r[2]] || {};
       const group = prod.group || 'Khác';
-      map[group] = (map[group] || 0) + r[4] / 1000000;
+      map[group] = (map[group] || 0) + (r[4] || 0) / 1000000;
     });
 
     return Object.entries(map).map(([name, value]) => ({
@@ -317,7 +348,7 @@ class VikodaDataEngine {
     facts.forEach((r) => {
       const cust = this.customers[r[1]] || {};
       const channel = cust.channel || 'GT';
-      map[channel] = (map[channel] || 0) + r[4] / 1000000;
+      map[channel] = (map[channel] || 0) + (r[4] || 0) / 1000000;
     });
 
     return Object.entries(map).map(([name, value]) => ({
@@ -330,20 +361,20 @@ class VikodaDataEngine {
     const facts = this.getFilteredFacts();
     const targets = this.getFilteredTargets();
 
-    const regions = ['Miền Bắc', 'Miền Trung 1', 'Miền Trung 2', 'Miền Nam', 'B2C', 'Other'];
+    const regions = ['Miền Bắc', 'Miền Trung 1', 'Miền Trung 2', 'Miền Nam', 'B2C'];
     const actMap = {};
     const tgtMap = {};
 
     facts.forEach((r) => {
       const cust = this.customers[r[1]] || {};
-      const mien = cust.mien || 'Other';
-      actMap[mien] = (actMap[mien] || 0) + r[4] / 1000000;
+      const mien = cust.mien || 'Khác';
+      actMap[mien] = (actMap[mien] || 0) + (r[4] || 0) / 1000000;
     });
 
     targets.forEach((r) => {
       const cust = this.customers[r[2]] || {};
-      const mien = cust.mien || 'Other';
-      tgtMap[mien] = (tgtMap[mien] || 0) + r[3] / 1000000;
+      const mien = cust.mien || 'Khác';
+      tgtMap[mien] = (tgtMap[mien] || 0) + (r[3] || 0) / 1000000;
     });
 
     return regions.map((m) => {
@@ -353,26 +384,26 @@ class VikodaDataEngine {
   }
 
   // ------------------------------------------------------------------------
-  // LẤY DỮ LIỆU TRANG 02: KÊNH & KHÁCH HÀNG
+  // TRANG 02: KÊNH & KHÁCH HÀNG
   // ------------------------------------------------------------------------
   getChannelPerformance() {
     const facts = this.getFilteredFacts();
     const lyFacts = this.getLYFilteredFacts();
-    const channels = ['GT', 'MT', 'KA', 'B2C', 'Other'];
+    const channels = ['GT', 'MT', 'KA', 'B2C'];
 
     const actMap = {};
     const lyMap = {};
 
     facts.forEach((r) => {
       const cust = this.customers[r[1]] || {};
-      const ch = cust.channel || 'Other';
-      actMap[ch] = (actMap[ch] || 0) + r[4] / 1000000;
+      const ch = cust.channel || 'GT';
+      actMap[ch] = (actMap[ch] || 0) + (r[4] || 0) / 1000000;
     });
 
     lyFacts.forEach((r) => {
       const cust = this.customers[r[1]] || {};
-      const ch = cust.channel || 'Other';
-      lyMap[ch] = (lyMap[ch] || 0) + r[4] / 1000000;
+      const ch = cust.channel || 'GT';
+      lyMap[ch] = (lyMap[ch] || 0) + (r[4] || 0) / 1000000;
     });
 
     const actuals = channels.map((c) => Math.round(actMap[c] || 0));
@@ -392,7 +423,7 @@ class VikodaDataEngine {
     facts.forEach((r) => {
       const cust = this.customers[r[1]] || {};
       if (cust.system_mt) {
-        map[cust.system_mt] = (map[cust.system_mt] || 0) + r[4] / 1000000;
+        map[cust.system_mt] = (map[cust.system_mt] || 0) + (r[4] || 0) / 1000000;
       }
     });
 
@@ -411,12 +442,12 @@ class VikodaDataEngine {
 
     facts.forEach((r) => {
       const k = r[1];
-      actMap[k] = (actMap[k] || 0) + r[4] / 1000000;
+      actMap[k] = (actMap[k] || 0) + (r[4] || 0) / 1000000;
     });
 
     lyFacts.forEach((r) => {
       const k = r[1];
-      lyMap[k] = (lyMap[k] || 0) + r[4] / 1000000;
+      lyMap[k] = (lyMap[k] || 0) + (r[4] || 0) / 1000000;
     });
 
     const totalRev = Object.values(actMap).reduce((a, b) => a + b, 0);
@@ -475,12 +506,12 @@ class VikodaDataEngine {
   }
 
   // ------------------------------------------------------------------------
-  // LẤY DỮ LIỆU TRANG 03: SẢN PHẨM & DANH MỤC
+  // TRANG 03: SẢN PHẨM & DANH MỤC
   // ------------------------------------------------------------------------
   getVikodaVsKDTTrend() {
-    const curYear = this.metadata.current_year || new Date().getFullYear();
+    const curYear = this.metadata.current_year || 2026;
     const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
-    const labels = months.map((m) => `${curYear % 100}/${m}`);
+    const labels = months.map((m) => `T${parseInt(m, 10)}`);
 
     const vkMap = {};
     const kdtMap = {};
@@ -495,8 +526,8 @@ class VikodaDataEngine {
       const period = d.slice(0, 7).replace('-', '');
       const prod = this.products[prodKey] || {};
 
-      if (prod.is_vikoda && vkMap[period] !== undefined) vkMap[period] += rev / 1000000;
-      if (prod.is_kdt && kdtMap[period] !== undefined) kdtMap[period] += rev / 1000000;
+      if (prod.is_vikoda && vkMap[period] !== undefined) vkMap[period] += (rev || 0) / 1000000;
+      if (prod.is_kdt && kdtMap[period] !== undefined) kdtMap[period] += (rev || 0) / 1000000;
     });
 
     const vikodaSeries = months.map((m) => Math.round(vkMap[`${curYear}${m}`] || 0));
@@ -515,7 +546,7 @@ class VikodaDataEngine {
     facts.forEach((r) => {
       const prod = this.products[r[2]] || {};
       const brand = prod.brand || 'Vikoda';
-      map[brand] = (map[brand] || 0) + r[4] / 1000000;
+      map[brand] = (map[brand] || 0) + (r[4] || 0) / 1000000;
     });
 
     return Object.entries(map).map(([name, value]) => ({
@@ -530,7 +561,7 @@ class VikodaDataEngine {
     facts.forEach((r) => {
       const prod = this.products[r[2]] || {};
       const label = prod.short_name || prod.name || r[2];
-      map[label] = (map[label] || 0) + r[4] / 1000000;
+      map[label] = (map[label] || 0) + (r[4] || 0) / 1000000;
     });
 
     return Object.entries(map)
@@ -549,17 +580,17 @@ class VikodaDataEngine {
     facts.forEach((r) => {
       const prod = this.products[r[2]] || {};
       const label = prod.short_name || prod.name || r[2];
-      actMap[label] = (actMap[label] || 0) + r[4] / 1000000;
+      actMap[label] = (actMap[label] || 0) + (r[4] || 0) / 1000000;
     });
 
     lyFacts.forEach((r) => {
       const prod = this.products[r[2]] || {};
       const label = prod.short_name || prod.name || r[2];
-      lyMap[label] = (lyMap[label] || 0) + r[4] / 1000000;
+      lyMap[label] = (lyMap[label] || 0) + (r[4] || 0) / 1000000;
     });
 
     return Object.keys(lyMap)
-      .filter((k) => lyMap[k] > 50) // Chỉ xét SKU có doanh thu cùng kỳ > 50 triệu
+      .filter((k) => lyMap[k] > 20)
       .map((name) => {
         const act = actMap[name] || 0;
         const ly = lyMap[name];
@@ -571,12 +602,12 @@ class VikodaDataEngine {
   }
 
   // ------------------------------------------------------------------------
-  // LẤY DỮ LIỆU TRANG 04: VÙNG MIỀN & SẢN LƯỢNG
+  // TRANG 04: VÙNG MIỀN & SẢN LƯỢNG
   // ------------------------------------------------------------------------
   getPackagingVolumeTrend() {
-    const curYear = this.metadata.current_year || new Date().getFullYear();
+    const curYear = this.metadata.current_year || 2026;
     const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
-    const labels = months.map((m) => `${curYear % 100}/${m}`);
+    const labels = months.map((m) => `T${parseInt(m, 10)}`);
 
     const ketMap = {};
     const thungMap = {};
@@ -613,9 +644,9 @@ class VikodaDataEngine {
 
     facts.forEach((r) => {
       const cust = this.customers[r[1]] || {};
-      const mien = cust.mien || 'Other';
-      const vung = cust.vung || 'Other';
-      const rev = r[4] / 1000000;
+      const mien = cust.mien || 'Khác';
+      const vung = cust.vung || 'Khác';
+      const rev = (r[4] || 0) / 1000000;
 
       if (!tree[mien]) tree[mien] = {};
       tree[mien][vung] = (tree[mien][vung] || 0) + rev;
@@ -654,14 +685,14 @@ class VikodaDataEngine {
 
     facts.forEach((r) => {
       const cust = this.customers[r[1]] || {};
-      const vung = cust.vung || 'Other';
-      actMap[vung] = (actMap[vung] || 0) + r[4] / 1000000;
+      const vung = cust.vung || 'Khác';
+      actMap[vung] = (actMap[vung] || 0) + (r[4] || 0) / 1000000;
     });
 
     targets.forEach((r) => {
       const cust = this.customers[r[2]] || {};
-      const vung = cust.vung || 'Other';
-      tgtMap[vung] = (tgtMap[vung] || 0) + r[3] / 1000000;
+      const vung = cust.vung || 'Khác';
+      tgtMap[vung] = (tgtMap[vung] || 0) + (r[3] || 0) / 1000000;
     });
 
     return Object.keys(tgtMap)
@@ -675,7 +706,7 @@ class VikodaDataEngine {
   }
 
   // ------------------------------------------------------------------------
-  // LẤY DỮ LIỆU TRANG 05: REPORTING CHI TIẾT
+  // TRANG 05: BẢNG CHI TIẾT
   // ------------------------------------------------------------------------
   getDetailRows() {
     const facts = this.getFilteredFacts();
@@ -706,17 +737,17 @@ class VikodaDataEngine {
         };
       }
 
-      agg[key].actual += rev / 1000000;
+      agg[key].actual += (rev || 0) / 1000000;
       if (prod.unit === 'Két') agg[key].qtyKet += convQty || qty || 0;
       if (prod.unit === 'Thùng') agg[key].qtyThung += convQty || qty || 0;
       if (prod.unit === 'Bình') agg[key].qtyBinh += convQty || qty || 0;
-      if (isReturn) agg[key].returnRev += Math.abs(rev) / 1000000;
+      if (isReturn) agg[key].returnRev += Math.abs(rev || 0) / 1000000;
     });
 
     lyFacts.forEach((r) => {
       const key = `${r[1]}__${r[2]}`;
       if (agg[key]) {
-        agg[key].ly += r[4] / 1000000;
+        agg[key].ly += (r[4] || 0) / 1000000;
       }
     });
 
@@ -737,7 +768,7 @@ class VikodaDataEngine {
   }
 
   // ------------------------------------------------------------------------
-  // LẤY DỮ LIỆU TRANG 06: KẾ HOẠCH & KHUYẾN NGHỊ
+  // TRANG 06: KẾ HOẠCH & DỰ BÁO
   // ------------------------------------------------------------------------
   getPlanForecastByRegion() {
     const facts = this.getFilteredFacts();
@@ -749,14 +780,14 @@ class VikodaDataEngine {
 
     facts.forEach((r) => {
       const cust = this.customers[r[1]] || {};
-      const m = cust.mien || 'Other';
-      actMap[m] = (actMap[m] || 0) + r[4] / 1000000;
+      const m = cust.mien || 'Khác';
+      actMap[m] = (actMap[m] || 0) + (r[4] || 0) / 1000000;
     });
 
     targets.forEach((r) => {
       const cust = this.customers[r[2]] || {};
-      const m = cust.mien || 'Other';
-      tgtMap[m] = (tgtMap[m] || 0) + r[3] / 1000000;
+      const m = cust.mien || 'Khác';
+      tgtMap[m] = (tgtMap[m] || 0) + (r[3] || 0) / 1000000;
     });
 
     const endDate = new Date(this.filters.endDate || this.metadata.as_of_date);
@@ -781,14 +812,14 @@ class VikodaDataEngine {
 
     facts.forEach((r) => {
       const cust = this.customers[r[1]] || {};
-      const v = cust.vung || 'Other';
-      actMap[v] = (actMap[v] || 0) + r[4] / 1000000;
+      const v = cust.vung || 'Khác';
+      actMap[v] = (actMap[v] || 0) + (r[4] || 0) / 1000000;
     });
 
     targets.forEach((r) => {
       const cust = this.customers[r[2]] || {};
-      const v = cust.vung || 'Other';
-      tgtMap[v] = (tgtMap[v] || 0) + r[3] / 1000000;
+      const v = cust.vung || 'Khác';
+      tgtMap[v] = (tgtMap[v] || 0) + (r[3] || 0) / 1000000;
     });
 
     const endDate = new Date(this.filters.endDate || this.metadata.as_of_date);
