@@ -4,6 +4,9 @@
 
 # Du lieu staging cho bao cao
 !/Data/Work/bao_cao/
+/Data/Logs/
+/Data/out put/
+/Data/Work/sell_in/
 
 # Workbook rời ở gốc dự án: dữ liệu, không phải mã chạy. Chưa có script nào đọc
 # nên tạm để nguyên chỗ cũ; nếu sau này đưa vào quy trình thì chuyển vào /Data/.
