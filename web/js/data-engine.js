@@ -785,8 +785,8 @@ class VikodaDataEngine {
   // TRANG 06: HỆ THỐNG DỰ BÁO ĐIỀU HÀNH CEO THEO THÁNG / QUÝ / NĂM
   // ------------------------------------------------------------------------
   getExecutiveForecastByHorizon(horizon = 'month') {
-    const facts = this.rawFacts || [];
-    const targets = this.rawTargets || [];
+    const facts = this.facts || [];
+    const targets = this.targets || [];
 
     if (horizon === 'month') {
       // THÁNG HIỆN TẠI (Tháng 8/2026)
@@ -919,8 +919,8 @@ class VikodaDataEngine {
     if (horizon === 'month') {
       return this.getForecastPacingChartData();
     } else if (horizon === 'quarter') {
-      const facts = this.rawFacts || [];
-      const targets = this.rawTargets || [];
+      const facts = this.facts || [];
+      const targets = this.targets || [];
       const labels = ['Tháng 7', 'Tháng 8 (Hiện tại)', 'Tháng 9 (Dự báo)'];
       const julAct = Math.round(facts.filter((r) => r[0].startsWith('2026-07')).reduce((s, r) => s + (r[4] || 0), 0) / 1000000);
       const augAct = Math.round(facts.filter((r) => r[0].startsWith('2026-08')).reduce((s, r) => s + (r[4] || 0), 0) / 1000000);
@@ -939,8 +939,8 @@ class VikodaDataEngine {
         forecastSeries: [julAct, augFc, sepFc],
       };
     } else {
-      const facts = this.rawFacts || [];
-      const targets = this.rawTargets || [];
+      const facts = this.facts || [];
+      const targets = this.targets || [];
       const labels = [];
       const actualSeries = [];
       const targetSeries = [];
