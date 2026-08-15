@@ -318,6 +318,12 @@ class VikodaCharts {
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'cross' },
+        backgroundColor: 'rgba(15, 23, 42, 0.94)',
+        borderColor: '#334155',
+        borderWidth: 1,
+        textStyle: { color: '#F8FAFC', fontSize: 12 },
+        padding: [8, 12],
+        borderRadius: 8,
       },
       legend: {
         data: ['Doanh thu Actual', 'Doanh thu LY', 'Tăng trưởng YoY %'],
@@ -325,15 +331,15 @@ class VikodaCharts {
         left: 'center',
         itemWidth: 10,
         itemHeight: 10,
-        itemGap: 16,
+        itemGap: 18,
         textStyle: { fontSize: 11, color: '#475569', fontWeight: 600 },
         icon: 'circle',
       },
-      grid: { left: '3%', right: '3%', top: '36px', bottom: '40px', containLabel: true },
+      grid: { left: '3%', right: '3%', top: '36px', bottom: '48px', containLabel: true },
       xAxis: {
         type: 'category',
         data: data.categories,
-        axisLabel: { color: '#475569', fontWeight: 600, fontSize: 11 },
+        axisLabel: { color: '#334155', fontWeight: 700, fontSize: 11.5 },
         axisLine: { lineStyle: { color: '#E2E8F0' } },
       },
       yAxis: [
@@ -445,6 +451,12 @@ class VikodaCharts {
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
+        backgroundColor: 'rgba(15, 23, 42, 0.94)',
+        borderColor: '#334155',
+        borderWidth: 1,
+        textStyle: { color: '#F8FAFC', fontSize: 12 },
+        padding: [8, 12],
+        borderRadius: 8,
         formatter: (params) => {
           let html = `<strong>Kênh: ${params[0].name}</strong><br/>`;
           params.forEach((p) => {
@@ -455,72 +467,76 @@ class VikodaCharts {
       },
       legend: {
         data: ['Khách hàng Mới', 'Ngừng mua (Churn)'],
-        bottom: 0,
-        left: 'center',
-        itemWidth: 10,
+        top: 0,
+        right: 'center',
+        itemWidth: 12,
         itemHeight: 10,
-        itemGap: 20,
-        textStyle: { fontSize: 11, color: '#475569', fontWeight: 600 },
+        itemGap: 24,
+        textStyle: { fontSize: 11.5, color: '#475569', fontWeight: 600 },
         icon: 'circle',
       },
-      grid: { left: '3%', right: '3%', top: '36px', bottom: '40px', containLabel: true },
+      grid: { left: '3%', right: '4%', top: '42px', bottom: '26px', containLabel: true },
       xAxis: {
         type: 'category',
         data: data.channels,
-        axisLabel: { color: '#475569', fontWeight: 600, fontSize: 11 },
+        axisLabel: { color: '#334155', fontWeight: 700, fontSize: 12 },
         axisLine: { lineStyle: { color: '#E2E8F0' } },
+        axisTick: { show: false },
       },
       yAxis: {
         type: 'value',
         name: 'Số lượng KH (NPP/ĐL)',
-        nameTextStyle: { color: '#64748B', fontSize: 11, padding: [0, 0, 4, 0] },
+        nameTextStyle: { color: '#64748B', fontSize: 11, padding: [0, 0, 6, 0] },
         splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } },
-        axisLabel: { color: '#64748B', fontSize: 10 },
+        axisLabel: { color: '#64748B', fontSize: 11 },
       },
       series: [
         {
           name: 'Khách hàng Mới',
           type: 'bar',
-          barMaxWidth: 24,
+          barMaxWidth: 26,
+          barGap: '25%',
           data: data.newCustomers,
           itemStyle: {
             color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: '#14B8A6' },
-              { offset: 1, color: '#0D9488' },
+              { offset: 0, color: '#10B981' },
+              { offset: 1, color: '#059669' },
             ]),
-            borderRadius: [4, 4, 0, 0],
+            borderRadius: [5, 5, 0, 0],
           },
           label: {
             show: true,
             position: 'top',
-            color: '#0F766E',
-            fontSize: 10,
-            fontWeight: 700,
+            color: '#059669',
+            fontSize: 11,
+            fontWeight: 800,
+            distance: 4,
           },
         },
         {
           name: 'Ngừng mua (Churn)',
           type: 'bar',
-          barMaxWidth: 24,
+          barMaxWidth: 26,
           data: data.churnCustomers,
           itemStyle: {
             color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: '#F87171' },
-              { offset: 1, color: '#DC2626' },
+              { offset: 0, color: '#F43F5E' },
+              { offset: 1, color: '#E11D48' },
             ]),
-            borderRadius: [4, 4, 0, 0],
+            borderRadius: [5, 5, 0, 0],
           },
           label: {
             show: true,
             position: 'top',
-            color: '#B91C1C',
-            fontSize: 10,
-            fontWeight: 700,
+            color: '#E11D48',
+            fontSize: 11,
+            fontWeight: 800,
+            distance: 4,
           },
         },
       ],
     };
-    chart.setOption(option);
+    chart.setOption(option, true);
   }
 
   setP2CustomerFilter(mode) {
