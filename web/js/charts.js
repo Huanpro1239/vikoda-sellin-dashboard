@@ -158,17 +158,17 @@ class VikodaCharts {
     const data = this.engine.getProductGroupMix();
 
     const colorMap = {
-      'Khoáng kiềm Vikoda': '#2563EB',
-      'Khoáng ngọt Đảnh Thạnh': '#0D9488',
-      'KDT Thương Mại': '#F59E0B',
-      'Sản phẩm khác': '#8B5CF6',
+      'Khoáng ngọt Đảnh Thạnh': '#10B981', // Xanh Lá Lục Bảo Rực Rỡ
+      'Đảnh Thạnh': '#10B981',
+      'Khoáng kiềm Vikoda': '#2563EB',     // Xanh Dương Đậm Hoàng Gia
       'Vikoda': '#2563EB',
-      'Đảnh Thạnh': '#0D9488',
-      'KDT': '#F59E0B',
+      'KDT Thương Mại': '#F97316',         // Cam Rực Rỡ
+      'KDT': '#F97316',
+      'Sản phẩm khác': '#8B5CF6',          // Tím Đậm
       'Khác': '#8B5CF6',
     };
 
-    const palette = ['#2563EB', '#0D9488', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4'];
+    const palette = ['#10B981', '#2563EB', '#F97316', '#8B5CF6', '#EC4899', '#06B6D4'];
 
     const coloredData = data.map((d, i) => ({
       name: d.name,
@@ -178,7 +178,7 @@ class VikodaCharts {
 
     const option = {
       tooltip: { trigger: 'item', formatter: '{b}: <strong>{c} Tr.đ</strong> ({d}%)' },
-      legend: { bottom: 0, icon: 'circle', itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#475569', fontWeight: 500 } },
+      legend: { bottom: 0, icon: 'circle', itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#475569', fontWeight: 600 } },
       series: [{
         type: 'pie',
         radius: ['45%', '70%'],
@@ -188,7 +188,7 @@ class VikodaCharts {
           position: 'inside',
           formatter: (p) => p.percent > 4 ? `${Math.round(p.percent)}%` : '',
           fontSize: 11,
-          fontWeight: 700,
+          fontWeight: 800,
           color: '#FFFFFF',
         },
         data: coloredData,
@@ -206,14 +206,14 @@ class VikodaCharts {
     const data = this.engine.getChannelMix();
 
     const channelColorMap = {
-      'GT': '#2563EB',
-      'MT': '#0D9488',
-      'KA': '#8B5CF6',
-      'B2C': '#F59E0B',
-      'Khác': '#64748B',
+      'GT': '#2563EB',     // Xanh Dương Đậm
+      'MT': '#10B981',     // Xanh Lá Lục Bảo
+      'KA': '#8B5CF6',     // Tím Đậm
+      'B2C': '#F97316',    // Cam Rực Rỡ
+      'Khác': '#64748B',   // Xám
     };
 
-    const palette = ['#2563EB', '#0D9488', '#8B5CF6', '#F59E0B', '#64748B'];
+    const palette = ['#2563EB', '#10B981', '#8B5CF6', '#F97316', '#64748B'];
 
     const coloredData = data.map((d, i) => ({
       name: d.name,
@@ -223,7 +223,7 @@ class VikodaCharts {
 
     const option = {
       tooltip: { trigger: 'item', formatter: '{b}: <strong>{c} Tr.đ</strong> ({d}%)' },
-      legend: { bottom: 0, icon: 'circle', itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#475569', fontWeight: 500 } },
+      legend: { bottom: 0, icon: 'circle', itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#475569', fontWeight: 600 } },
       series: [{
         type: 'pie',
         radius: ['45%', '70%'],
@@ -233,7 +233,7 @@ class VikodaCharts {
           position: 'inside',
           formatter: (p) => p.percent > 4 ? `${Math.round(p.percent)}%` : '',
           fontSize: 11,
-          fontWeight: 700,
+          fontWeight: 800,
           color: '#FFFFFF',
         },
         data: coloredData,
@@ -585,20 +585,45 @@ class VikodaCharts {
   }
 
   renderP3BrandMix() {
-    const chart = this.getOrCreate('chart_p3_brand');
+    const chart = this.getOrCreate('chart_p3_brand_mix');
     if (!chart) return;
     const data = this.engine.getBrandMix();
 
+    const brandColorMap = {
+      'Khoáng kiềm Vikoda': '#2563EB',
+      'Vikoda': '#2563EB',             // Xanh Dương Đậm
+      'Khoáng ngọt Đảnh Thạnh': '#10B981',
+      'Đảnh Thạnh': '#10B981',         // Xanh Lá Lục Bảo
+      'KDT Thương Mại': '#F97316',
+      'KDT': '#F97316',                // Cam Rực Rỡ
+      'Sản phẩm khác': '#8B5CF6',
+      'Khác': '#8B5CF6',               // Tím Đậm
+    };
+
+    const palette = ['#2563EB', '#10B981', '#F97316', '#8B5CF6', '#EC4899', '#06B6D4'];
+
+    const coloredData = data.map((d, i) => ({
+      name: d.name,
+      value: d.value,
+      itemStyle: { color: brandColorMap[d.name] || palette[i % palette.length] },
+    }));
+
     const option = {
       tooltip: { trigger: 'item', formatter: '{b}: <strong>{c} Tr.đ</strong> ({d}%)' },
-      legend: { bottom: 0, icon: 'circle', itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#475569' } },
-      color: [this.colors.blue, this.colors.cyan, this.colors.amber, this.colors.purple],
+      legend: { bottom: 0, icon: 'circle', itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#475569', fontWeight: 600 } },
       series: [{
         type: 'pie',
         radius: ['45%', '70%'],
         center: ['50%', '45%'],
-        label: { show: false },
-        data: data,
+        label: {
+          show: true,
+          position: 'inside',
+          formatter: (p) => p.percent > 4 ? `${Math.round(p.percent)}%` : '',
+          fontSize: 11,
+          fontWeight: 800,
+          color: '#FFFFFF',
+        },
+        data: coloredData,
       }],
     };
     chart.setOption(option);
@@ -722,16 +747,30 @@ class VikodaCharts {
     if (!chart) return;
     const data = this.engine.getPackagingMix();
 
+    const palette = ['#2563EB', '#10B981', '#F97316', '#8B5CF6', '#EC4899', '#06B6D4'];
+
+    const coloredData = data.map((d, i) => ({
+      name: d.name,
+      value: d.value,
+      itemStyle: { color: palette[i % palette.length] },
+    }));
+
     const option = {
       tooltip: { trigger: 'item', formatter: '{b}: <strong>{c} đơn vị</strong> ({d}%)' },
-      legend: { bottom: 0, icon: 'circle', itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#475569' } },
-      color: [this.colors.blue, this.colors.teal, this.colors.amber, this.colors.purple],
+      legend: { bottom: 0, icon: 'circle', itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#475569', fontWeight: 600 } },
       series: [{
         type: 'pie',
         radius: ['45%', '70%'],
         center: ['50%', '45%'],
-        label: { show: false },
-        data: data,
+        label: {
+          show: true,
+          position: 'inside',
+          formatter: (p) => p.percent > 4 ? `${Math.round(p.percent)}%` : '',
+          fontSize: 11,
+          fontWeight: 800,
+          color: '#FFFFFF',
+        },
+        data: coloredData,
       }],
     };
     chart.setOption(option);
