@@ -60,6 +60,10 @@ class VikodaApp {
         overlay.style.opacity = '0';
         setTimeout(() => {
           overlay.style.display = 'none';
+          this.render();
+          if (window.charts && window.charts.resizeAll) {
+            window.charts.resizeAll();
+          }
         }, 250);
       } else {
         if (errorMsg) errorMsg.style.display = 'block';
@@ -335,13 +339,29 @@ class VikodaApp {
   // RENDER DỮ LIỆU TOÀN BỘ TRANG
   // ------------------------------------------------------------------------
   render() {
-    this.updateKPIs();
-    this.updateFilterPillsUI();
-    this.renderActivePageCharts();
-    if (this.activePage === 'page_05') {
-      this.renderTablePage();
-    } else if (this.activePage === 'page_06') {
-      this.updateP6PredictiveMetrics();
+    try {
+      this.updateKPIs();
+    } catch (e) {
+      console.error('Lỗi updateKPIs:', e);
+    }
+    try {
+      this.updateFilterPillsUI();
+    } catch (e) {
+      console.error('Lỗi updateFilterPillsUI:', e);
+    }
+    try {
+      this.renderActivePageCharts();
+    } catch (e) {
+      console.error('Lỗi renderActivePageCharts:', e);
+    }
+    try {
+      if (this.activePage === 'page_05') {
+        this.renderTablePage();
+      } else if (this.activePage === 'page_06') {
+        this.updateP6PredictiveMetrics();
+      }
+    } catch (e) {
+      console.error('Lỗi page specific render:', e);
     }
   }
 
@@ -633,6 +653,10 @@ class VikodaApp {
 }
 
 window.app = new VikodaApp();
-document.addEventListener('DOMContentLoaded', () => {
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    window.app.init();
+  });
+} else {
   window.app.init();
-});
+}
