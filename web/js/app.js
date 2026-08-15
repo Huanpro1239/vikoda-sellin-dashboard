@@ -117,6 +117,7 @@ class VikodaApp {
       this.renderTablePage();
     } else {
       this.renderActivePageCharts();
+      if (pageId === 'page_06') this.updateP6PredictiveMetrics();
     }
   }
 
@@ -339,6 +340,37 @@ class VikodaApp {
     this.renderActivePageCharts();
     if (this.activePage === 'page_05') {
       this.renderTablePage();
+    } else if (this.activePage === 'page_06') {
+      this.updateP6PredictiveMetrics();
+    }
+  }
+
+  updateP6PredictiveMetrics() {
+    const m = window.dataEngine.getStatisticalForecastMetrics();
+
+    const elFc = document.getElementById('p6_forecast_val');
+    const elFcSub = document.getElementById('p6_forecast_sub');
+    const elProb = document.getElementById('p6_prob_val');
+    const elProbSub = document.getElementById('p6_prob_sub');
+    const elVelo = document.getElementById('p6_velocity_val');
+    const elVeloSub = document.getElementById('p6_velocity_sub');
+
+    if (elFc) elFc.innerText = `${m.monthEndForecast.toLocaleString()} Tr.đ`;
+    if (elFcSub) elFcSub.innerText = `Dự báo đạt ${m.forecastAttainment}% Target (CI 90%: ${m.pessimisticForecast.toLocaleString()} - ${m.optimisticForecast.toLocaleString()} Tr.đ)`;
+
+    if (elProb) {
+      elProb.innerText = `${m.probabilityOfHit}%`;
+      elProb.style.color = m.probabilityOfHit >= 80 ? '#10B981' : (m.probabilityOfHit >= 50 ? '#D97706' : '#DC2626');
+    }
+    if (elProbSub) {
+      const gap = m.currentTarget - m.monthEndForecast;
+      elProbSub.innerText = gap > 0 ? `Thiếu hụt dự kiến: -${gap.toLocaleString()} Tr.đ` : `Dự kiến vượt: +${Math.abs(gap).toLocaleString()} Tr.đ`;
+    }
+
+    if (elVelo) elVelo.innerText = `${m.currentVelocity.toLocaleString()} Tr.đ/ngày`;
+    if (elVeloSub) {
+      elVeloSub.innerText = `Cần ${m.requiredVelocity.toLocaleString()} Tr.đ/ngày (${m.remainingDays} ngày còn lại · Tải: ${m.velocityBurden}x)`;
+      elVeloSub.style.color = m.velocityBurden > 1.3 ? '#DC2626' : (m.velocityBurden > 1.0 ? '#D97706' : '#10B981');
     }
   }
 

@@ -878,115 +878,181 @@ class VikodaCharts {
   }
 
   // ------------------------------------------------------------------------
-  // TRANG 06: KẾ HOẠCH & DỰ BÁO
+  // TRANG 06: KẾ HOẠCH, DỰ BÁO THỐNG KÊ & CẢNH BÁO SỚM THỜI GIAN THỰC
   // ------------------------------------------------------------------------
   renderPage6() {
-    this.renderP6Trend();
-    this.renderP6ForecastRegion();
-    this.renderP6ShortfallArea();
+    this.renderP6ForecastPacing();
+    this.renderP6BurdenVelocity();
+    this.renderP6EarlyWarningList();
   }
 
-  renderP6Trend() {
+  renderP6ForecastPacing() {
     const chart = this.getOrCreate('chart_p6_trend');
     if (!chart) return;
-    const data = this.engine.getMonthlyTrend();
+    const data = this.engine.getForecastPacingChartData();
 
     const option = {
-      tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'cross' },
+        formatter: (params) => {
+          let html = `<strong>Ngày ${params[0].name.replace('N', '')}</strong><br/>`;
+          params.forEach((p) => {
+            if (p.value !== null && p.value !== undefined) {
+              html += `${p.marker} ${p.seriesName}: <strong>${Number(p.value).toLocaleString()} Tr.đ</strong><br/>`;
+            }
+          });
+          return html;
+        },
+      },
       legend: {
-        data: ['Doanh thu Thực tế', 'Target Kế hoạch'],
+        data: ['Lũy kế Thực tế (Actual)', 'Mục tiêu Kế hoạch (Target)', 'Dự báo Thống kê (Forecast Baseline)'],
         bottom: 0,
         left: 'center',
-        itemWidth: 10,
+        itemWidth: 12,
         itemHeight: 10,
-        itemGap: 16,
+        itemGap: 14,
         textStyle: { fontSize: 11, color: '#475569', fontWeight: 600 },
         icon: 'circle',
       },
-      grid: { left: '3%', right: '3%', top: '36px', bottom: '40px', containLabel: true },
-      xAxis: { type: 'category', data: data.labels, axisLabel: { color: '#475569', fontSize: 11, fontWeight: 600 } },
-      yAxis: { type: 'value', name: 'Triệu VNĐ', splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } }, axisLabel: { color: '#64748B', fontSize: 10 } },
+      grid: { left: '3%', right: '4%', top: '36px', bottom: '46px', containLabel: true },
+      xAxis: {
+        type: 'category',
+        data: data.labels,
+        axisLabel: { color: '#475569', fontSize: 10, fontWeight: 600, interval: 2 },
+        axisLine: { lineStyle: { color: '#E2E8F0' } },
+      },
+      yAxis: {
+        type: 'value',
+        name: 'Doanh thu Lũy kế (Tr.đ)',
+        nameTextStyle: { color: '#64748B', fontSize: 11, padding: [0, 0, 4, 0] },
+        splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } },
+        axisLabel: { color: '#64748B', fontSize: 10 },
+      },
       series: [
         {
-          name: 'Doanh thu Thực tế',
-          type: 'bar',
-          barMaxWidth: 24,
-          data: data.actualSeries,
-          itemStyle: {
-            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#3B82F6' }, { offset: 1, color: '#1D4ED8' }]),
-            borderRadius: [4, 4, 0, 0],
-          },
+          name: 'Lũy kế Thực tế (Actual)',
+          type: 'line',
+          data: data.actualCumulative,
+          lineStyle: { width: 3, color: '#2563EB' },
+          itemStyle: { color: '#2563EB' },
+          symbol: 'circle',
+          symbolSize: 6,
         },
         {
-          name: 'Target Kế hoạch',
+          name: 'Mục tiêu Kế hoạch (Target)',
           type: 'line',
-          data: data.targetSeries,
-          lineStyle: { color: '#D97706', width: 2.5, type: 'dashed' },
+          data: data.targetPacing,
+          lineStyle: { width: 2, color: '#D97706', type: 'dashed' },
           itemStyle: { color: '#D97706' },
+          symbol: 'none',
+        },
+        {
+          name: 'Dự báo Thống kê (Forecast Baseline)',
+          type: 'line',
+          data: data.forecastBaseline,
+          lineStyle: { width: 2.5, color: '#10B981', type: 'dotted' },
+          itemStyle: { color: '#10B981' },
+          symbol: 'diamond',
+          symbolSize: 5,
         },
       ],
     };
     chart.setOption(option);
   }
 
-  renderP6ForecastRegion() {
+  renderP6BurdenVelocity() {
     const chart = this.getOrCreate('chart_p6_forecast');
     if (!chart) return;
-    const data = this.engine.getPlanForecastByRegion();
+    const data = this.engine.getRegionBurdenAnalysis();
 
     const option = {
-      tooltip: { trigger: 'axis', formatter: (p) => `${p[0].name}: Dự báo hoàn thành <strong>${p[0].value}% Target</strong>` },
-      grid: { left: '3%', right: '3%', bottom: '8%', top: '36px', containLabel: true },
-      xAxis: { type: 'category', data: data.map((d) => d.name), axisLabel: { color: '#475569', fontSize: 11, fontWeight: 600 } },
-      yAxis: { type: 'value', name: '% Dự báo hoàn thành', splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } }, axisLabel: { color: '#64748B', fontSize: 10, formatter: '{value}%' } },
-      series: [{
-        type: 'bar',
-        barMaxWidth: 26,
-        data: data.map((d) => ({
-          value: d.value,
-          itemStyle: {
-            color: d.value >= 100
-              ? new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#34D399' }, { offset: 1, color: '#059669' }])
-              : d.value >= 80
-              ? new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#FBBF24' }, { offset: 1, color: '#D97706' }])
-              : new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#F87171' }, { offset: 1, color: '#DC2626' }]),
-            borderRadius: [4, 4, 0, 0],
-          },
-        })),
-        label: {
-          show: true,
-          position: 'top',
-          formatter: '{c}%',
-          fontSize: 10,
-          fontWeight: 700,
-          color: '#334155',
+      tooltip: {
+        trigger: 'axis',
+        formatter: (p) => {
+          const item = data[p[0].dataIndex];
+          return `<strong>${item.name}</strong><br/>` +
+            `• Vận tốc thực tế: <strong>${item.currentVelocity} Tr.đ/ngày</strong><br/>` +
+            `• Vận tốc yêu cầu: <strong>${item.requiredVelocity} Tr.đ/ngày</strong><br/>` +
+            `• Hệ số tải áp lực: <strong>${item.burden}x</strong> (${item.riskLabel})<br/>` +
+            `• Dự báo về đích: <strong>${item.forecastAttainment}% Target</strong>`;
         },
-      }],
+      },
+      legend: {
+        data: ['Vận tốc Hiện tại (Tr.đ/ngày)', 'Vận tốc Yêu cầu về đích (Tr.đ/ngày)'],
+        bottom: 0,
+        left: 'center',
+        itemWidth: 12,
+        itemHeight: 10,
+        itemGap: 16,
+        textStyle: { fontSize: 11, color: '#475569', fontWeight: 600 },
+        icon: 'circle',
+      },
+      grid: { left: '3%', right: '3%', bottom: '46px', top: '36px', containLabel: true },
+      xAxis: {
+        type: 'category',
+        data: data.map((d) => d.name),
+        axisLabel: { color: '#475569', fontSize: 10, fontWeight: 600, interval: 0 },
+        axisLine: { lineStyle: { color: '#E2E8F0' } },
+      },
+      yAxis: {
+        type: 'value',
+        name: 'Vận tốc (Tr.đ / Ngày)',
+        nameTextStyle: { color: '#64748B', fontSize: 11, padding: [0, 0, 4, 0] },
+        splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } },
+        axisLabel: { color: '#64748B', fontSize: 10 },
+      },
+      series: [
+        {
+          name: 'Vận tốc Hiện tại (Tr.đ/ngày)',
+          type: 'bar',
+          barMaxWidth: 18,
+          data: data.map((d) => d.currentVelocity),
+          itemStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#3B82F6' }, { offset: 1, color: '#1D4ED8' }]),
+            borderRadius: [3, 3, 0, 0],
+          },
+        },
+        {
+          name: 'Vận tốc Yêu cầu về đích (Tr.đ/ngày)',
+          type: 'bar',
+          barMaxWidth: 18,
+          data: data.map((d) => d.requiredVelocity),
+          itemStyle: {
+            color: (p) => {
+              const item = data[p.dataIndex];
+              return item.riskLevel === 'red' ? '#DC2626' : (item.riskLevel === 'amber' ? '#D97706' : '#10B981');
+            },
+            borderRadius: [3, 3, 0, 0],
+          },
+        },
+      ],
     };
     chart.setOption(option);
   }
 
-  renderP6ShortfallArea() {
-    const chart = this.getOrCreate('chart_p6_shortfall');
-    if (!chart) return;
-    const data = this.engine.getPlanShortfallByArea();
+  renderP6EarlyWarningList() {
+    const el = document.getElementById('early_warning_container');
+    if (!el) return;
 
-    const option = {
-      tooltip: { trigger: 'axis', formatter: (p) => `${p[0].name}: Hụt <strong>${p[0].value.toLocaleString()} Tr.đ</strong>` },
-      grid: { left: '3%', right: '6%', bottom: '5%', top: '5%', containLabel: true },
-      xAxis: { type: 'value', name: 'Khoảng hụt Target (Tr.đ)', splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } }, axisLabel: { color: '#64748B', fontSize: 10 } },
-      yAxis: { type: 'category', data: data.map((d) => d.vung).reverse(), axisLabel: { color: '#475569', fontSize: 10 } },
-      series: [{
-        type: 'bar',
-        barMaxWidth: 16,
-        data: data.map((d) => d.shortfall).reverse(),
-        itemStyle: {
-          color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [{ offset: 0, color: '#F87171' }, { offset: 1, color: '#DC2626' }]),
-          borderRadius: [0, 4, 4, 0],
-        },
-      }],
-    };
-    chart.setOption(option);
+    const warnings = this.engine.getComprehensiveEarlyWarnings();
+    if (!warnings || warnings.length === 0) {
+      el.innerHTML = '<div style="padding:16px; color:#64748B;">Hệ thống không phát hiện rủi ro bất thường nào trong kỳ báo cáo.</div>';
+      return;
+    }
+
+    el.innerHTML = warnings.map((w) => `
+      <div class="alert-card alert-${w.severity}">
+        <div class="alert-header-row">
+          <span class="alert-badge alert-badge-${w.severity}">${w.badge}</span>
+          <h4 class="alert-title">${w.title}</h4>
+        </div>
+        <p class="alert-desc">${w.desc}</p>
+        <div class="alert-action-box">
+          <strong>⚡ Khuyến nghị:</strong> ${w.action}
+        </div>
+      </div>
+    `).join('');
   }
 }
 

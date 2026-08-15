@@ -8,7 +8,7 @@
   <meta http-equiv="Expires" content="0">
   <title>Báo Cáo Sell In Vikoda | Hệ Thống Quản Trị Doanh Số</title>
   <meta name="description" content="Dashboard điều hành bán hàng Sell In thông minh Vikoda - Phân tích đa chiều, tự động hóa dự báo & nhịp độ kinh doanh">
-  <link rel="stylesheet" href="css/style.css?v=20260815_21">
+  <link rel="stylesheet" href="css/style.css?v=20260815_22">
   
   <!-- CDN Thư viện ECharts và SheetJS (Xuất Excel) -->
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -446,55 +446,66 @@
         </div>
 
         <!-- ================================================================
-             PAGE 06: KẾ HOẠCH & KHUYẾN NGHỊ
+             PAGE 06: KẾ HOẠCH, DỰ BÁO THỐNG KÊ & CẢNH BÁO SỚM THỜI GIAN THỰC
              ================================================================ -->
         <div class="view-page" id="view_page_06">
           
+          <!-- 3 THẺ CHỈ SỐ DỰ BÁO THỐNG KÊ (PREDICTIVE HERO METRICS) -->
+          <div class="predictive-metrics-grid">
+            <div class="pred-card">
+              <div class="pred-card-header">
+                <span class="pred-label">Dự báo Doanh số Cuối tháng</span>
+                <span class="pred-chip blue">FMCG Velocity Model</span>
+              </div>
+              <div class="pred-value" id="p6_forecast_val">0 Tr.đ</div>
+              <div class="pred-sub" id="p6_forecast_sub">Dự báo tiến độ đạt kế hoạch</div>
+            </div>
+
+            <div class="pred-card">
+              <div class="pred-card-header">
+                <span class="pred-label">Xác suất Cán đích Target</span>
+                <span class="pred-chip green">Z-Score Prob</span>
+              </div>
+              <div class="pred-value" id="p6_prob_val">0%</div>
+              <div class="pred-sub" id="p6_prob_sub">Khoảng chênh lệch dự kiến</div>
+            </div>
+
+            <div class="pred-card">
+              <div class="pred-card-header">
+                <span class="pred-label">Vận tốc Thực tế vs Yêu cầu</span>
+                <span class="pred-chip amber">Run-rate / Ngày</span>
+              </div>
+              <div class="pred-value" id="p6_velocity_val">0 Tr.đ/ngày</div>
+              <div class="pred-sub" id="p6_velocity_sub">Áp lực vận tốc bán hàng cần đạt</div>
+            </div>
+          </div>
+
+          <!-- BIỂU ĐỒ HÀNG 1: DỰ BÁO PACING LŨY KẾ & VẬN TỐC THEO 7 ĐƠN VỊ -->
           <div class="charts-grid-2">
             <div class="chart-card">
               <div class="chart-card-header">
-                <span class="chart-title">1 · XU HƯỚNG ACTUAL · TARGET · RUN-RATE DỰ BÁO</span>
-                <span class="chart-subtitle">So sánh tiến độ thực tế vs kịch bản cán đích</span>
+                <span class="chart-title">1 · DỰ BÁO NHỊP ĐỘ LŨY KẾ THÁNG (DAILY PACING & FORECAST)</span>
+                <span class="chart-subtitle">Lũy kế thực tế vs Kế hoạch vs Đường dự báo thống kê</span>
               </div>
               <div id="chart_p6_trend" class="chart-container"></div>
             </div>
 
             <div class="chart-card">
               <div class="chart-card-header">
-                <span class="chart-title">2 · DỰ BÁO KHẢ NĂNG HOÀN THÀNH TARGET THEO MIỀN</span>
-                <span class="chart-subtitle">Tỷ lệ % dự báo đạt mục tiêu cả tháng</span>
+                <span class="chart-title">2 · VẬN TỐC HIỆN TẠI VS YÊU CẦU VỀ ĐÍCH THEO 7 ĐƠN VỊ</span>
+                <span class="chart-subtitle">So sánh tốc độ bán thực tế vs Áp lực ngày cần đạt (Tr.đ/ngày)</span>
               </div>
               <div id="chart_p6_forecast" class="chart-container"></div>
             </div>
           </div>
 
-          <div class="charts-grid-2">
-            <div class="chart-card">
-              <div class="chart-card-header">
-                <span class="chart-title">3 · GAP CẦN BÙ & ÁP LỰC DOANH THU MỖI NGÀY</span>
-                <span class="chart-subtitle">Doanh số còn thiếu & mức cần đạt/ngày của từng vùng</span>
-              </div>
-              <div id="chart_p6_shortfall" class="chart-container"></div>
+          <!-- HÀNG 2: TRUNG TÂM CẢNH BÁO SỚM & KHUYẾN NGHỊ ĐIỀU HÀNH -->
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <span class="chart-title">3 · TRUNG TÂM CẢNH BÁO SỚM & KHUYẾN NGHỊ ĐIỀU HÀNH THỜI GIAN THỰC</span>
+              <span class="chart-subtitle">Tự động phát hiện nguy cơ vỡ target, sụt giảm NPP/Đại lý & lệch cơ cấu SKU</span>
             </div>
-
-            <div class="playbook-panel">
-              <div class="playbook-item">
-                <span class="playbook-step">Bước 1 — Đánh giá Nhịp độ bán hàng & Pacing</span>
-                <span class="playbook-desc">Kiểm tra chỉ số Pacing % trên Trang 01. Nếu Pacing < 100% kèm Hệ số gia tốc > 1.3x thì vùng đang chậm nhịp nghiêm trọng, cần kích hoạt khuyến mại đẩy hàng.</span>
-              </div>
-              <div class="playbook-item">
-                <span class="playbook-step">Bước 2 — Truy nguyên nhân theo Kênh & Bao bì</span>
-                <span class="playbook-desc">Trang 02 xem kênh GT/MT/KA nào tụt giảm; Trang 03 rà soát Hero SKUs (Vikoda 500ml, 1.5L, Bình 19L); Trang 04 kiểm tra cơ cấu Két - Thùng - Bình.</span>
-              </div>
-              <div class="playbook-item">
-                <span class="playbook-step">Bước 3 — Giao chỉ tiêu & Áp lực ngày cho RSM</span>
-                <span class="playbook-desc">Dựa vào biểu đồ Gap bên trái để giao số bán hàng mỗi ngày cho từng Quản lý vùng nhằm kịp cán đích trước khi đóng sổ tháng.</span>
-              </div>
-              <div class="playbook-item">
-                <span class="playbook-step">Bước 4 — Chăm sóc Điểm bán & Khách hàng lớn</span>
-                <span class="playbook-desc">Tiếp cận ngay tệp NPP ngừng mua ở Trang 02, đồng thời theo dõi quy mô đơn hàng (Drop Size) để nâng giá trị đơn hàng trên mỗi khách active.</span>
-              </div>
-            </div>
+            <div id="early_warning_container" class="early-warning-grid" style="margin-top: 10px;"></div>
           </div>
 
         </div>
@@ -566,10 +577,10 @@
   </div>
 
   <!-- NẠP DỮ LIỆU & LOGIC -->
-  <script src="js/auth.js?v=20260815_21"></script>
-  <script src="data/dashboard_data.js?v=20260815_21"></script>
-  <script src="js/data-engine.js?v=20260815_21"></script>
-  <script src="js/charts.js?v=20260815_21"></script>
-  <script src="js/app.js?v=20260815_21"></script>
+  <script src="js/auth.js?v=20260815_22"></script>
+  <script src="data/dashboard_data.js?v=20260815_22"></script>
+  <script src="js/data-engine.js?v=20260815_22"></script>
+  <script src="js/charts.js?v=20260815_22"></script>
+  <script src="js/app.js?v=20260815_22"></script>
 </body>
 </html>

@@ -774,13 +774,145 @@ class VikodaDataEngine {
   }
 
   // ------------------------------------------------------------------------
-  // TRANG 06: KẾ HOẠCH & DỰ BÁO
+  // TRANG 06: KẾ HOẠCH, DỰ BÁO THỐNG KÊ & CẢNH BÁO SỚM THỜI GIAN THỰC
   // ------------------------------------------------------------------------
-  getPlanForecastByRegion() {
+  getStatisticalForecastMetrics() {
     const facts = this.getFilteredFacts();
     const targets = this.getFilteredTargets();
 
-    const mienList = ['Miền Bắc', 'Miền Trung 1', 'Miền Trung 2', 'Miền Nam', 'KA', 'MT', 'B2C'];
+    const currentActual = facts.reduce((sum, r) => sum + (r[4] || 0), 0) / 1000000;
+    const currentTarget = targets.reduce((sum, r) => sum + (r[3] || 0), 0) / 1000000;
+
+    const s = this.filters.startDate || '2026-08-01';
+    const e = this.filters.endDate || '2026-08-15';
+    const sDate = new Date(s);
+    const eDate = new Date(e);
+
+    const y = eDate.getFullYear();
+    const m = eDate.getMonth() + 1;
+    const totalDaysInMonth = new Date(y, m, 0).getDate();
+    const passedDays = Math.max(1, Math.min(totalDaysInMonth, eDate.getDate()));
+    const remainingDays = Math.max(0, totalDaysInMonth - passedDays);
+
+    const currentVelocity = currentActual / passedDays;
+    const shortfall = Math.max(0, currentTarget - currentActual);
+    const requiredVelocity = remainingDays > 0 ? shortfall / remainingDays : 0;
+    const velocityBurden = currentVelocity > 0 ? requiredVelocity / currentVelocity : (shortfall > 0 ? 9.9 : 0);
+
+    const accelerationFactor = 1.18;
+    const forecastRemaining = remainingDays * currentVelocity * accelerationFactor;
+    const monthEndForecast = currentActual + forecastRemaining;
+    const forecastAttainment = currentTarget > 0 ? (monthEndForecast / currentTarget) * 100 : 0;
+
+    const standardError = 0.075 * monthEndForecast;
+    const pessimisticForecast = Math.max(currentActual, monthEndForecast - 1.645 * standardError);
+    const optimisticForecast = monthEndForecast + 1.645 * standardError;
+
+    let probabilityOfHit = 50;
+    if (standardError > 0 && currentTarget > 0) {
+      const z = (monthEndForecast - currentTarget) / standardError;
+      probabilityOfHit = Math.max(5, Math.min(99, Math.round((1 / (1 + Math.exp(-1.7 * z))) * 100)));
+    }
+
+    return {
+      passedDays,
+      totalDaysInMonth,
+      remainingDays,
+      currentActual: Math.round(currentActual),
+      currentTarget: Math.round(currentTarget),
+      shortfall: Math.round(shortfall),
+      currentVelocity: Number(currentVelocity.toFixed(1)),
+      requiredVelocity: Number(requiredVelocity.toFixed(1)),
+      velocityBurden: Number(velocityBurden.toFixed(2)),
+      monthEndForecast: Math.round(monthEndForecast),
+      forecastAttainment: Number(forecastAttainment.toFixed(1)),
+      pessimisticForecast: Math.round(pessimisticForecast),
+      optimisticForecast: Math.round(optimisticForecast),
+      probabilityOfHit,
+    };
+  }
+
+  getForecastPacingChartData() {
+    const facts = this.getFilteredFacts();
+    const targets = this.getFilteredTargets();
+
+    const currentActual = facts.reduce((sum, r) => sum + (r[4] || 0), 0) / 1000000;
+    const currentTarget = targets.reduce((sum, r) => sum + (r[3] || 0), 0) / 1000000;
+
+    const e = this.filters.endDate || '2026-08-15';
+    const eDate = new Date(e);
+    const y = eDate.getFullYear();
+    const m = eDate.getMonth() + 1;
+    const totalDays = new Date(y, m, 0).getDate();
+    const currentDay = Math.max(1, Math.min(totalDays, eDate.getDate()));
+
+    const dailyMap = {};
+    for (let d = 1; d <= totalDays; d++) dailyMap[d] = 0;
+
+    const mPrefix = `${y}-${String(m).padStart(2, '0')}`;
+    facts.forEach((r) => {
+      if (r[0].startsWith(mPrefix)) {
+        const dayNum = parseInt(r[0].split('-')[2], 10);
+        if (dailyMap[dayNum] !== undefined) dailyMap[dayNum] += (r[4] || 0) / 1000000;
+      }
+    });
+
+    const labels = [];
+    const actualCumulative = [];
+    const targetPacing = [];
+    const forecastBaseline = [];
+    const forecastLower = [];
+    const forecastUpper = [];
+
+    let cumAct = 0;
+    const dailyTargetStep = currentTarget / totalDays;
+    const currentVelocity = currentDay > 0 ? currentActual / currentDay : 0;
+    const accel = 1.18;
+
+    for (let d = 1; d <= totalDays; d++) {
+      labels.push(`N${d}`);
+      targetPacing.push(Math.round(dailyTargetStep * d));
+
+      if (d <= currentDay) {
+        cumAct += dailyMap[d];
+        actualCumulative.push(Math.round(cumAct));
+        forecastBaseline.push(Math.round(cumAct));
+        forecastLower.push(Math.round(cumAct));
+        forecastUpper.push(Math.round(cumAct));
+      } else {
+        actualCumulative.push(null);
+        const dayOffset = d - currentDay;
+        const projected = currentActual + dayOffset * currentVelocity * accel;
+        const se = 0.075 * projected * Math.sqrt(dayOffset / (totalDays - currentDay + 1));
+        forecastBaseline.push(Math.round(projected));
+        forecastLower.push(Math.round(Math.max(currentActual, projected - 1.645 * se)));
+        forecastUpper.push(Math.round(projected + 1.645 * se));
+      }
+    }
+
+    return {
+      labels,
+      actualCumulative,
+      targetPacing,
+      forecastBaseline,
+      forecastLower,
+      forecastUpper,
+      currentDay,
+      totalDays,
+    };
+  }
+
+  getRegionBurdenAnalysis() {
+    const facts = this.getFilteredFacts();
+    const targets = this.getFilteredTargets();
+
+    const e = this.filters.endDate || '2026-08-15';
+    const eDate = new Date(e);
+    const totalDays = new Date(eDate.getFullYear(), eDate.getMonth() + 1, 0).getDate();
+    const passedDays = Math.max(1, Math.min(totalDays, eDate.getDate()));
+    const remainingDays = Math.max(1, totalDays - passedDays);
+
+    const regions = ['Miền Bắc', 'Miền Trung 1', 'Miền Trung 2', 'Miền Nam', 'KA', 'MT', 'B2C'];
     const actMap = {};
     const tgtMap = {};
 
@@ -798,12 +930,145 @@ class VikodaDataEngine {
       tgtMap[m] = (tgtMap[m] || 0) + (r[3] || 0) / 1000000;
     });
 
-    return mienList.map((m) => {
+    return regions.map((m) => {
       const act = actMap[m] || 0;
       const tgt = tgtMap[m] || 0;
-      const forecastPercent = tgt > 0 ? (act / tgt) * 100 : 0;
-      return { name: m, value: Number(forecastPercent.toFixed(1)) };
+      const curV = act / passedDays;
+      const shortfall = Math.max(0, tgt - act);
+      const reqV = shortfall / remainingDays;
+      const burden = curV > 0 ? reqV / curV : (shortfall > 0 ? 5.0 : 0);
+      const fc = act + remainingDays * curV * 1.15;
+      const fcAttainment = tgt > 0 ? (fc / tgt) * 100 : 0;
+
+      let riskLevel = 'green';
+      let riskLabel = 'An toàn';
+      if (burden > 1.3 || fcAttainment < 85) {
+        riskLevel = 'red';
+        riskLabel = 'Cảnh báo đỏ';
+      } else if (burden > 0.95 || fcAttainment < 100) {
+        riskLevel = 'amber';
+        riskLabel = 'Cần tăng tốc';
+      }
+
+      return {
+        name: m,
+        actual: Math.round(act),
+        target: Math.round(tgt),
+        shortfall: Math.round(shortfall),
+        currentVelocity: Number(curV.toFixed(1)),
+        requiredVelocity: Number(reqV.toFixed(1)),
+        burden: Number(burden.toFixed(2)),
+        forecastAttainment: Number(fcAttainment.toFixed(1)),
+        riskLevel,
+        riskLabel,
+      };
     });
+  }
+
+  getComprehensiveEarlyWarnings() {
+    const facts = this.getFilteredFacts();
+    const lyFacts = this.getLYFilteredFacts();
+
+    const warnings = [];
+
+    // 1. CẢNH BÁO NGUY CƠ HỤT TARGET THEO MIỀN (RED/AMBER)
+    const regionBurden = this.getRegionBurdenAnalysis();
+    const criticalRegions = regionBurden.filter((r) => r.riskLevel === 'red' && r.shortfall > 400);
+    criticalRegions.forEach((r) => {
+      warnings.push({
+        type: 'critical',
+        severity: 'red',
+        badge: '🚨 Nguy cơ vỡ Target',
+        title: `${r.name}: Thiếu hụt ${r.shortfall.toLocaleString()} Tr.đ`,
+        desc: `Vận tốc hiện tại ${r.currentVelocity} Tr.đ/ngày, cần tăng lên ${r.requiredVelocity} Tr.đ/ngày (Áp lực tải ${r.burden}x). Dự báo đạt ${r.forecastAttainment}% Target.`,
+        action: `Giao KPI ngày cho RSM ${r.name}, tập trung giải phóng đơn hàng tồn và đẩy chương trình khuyến mại cuối tháng.`,
+      });
+    });
+
+    // 2. CẢNH BÁO ĐẠI LÝ / KHÁCH HÀNG SỤT GIẢM SÂU (ATTRITION / CHURN)
+    const actCustMap = {};
+    const lyCustMap = {};
+    facts.forEach((r) => { actCustMap[r[1]] = (actCustMap[r[1]] || 0) + (r[4] || 0) / 1000000; });
+    lyFacts.forEach((r) => { lyCustMap[r[1]] = (lyCustMap[r[1]] || 0) + (r[4] || 0) / 1000000; });
+
+    const churnCandidates = [];
+    Object.entries(lyCustMap).forEach(([cid, lyVal]) => {
+      if (lyVal >= 150) {
+        const actVal = actCustMap[cid] || 0;
+        const drop = lyVal - actVal;
+        const pctDrop = ((actVal - lyVal) / lyVal) * 100;
+        if (pctDrop <= -35 && drop >= 100) {
+          const c = this.customers[cid] || {};
+          churnCandidates.push({
+            name: c.name || cid,
+            channel: c.channel || 'GT',
+            mien: c.mien || '',
+            actVal: Math.round(actVal),
+            lyVal: Math.round(lyVal),
+            drop: Math.round(drop),
+            pctDrop: Math.round(pctDrop),
+          });
+        }
+      }
+    });
+
+    churnCandidates.sort((a, b) => b.drop - a.drop);
+    if (churnCandidates.length > 0) {
+      const topChurn = churnCandidates.slice(0, 3);
+      const names = topChurn.map((c) => `${c.name} (-${c.drop} Tr.đ / ${c.pctDrop}%)`).join('; ');
+      warnings.push({
+        type: 'warning',
+        severity: 'amber',
+        badge: '⚠️ Churn & Drop Đại lý',
+        title: `Phát hiện ${churnCandidates.length} NPP & Đại lý lớn sụt giảm > 35% doanh số`,
+        desc: `Các đối tác sụt giảm sâu: ${names}.`,
+        action: `Trưởng kênh GT/MT và Sales Sup tiếp cận trực tiếp kiểm tra sức mua điểm bán và hỗ trợ luân chuyển hàng.`,
+      });
+    }
+
+    // 3. CẢNH BÁO CÂN ĐỐI CƠ CẤU SẢN PHẨM (CORE PRODUCT MIX)
+    let vkRev = 0;
+    let dtRev = 0;
+    facts.forEach((r) => {
+      const p = this.products[r[2]] || {};
+      if (p.group === 'Khoáng kiềm Vikoda' || p.is_vikoda) vkRev += (r[4] || 0) / 1000000;
+      else dtRev += (r[4] || 0) / 1000000;
+    });
+    const totalRev = vkRev + dtRev;
+    const vkShare = totalRev > 0 ? (vkRev / totalRev) * 100 : 0;
+    if (vkShare < 45) {
+      warnings.push({
+        type: 'info',
+        severity: 'blue',
+        badge: '📦 Tỷ Trọng Sản Phẩm',
+        title: `Khoáng Kiềm Vikoda đạt ${vkShare.toFixed(1)}% tổng doanh thu (Kỳ vọng >= 45%)`,
+        desc: `Dòng Khoáng ngọt Đảnh Thạnh đang áp đảo. Dòng Khoáng kiềm có biên lợi nhuận cao cần được thúc đẩy thêm.`,
+        action: `Tăng cường chính sách thưởng Sell-in cho dòng Vikoda chai thủy tinh 350ml và chai PET 500ml.`,
+      });
+    }
+
+    // 4. ĐIỂM SÁNG TĂNG TRƯỞNG & CƠ HỘI ĐỘT PHÁ (OPPORTUNITY)
+    const strongRegions = regionBurden.filter((r) => r.forecastAttainment >= 110);
+    if (strongRegions.length > 0) {
+      const strongNames = strongRegions.map((r) => `${r.name} (${r.forecastAttainment}% Target)`).join(', ');
+      warnings.push({
+        type: 'success',
+        severity: 'green',
+        badge: '🚀 Cơ Hội Bứt Phá',
+        title: `Đạt vượt tiến độ xuất sắc: ${strongNames}`,
+        desc: `Khu vực có nhịp độ bán hàng mạnh mẽ, duy trì khả năng về đích sớm.`,
+        action: `Bổ sung tồn kho đệm và phương án vận tải đảm bảo cung ứng thông suốt không gián đoạn.`,
+      });
+    }
+
+    return warnings;
+  }
+
+  getPlanForecastByRegion() {
+    return this.getRegionBurdenAnalysis().map((r) => ({
+      name: r.name,
+      value: r.forecastAttainment,
+    }));
   }
 
   getPlanShortfallByArea() {
