@@ -77,12 +77,39 @@ def upload_file_to_sharepoint(
             print(f"  -> Da tai len SharePoint thanh cong: {local_file.name}")
 
 
+def upload_via_webhook(webhook_url: str, local_file: Path) -> None:
+    """Tải file lên SharePoint thông qua Power Automate HTTP Webhook."""
+    content_b64 = base64.b64encode(local_file.read_bytes()).decode("utf-8")
+    payload = json.dumps({
+        "filename": local_file.name,
+        "content": content_b64,
+        "folder": "Data_Goc"
+    }).encode("utf-8")
+    req = urllib.request.Request(webhook_url, data=payload, method="POST")
+    req.add_header("Content-Type", "application/json")
+    try:
+        with urllib.request.urlopen(req) as resp:
+            print(f"  -> Da chuyen file {local_file.name} vao SharePoint Data_Goc qua Webhook (status {resp.status})")
+    except Exception as e:
+        print(f"  -> Loi chuyen file qua webhook: {e}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Dong bo SharePoint <-> GitHub Actions")
     parser.add_argument("--action", choices=["download", "upload"], required=True)
     parser.add_argument("--folder", required=True, help="Ten thu muc tren SharePoint (Data ERP hoac Data_Goc)")
     parser.add_argument("--local-dir", required=True, help="Thu muc cuc bo")
     args = parser.parse_args()
+
+    local_path = Path(args.local_dir).resolve()
+
+    # Kiem tra neu co Webhook cua Power Automate de upload file
+    webhook_url = os.environ.get("POWER_AUTOMATE_UPLOAD_WEBHOOK")
+    if webhook_url and args.action == "upload":
+        print(f"=== DANG TAI FILE LEN SHAREPOINT '{args.folder}' QUA POWER AUTOMATE WEBHOOK ===")
+        for f in local_path.glob("*.xlsx"):
+            upload_via_webhook(webhook_url, f)
+        return
 
     tenant_id = os.environ.get("AZURE_TENANT_ID")
     client_id = os.environ.get("AZURE_CLIENT_ID")
@@ -95,7 +122,6 @@ def main() -> None:
         return
 
     token = get_graph_access_token(tenant_id, client_id, client_secret)
-    local_path = Path(args.local_dir).resolve()
 
     if args.action == "download":
         print(f"=== DANG TAI DU LIEU TU SHAREPOINT '{args.folder}' VE GITHUB ACTIONS ===")
