@@ -1,10 +1,10 @@
 [
   {
     "period": "2026-06",
-    "outputPath": "D:\\Vikoda\\Bao cao Sell in\\Data\\File bao cao\\Sell In Thang\\Sell in T06_2026.xlsx",
+    "outputPath": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/File bao cao/Sell In Thang/Sell in T06_2026.xlsx",
     "outputRows": 7168,
     "verification": {
-      "file": "D:\\Vikoda\\Bao cao Sell in\\Data\\File bao cao\\Sell In Thang\\Sell in T06_2026.xlsx",
+      "file": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/File bao cao/Sell In Thang/Sell in T06_2026.xlsx",
       "sheet_count": 1,
       "sheet_name": "Sell in",
       "headers_ok": true,
