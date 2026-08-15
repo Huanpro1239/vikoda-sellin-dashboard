@@ -45,8 +45,8 @@ jobs:
           git config --global user.email "bot@vikoda.com.vn"
           git add web/data/ Data/File\ bao\ cao/ Data/Work/ || true
           if ! git diff --staged --quiet; then
-            git commit -m "🤖 Tự động Tách data & Cập nhật Web Dashboard [skip ci]"
-            git push
+            git commit -m "🤖 Tự động Tách data & Cập nhật Web Dashboard [skip ci]" || true
+            git push || true
           fi
 
       - name: 🌐 Cấu hình GitHub Pages

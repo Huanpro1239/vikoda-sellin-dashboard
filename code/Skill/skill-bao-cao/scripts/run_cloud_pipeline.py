@@ -97,11 +97,15 @@ def run_pipeline(project_root: Path) -> None:
     print("============================================================")
     print(" 4/4 - XUAT DU LIEU WEB DASHBOARD VIKODA (EXPORT WEB DATA)")
     print("============================================================")
-    run_command([
-        sys.executable,
-        str(scripts_baocao / "export_web_data.py"),
-        "--project-root", str(project_root),
-    ], cwd=project_root)
+    staging_file = staging_dir / "sell_in_data.json"
+    if staging_file.exists():
+        run_command([
+            sys.executable,
+            str(scripts_baocao / "export_web_data.py"),
+            "--project-root", str(project_root),
+        ], cwd=project_root)
+    else:
+        print("Staging data chua co tren runner. Su dung goi web/data hien tai da dong goi san.")
 
     print("============================================================")
     print(" HOAN TAT TOAN BO CHUOI TACH DATA VA CAP NHAT WEB DASHBOARD!")
