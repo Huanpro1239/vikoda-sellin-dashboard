@@ -359,19 +359,21 @@ class VikodaDataEngine {
     const facts = this.getFilteredFacts();
     const targets = this.getFilteredTargets();
 
-    const regions = ['Miền Bắc', 'Miền Trung 1', 'Miền Trung 2', 'Miền Nam', 'B2C'];
+    const regions = ['Miền Bắc', 'Miền Trung 1', 'Miền Trung 2', 'Miền Nam', 'KA', 'MT', 'B2C'];
     const actMap = {};
     const tgtMap = {};
 
     facts.forEach((r) => {
       const cust = this.customers[r[1]] || {};
-      const mien = cust.mien || 'Khác';
+      const terr = this.territories[r[3]] || {};
+      const mien = cust.mien || terr.mien || 'Khác';
       actMap[mien] = (actMap[mien] || 0) + (r[4] || 0) / 1000000;
     });
 
     targets.forEach((r) => {
       const cust = this.customers[r[2]] || {};
-      const mien = cust.mien || 'Khác';
+      const terr = this.territories[r[1]] || {};
+      const mien = cust.mien || terr.mien || 'Khác';
       tgtMap[mien] = (tgtMap[mien] || 0) + (r[3] || 0) / 1000000;
     });
 
@@ -772,19 +774,21 @@ class VikodaDataEngine {
     const facts = this.getFilteredFacts();
     const targets = this.getFilteredTargets();
 
-    const mienList = ['Miền Bắc', 'Miền Trung 1', 'Miền Trung 2', 'Miền Nam', 'B2C'];
+    const mienList = ['Miền Bắc', 'Miền Trung 1', 'Miền Trung 2', 'Miền Nam', 'KA', 'MT', 'B2C'];
     const actMap = {};
     const tgtMap = {};
 
     facts.forEach((r) => {
       const cust = this.customers[r[1]] || {};
-      const m = cust.mien || 'Khác';
+      const terr = this.territories[r[3]] || {};
+      const m = cust.mien || terr.mien || 'Khác';
       actMap[m] = (actMap[m] || 0) + (r[4] || 0) / 1000000;
     });
 
     targets.forEach((r) => {
       const cust = this.customers[r[2]] || {};
-      const m = cust.mien || 'Khác';
+      const terr = this.territories[r[1]] || {};
+      const m = cust.mien || terr.mien || 'Khác';
       tgtMap[m] = (tgtMap[m] || 0) + (r[3] || 0) / 1000000;
     });
 

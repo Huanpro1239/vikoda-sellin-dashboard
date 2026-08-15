@@ -208,11 +208,11 @@ class VikodaCharts {
         trigger: 'axis',
         formatter: (p) => `${p[0].name}: <strong>${p[0].value.toLocaleString()} Tr.đ</strong> (${p[0].value >= 0 ? 'Vượt Target' : 'Hụt Target'})`,
       },
-      grid: { left: '3%', right: '3%', bottom: '8%', top: '36px', containLabel: true },
+      grid: { left: '3%', right: '3%', bottom: '12%', top: '36px', containLabel: true },
       xAxis: {
         type: 'category',
         data: data.map((d) => d.name),
-        axisLabel: { color: '#475569', fontSize: 11, fontWeight: 600 },
+        axisLabel: { color: '#475569', fontSize: 10, fontWeight: 600, interval: 0 },
         axisLine: { lineStyle: { color: '#E2E8F0' } },
       },
       yAxis: {
@@ -224,19 +224,21 @@ class VikodaCharts {
       },
       series: [{
         type: 'bar',
-        barMaxWidth: 26,
+        barMaxWidth: 24,
         data: data.map((d) => ({
           value: d.value,
+          label: {
+            position: d.value >= 0 ? 'top' : 'bottom',
+          },
           itemStyle: {
             color: d.value >= 0
               ? new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#14B8A6' }, { offset: 1, color: '#0F766E' }])
               : new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#F87171' }, { offset: 1, color: '#DC2626' }]),
-            borderRadius: [4, 4, 0, 0],
+            borderRadius: d.value >= 0 ? [4, 4, 0, 0] : [0, 0, 4, 4],
           },
         })),
         label: {
           show: true,
-          position: 'top',
           formatter: (p) => `${p.value > 0 ? '+' : ''}${p.value.toLocaleString()}`,
           fontSize: 10,
           fontWeight: 700,
