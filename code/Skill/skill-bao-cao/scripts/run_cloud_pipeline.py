@@ -12,10 +12,18 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Đảm bảo in tiếng Việt không bị lỗi encoding trên Windows console
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 
 def run_command(cmd: list[str], cwd: Path) -> None:
     print(f"-> Chay: {' '.join(cmd)}")
-    res = subprocess.run(cmd, cwd=str(cwd), capture_output=True, text=True, encoding="utf-8")
+    res = subprocess.run(cmd, cwd=str(cwd), capture_output=True, text=True, encoding="utf-8", errors="replace")
     if res.stdout:
         print(res.stdout.strip())
     if res.returncode != 0:
@@ -64,21 +72,24 @@ def run_pipeline(project_root: Path) -> None:
         audit_file = staging_dir / "audit.json"
         if audit_file.exists():
             audit = json.loads(audit_file.read_text(encoding="utf-8"))
+            preview_dir = project_root / "Data/Work/bao_cao/data/preview"
+            preview_dir.mkdir(parents=True, exist_ok=True)
             print("============================================================")
             print(" 2/4 - XUAT FILE WORKBOOK SELL IN HANG THANG (BUILD OUTPUTS)")
             print("============================================================")
             for monthly_file in audit.get("monthly_files", []):
                 period_key = f"{monthly_file['year']}-{monthly_file['month']:02d}"
-                print(f"  * Xử lý kỳ: {period_key}")
+                print(f"  * Xu ly ky: {period_key}")
                 run_command([
                     sys.executable,
                     str(scripts_sellin / "build_outputs.py"),
                     "--staging-dir", str(staging_dir),
                     "--output-dir", str(output_dir),
+                    "--report-dir", str(preview_dir),
                     "--period", period_key,
                 ], cwd=project_root)
 
-            # Sao chép các file tháng đã tách vào thư mục Data_Goc trên hệ thống / SharePoint
+            # Sao chep cac file thang da tach vao thu muc Data_Goc tren he thong / SharePoint
             data_goc_dir = project_root / "Data/Data_Goc"
             data_goc_dir.mkdir(parents=True, exist_ok=True)
             for out_f in output_dir.glob("*.xlsx"):
