@@ -174,15 +174,80 @@ class VikodaCharts {
     const data = this.engine.getChannelPerformance();
 
     const option = {
-      tooltip: { trigger: 'axis' },
-      legend: { data: ['Doanh thu Actual', 'Doanh thu LY', 'Tăng trưởng YoY %'], top: 0 },
-      grid: { left: '3%', right: '4%', bottom: '8%', top: '15%', containLabel: true },
-      xAxis: { type: 'category', data: data.categories },
-      yAxis: [{ type: 'value', name: 'Triệu VNĐ' }, { type: 'value', name: 'YoY %' }],
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'cross' }
+      },
+      legend: {
+        data: ['Doanh thu Actual', 'Doanh thu LY', 'Tăng trưởng YoY %'],
+        top: 2,
+        right: 8,
+        itemWidth: 12,
+        itemHeight: 12,
+        itemGap: 16,
+        textStyle: { fontSize: 12, color: '#334155', fontWeight: 600 },
+        icon: 'roundRect'
+      },
+      grid: { left: '2%', right: '2%', bottom: '6%', top: '56px', containLabel: true },
+      xAxis: {
+        type: 'category',
+        data: data.categories,
+        axisLabel: { color: '#475569', fontWeight: 600, fontSize: 12 },
+        axisLine: { lineStyle: { color: '#CBD5E1' } }
+      },
+      yAxis: [
+        {
+          type: 'value',
+          name: 'Doanh thu (Tr.đ)',
+          nameTextStyle: { color: '#64748B', fontSize: 11, padding: [0, 0, 6, 0] },
+          splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } },
+          axisLabel: { color: '#64748B', fontSize: 11 }
+        },
+        {
+          type: 'value',
+          name: 'YoY %',
+          nameTextStyle: { color: '#64748B', fontSize: 11, padding: [0, 0, 6, 0] },
+          splitLine: { show: false },
+          axisLabel: { color: '#D97706', fontSize: 11, formatter: '{value}%' }
+        }
+      ],
       series: [
-        { name: 'Doanh thu Actual', type: 'bar', data: data.actuals, itemStyle: { color: this.colors.blue, borderRadius: [4, 4, 0, 0] } },
-        { name: 'Doanh thu LY', type: 'bar', data: data.lys, itemStyle: { color: this.colors.gray, borderRadius: [4, 4, 0, 0] } },
-        { name: 'Tăng trưởng YoY %', type: 'line', yAxisIndex: 1, data: data.yoys, itemStyle: { color: this.colors.amber } },
+        {
+          name: 'Doanh thu Actual',
+          type: 'bar',
+          barMaxWidth: 30,
+          data: data.actuals,
+          itemStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: '#3B82F6' },
+              { offset: 1, color: '#1D4ED8' }
+            ]),
+            borderRadius: [6, 6, 0, 0]
+          }
+        },
+        {
+          name: 'Doanh thu LY',
+          type: 'bar',
+          barMaxWidth: 30,
+          data: data.lys,
+          itemStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: '#CBD5E1' },
+              { offset: 1, color: '#94A3B8' }
+            ]),
+            borderRadius: [6, 6, 0, 0]
+          }
+        },
+        {
+          name: 'Tăng trưởng YoY %',
+          type: 'line',
+          yAxisIndex: 1,
+          data: data.yoys,
+          itemStyle: { color: '#F59E0B' },
+          lineStyle: { width: 3, color: '#F59E0B' },
+          symbol: 'circle',
+          symbolSize: 7
+        },
       ],
     };
     chart.setOption(option);
@@ -219,14 +284,82 @@ class VikodaCharts {
     const data = this.engine.getCustomerMovement();
 
     const option = {
-      tooltip: { trigger: 'axis' },
-      legend: { data: ['Khách hàng Mới', 'Khách hàng Ngừng mua (Churn)'], top: 0 },
-      grid: { left: '3%', right: '4%', bottom: '8%', top: '15%', containLabel: true },
-      xAxis: { type: 'category', data: data.channels },
-      yAxis: { type: 'value', name: 'Số lượng KH' },
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: (params) => {
+          let html = `<strong>Kênh: ${params[0].name}</strong><br/>`;
+          params.forEach((p) => {
+            html += `${p.marker} ${p.seriesName}: <strong>${p.value.toLocaleString()} KH</strong><br/>`;
+          });
+          return html;
+        }
+      },
+      legend: {
+        data: ['Khách hàng Mới', 'Ngừng mua (Churn)'],
+        top: 2,
+        right: 8,
+        itemWidth: 12,
+        itemHeight: 12,
+        itemGap: 16,
+        textStyle: { fontSize: 12, color: '#334155', fontWeight: 600 },
+        icon: 'roundRect'
+      },
+      grid: { left: '2%', right: '2%', bottom: '6%', top: '56px', containLabel: true },
+      xAxis: {
+        type: 'category',
+        data: data.channels,
+        axisLabel: { color: '#475569', fontWeight: 600, fontSize: 12 },
+        axisLine: { lineStyle: { color: '#CBD5E1' } }
+      },
+      yAxis: {
+        type: 'value',
+        name: 'Số lượng KH (NPP/ĐL)',
+        nameTextStyle: { color: '#64748B', fontSize: 11, padding: [0, 0, 6, 0] },
+        splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } },
+        axisLabel: { color: '#64748B', fontSize: 11 }
+      },
       series: [
-        { name: 'Khách hàng Mới', type: 'bar', data: data.newCustomers, itemStyle: { color: this.colors.teal, borderRadius: [4, 4, 0, 0] } },
-        { name: 'Khách hàng Ngừng mua (Churn)', type: 'bar', data: data.churnCustomers, itemStyle: { color: this.colors.red, borderRadius: [4, 4, 0, 0] } },
+        {
+          name: 'Khách hàng Mới',
+          type: 'bar',
+          barMaxWidth: 32,
+          data: data.newCustomers,
+          itemStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: '#14B8A6' },
+              { offset: 1, color: '#0D9488' }
+            ]),
+            borderRadius: [6, 6, 0, 0]
+          },
+          label: {
+            show: true,
+            position: 'top',
+            color: '#0F766E',
+            fontSize: 11,
+            fontWeight: 700
+          }
+        },
+        {
+          name: 'Ngừng mua (Churn)',
+          type: 'bar',
+          barMaxWidth: 32,
+          data: data.churnCustomers,
+          itemStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: '#F87171' },
+              { offset: 1, color: '#DC2626' }
+            ]),
+            borderRadius: [6, 6, 0, 0]
+          },
+          label: {
+            show: true,
+            position: 'top',
+            color: '#B91C1C',
+            fontSize: 11,
+            fontWeight: 700
+          }
+        },
       ],
     };
     chart.setOption(option);
