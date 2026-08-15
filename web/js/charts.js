@@ -558,34 +558,98 @@ class VikodaCharts {
     const data = this.engine.getVikodaVsKDTTrend();
 
     const option = {
-      tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'cross' },
+        formatter: (params) => {
+          let html = `<strong>${params[0].name}</strong><br/>`;
+          params.forEach((p) => {
+            if (p.value !== null && p.value !== undefined) {
+              const unit = p.seriesName.includes('%') ? '%' : ' Tr.đ';
+              html += `${p.marker} ${p.seriesName}: <strong>${p.value.toLocaleString()}${unit}</strong><br/>`;
+            }
+          });
+          return html;
+        },
+      },
       legend: {
-        data: ['Doanh thu Khoáng Kiềm Vikoda', 'Doanh thu Khoáng Ngọt Đảnh Thạnh', 'Tỷ trọng Vikoda %'],
+        data: ['Khoáng kiềm Vikoda', 'Khoáng ngọt Đảnh Thạnh', 'Tỷ trọng Vikoda (%)'],
         bottom: 0,
         left: 'center',
-        itemWidth: 10,
+        itemWidth: 12,
         itemHeight: 10,
-        itemGap: 16,
+        itemGap: 18,
         textStyle: { fontSize: 11, color: '#475569', fontWeight: 600 },
         icon: 'circle',
       },
-      grid: { left: '3%', right: '3%', top: '36px', bottom: '40px', containLabel: true },
-      xAxis: { type: 'category', data: data.labels, axisLabel: { color: '#475569', fontSize: 11, fontWeight: 600 } },
+      grid: { left: '3%', right: '4%', top: '36px', bottom: '46px', containLabel: true },
+      xAxis: {
+        type: 'category',
+        data: data.labels,
+        axisLabel: { color: '#475569', fontSize: 11, fontWeight: 600 },
+        axisLine: { lineStyle: { color: '#E2E8F0' } },
+      },
       yAxis: [
-        { type: 'value', name: 'Triệu VNĐ', splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } }, axisLabel: { color: '#64748B', fontSize: 10 } },
-        { type: 'value', name: '% Tỷ trọng', splitLine: { show: false }, axisLabel: { color: '#0284C7', fontSize: 10, formatter: '{value}%' } },
+        {
+          type: 'value',
+          name: 'Doanh thu (Tr.đ)',
+          nameTextStyle: { color: '#64748B', fontSize: 11, padding: [0, 0, 4, 0] },
+          splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } },
+          axisLabel: { color: '#64748B', fontSize: 10 },
+        },
+        {
+          type: 'value',
+          name: '% Tỷ trọng',
+          max: 100,
+          nameTextStyle: { color: '#64748B', fontSize: 11, padding: [0, 0, 4, 0] },
+          splitLine: { show: false },
+          axisLabel: { color: '#F97316', fontSize: 10, formatter: '{value}%' },
+        },
       ],
       series: [
-        { name: 'Doanh thu Khoáng Kiềm Vikoda', type: 'bar', barMaxWidth: 24, data: data.vikodaSeries, itemStyle: { color: this.colors.blue, borderRadius: [4, 4, 0, 0] } },
-        { name: 'Doanh thu Khoáng Ngọt Đảnh Thạnh', type: 'bar', barMaxWidth: 24, data: data.kdtSeries, itemStyle: { color: this.colors.amber, borderRadius: [4, 4, 0, 0] } },
-        { name: 'Tỷ trọng Vikoda %', type: 'line', yAxisIndex: 1, data: data.vikodaShareSeries, lineStyle: { width: 2.5, color: this.colors.cyan }, itemStyle: { color: this.colors.cyan } },
+        {
+          name: 'Khoáng kiềm Vikoda',
+          type: 'bar',
+          barMaxWidth: 22,
+          data: data.vikodaSeries,
+          itemStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: '#3B82F6' },
+              { offset: 1, color: '#1D4ED8' },
+            ]),
+            borderRadius: [4, 4, 0, 0],
+          },
+        },
+        {
+          name: 'Khoáng ngọt Đảnh Thạnh',
+          type: 'bar',
+          barMaxWidth: 22,
+          data: data.dtSeries,
+          itemStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: '#34D399' },
+              { offset: 1, color: '#059669' },
+            ]),
+            borderRadius: [4, 4, 0, 0],
+          },
+        },
+        {
+          name: 'Tỷ trọng Vikoda (%)',
+          type: 'line',
+          yAxisIndex: 1,
+          data: data.vikodaShareSeries,
+          lineStyle: { width: 2.5, color: '#F97316' },
+          itemStyle: { color: '#F97316' },
+          symbol: 'circle',
+          symbolSize: 6,
+        },
       ],
     };
     chart.setOption(option);
   }
 
   renderP3BrandMix() {
-    const chart = this.getOrCreate('chart_p3_brand_mix');
+    const chart = this.getOrCreate('chart_p3_brand') || this.getOrCreate('chart_p3_brand_mix');
     if (!chart) return;
     const data = this.engine.getBrandMix();
 
@@ -598,9 +662,10 @@ class VikodaCharts {
       'KDT': '#F97316',                // Cam Rực Rỡ
       'Sản phẩm khác': '#8B5CF6',
       'Khác': '#8B5CF6',               // Tím Đậm
+      'Sumo': '#EC4899',               // Hồng Rực Rỡ
     };
 
-    const palette = ['#2563EB', '#10B981', '#F97316', '#8B5CF6', '#EC4899', '#06B6D4'];
+    const palette = ['#10B981', '#2563EB', '#F97316', '#8B5CF6', '#EC4899', '#06B6D4'];
 
     const coloredData = data.map((d, i) => ({
       name: d.name,

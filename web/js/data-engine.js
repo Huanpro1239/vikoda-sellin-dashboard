@@ -510,34 +510,40 @@ class VikodaDataEngine {
   // ------------------------------------------------------------------------
   getVikodaVsKDTTrend() {
     const curYear = this.metadata.current_year || 2026;
+    const throughMonth = this.metadata.through_month || 8;
     const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
     const labels = months.map((m) => `T${parseInt(m, 10)}`);
 
     const vkMap = {};
-    const kdtMap = {};
+    const dtMap = {};
 
     months.forEach((m) => {
       vkMap[`${curYear}${m}`] = 0;
-      kdtMap[`${curYear}${m}`] = 0;
+      dtMap[`${curYear}${m}`] = 0;
     });
 
     this.facts.forEach((r) => {
       const [d, custKey, prodKey, terrKey, rev] = r;
+      if (!d.startsWith(String(curYear))) return;
       const period = d.slice(0, 7).replace('-', '');
       const prod = this.products[prodKey] || {};
 
-      if (prod.is_vikoda && vkMap[period] !== undefined) vkMap[period] += (rev || 0) / 1000000;
-      if (prod.is_kdt && kdtMap[period] !== undefined) kdtMap[period] += (rev || 0) / 1000000;
+      if (prod.group === 'Khoáng kiềm Vikoda' || prod.is_vikoda) {
+        if (vkMap[period] !== undefined) vkMap[period] += (rev || 0) / 1000000;
+      } else {
+        if (dtMap[period] !== undefined) dtMap[period] += (rev || 0) / 1000000;
+      }
     });
 
-    const vikodaSeries = months.map((m) => Math.round(vkMap[`${curYear}${m}`] || 0));
-    const kdtSeries = months.map((m) => Math.round(kdtMap[`${curYear}${m}`] || 0));
-    const vikodaShareSeries = months.map((m, i) => {
-      const total = vikodaSeries[i] + kdtSeries[i];
-      return total > 0 ? Number(((vikodaSeries[i] / total) * 100).toFixed(1)) : 0;
+    const vikodaSeries = months.map((m, idx) => (idx < throughMonth ? Math.round(vkMap[`${curYear}${m}`] || 0) : 0));
+    const dtSeries = months.map((m, idx) => (idx < throughMonth ? Math.round(dtMap[`${curYear}${m}`] || 0) : 0));
+    const vikodaShareSeries = months.map((m, idx) => {
+      if (idx >= throughMonth) return null;
+      const total = vikodaSeries[idx] + dtSeries[idx];
+      return total > 0 ? Number(((vikodaSeries[idx] / total) * 100).toFixed(1)) : null;
     });
 
-    return { labels, vikodaSeries, kdtSeries, vikodaShareSeries };
+    return { labels, vikodaSeries, dtSeries, vikodaShareSeries };
   }
 
   getBrandMix() {
