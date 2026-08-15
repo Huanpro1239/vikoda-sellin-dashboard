@@ -37,28 +37,37 @@ class VikodaDataEngine {
   }
 
   async load() {
-    if (window.VIKODA_DATA) {
-      this.raw = window.VIKODA_DATA;
-    } else {
-      const res = await fetch('data/dashboard_data.json?v=' + Date.now());
-      this.raw = await res.json();
+    try {
+      if (window.VIKODA_DATA) {
+        this.raw = window.VIKODA_DATA;
+      } else {
+        const res = await fetch('data/dashboard_data.json?v=' + Date.now());
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        this.raw = await res.json();
+      }
+
+      if (!this.raw) return false;
+
+      this.metadata = this.raw.metadata || {};
+      this.customers = this.raw.dim_customer || {};
+      this.products = this.raw.dim_product || {};
+      this.territories = this.raw.dim_territory || {};
+      this.facts = this.raw.fact_sell_in || [];
+      this.targets = this.raw.fact_target || [];
+
+      // Khởi tạo ngày mặc định: MTD Tháng 8/2026 (Kỳ mới nhất)
+      const curYear = this.metadata.current_year || 2026;
+      const maxMonth = this.metadata.through_month ? String(this.metadata.through_month).padStart(2, '0') : '08';
+      const asOf = this.metadata.as_of_date || `${curYear}-${maxMonth}-15`;
+
+      this.filters.startDate = `${curYear}-${maxMonth}-01`;
+      this.filters.endDate = asOf;
+      this.filters.periodMode = 'mtd';
+      return true;
+    } catch (err) {
+      console.error('Lỗi nạp dữ liệu data-engine:', err);
+      return false;
     }
-
-    this.metadata = this.raw.metadata || {};
-    this.customers = this.raw.dim_customer || {};
-    this.products = this.raw.dim_product || {};
-    this.territories = this.raw.dim_territory || {};
-    this.facts = this.raw.fact_sell_in || [];
-    this.targets = this.raw.fact_target || [];
-
-    // Khởi tạo ngày mặc định: MTD Tháng 8/2026 (Kỳ mới nhất)
-    const curYear = this.metadata.current_year || 2026;
-    const maxMonth = this.metadata.through_month ? String(this.metadata.through_month).padStart(2, '0') : '08';
-    const asOf = this.metadata.as_of_date || `${curYear}-${maxMonth}-15`;
-
-    this.filters.startDate = `${curYear}-${maxMonth}-01`;
-    this.filters.endDate = asOf;
-    this.filters.periodMode = 'mtd';
   }
 
   subscribe(callback) {
