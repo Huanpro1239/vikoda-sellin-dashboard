@@ -10,11 +10,6 @@ on:
     branches:
       - main
       - master
-    paths:
-      - 'web/**'
-      - 'code/**'
-      - 'requirements.txt'
-      - '.github/workflows/**'
 
 jobs:
   build-and-deploy:
