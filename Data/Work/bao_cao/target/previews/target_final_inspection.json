@@ -1,0 +1,76 @@
+{
+  "output_path": "C:\\Users\\Si Huan\\Desktop\\Bao cao Sell in\\Data\\File bao cao\\Excel\\Bao_Cao_Sell_in.xlsx",
+  "full_data_rows": 74784,
+  "data_top": "{\"kind\":\"table\",\"sheet\":\"Data\",\"address\":\"A1:N12\",\"rows\":12,\"cols\":14,\"values\":[[\"Vung\",\"KhuVuc\",\"NgayHoaDon\",\"MaKhachHangMoi\",\"TenKhachHang\",\"MaSanPhamMoi\",\"TenSanPham\",\"SoLuong\",\"DonGia\",\"ThanhTien\",\"LoaiDonHang\",\"GhiChu\",\"Thang\",\"Nam\"],[\"MT\",\"MT\",\"2025-01-01T17:00:00.000Z\",\"B-HCMC-0336\",\"SIEU THI FAMILY\",\"130100011\",\"Đảnh Thạnh có gas hương chanh 430ml\",1440,7622,10975680,\"Đơn hàng bán\",\"Xuất bán theo L0000007433 324093\",1,2025],[\"MT\",\"MT\",\"2025-01-01T17:00:00.000Z\",\"B-HCMC-0336\",\"SIEU THI FAMILY\",\"130100011\",\"Đảnh Thạnh có gas hương chanh 430ml\",720,0,0,\"Đơn hàng bán\",\"Xuất bán theo L0000007433 324093\",1,2025],[\"MT\",\"MT\",\"2025-01-01T17:00:00.000Z\",\"B-HCMC-0336\",\"SIEU THI FAMILY\",\"130100055\",\"Đảnh Thạnh chanh dây Đà Lạt 430ml\",960,7622,7317120,\"Đơn hàng bán\",\"Xuất bán theo L0000007433 324093\",1,2025],[\"MT\",\"MT\",\"2025-01-01T17:00:00.000Z\",\"B-HCMC-0336\",\"SIEU THI FAMILY\",\"130100055\",\"Đảnh Thạnh chanh dây Đà Lạt 430ml\",480,0,0,\"Đơn hàng bán\",\"Xuất bán theo L0000007433 324093\",1,2025],[\"MITR1\",\"MITR1B\",\"2025-01-01T17:00:00.000Z\",\"B-KHHO-0054\",\"AI SUONG\",\"130100014\",\"Nước khoáng bán thành phẩm\",1916,1105,2117180,\"Đơn hàng bán\",\"Xuất bán theo P000004935\",1,2025],[\"MITR1\",\"MITR1B\",\"2025-01-01T17:00:00.000Z\",\"B-KHHO-0054\",\"AI SUONG\",\"130100014\",\"Nước khoáng bán thành phẩm\",134,0,0,\"Đơn hàng bán\",\"Xuất bán theo P000004935\",1,2025],[\"MITR1\",\"MTR01A\",\"2025-01-01T17:00:00.000Z\",\"B-KHHO-0106\",\"HOI NONG DAN\",\"130100014\",\"Nước khoáng bán thành phẩm\",2093,1054,2206022,\"Đơn hàng bán\",\"Xuất bán theo P000004983\",1,2025],[\"MITR1\",\"MTR01A\",\"2025-01-01T17:00:00.000Z\",\"B-KHHO-0106\",\"HOI NONG DAN\",\"130100014\",\"Nước khoáng bán thành phẩm\",147,0,0,\"Đơn hàng bán\",\"Xuất bán theo P000004983\",1,2025],[\"MITR1\",\"MTR01A\",\"2025-01-01T17:00:00.000Z\",\"B-KHHO-0107\",\"NGUYEN THI THAO\",\"130100014\",\"Nước khoáng bán thành phẩm\",2093,1054,2206022,\"Đơn hàng bán\",\"Xuất bán theo P000004982\",1,2025],[\"MITR1\",\"MTR01A\",\"2025-01-01T17:00:00.000Z\",\"B-KHHO-0107\",\"NGUYEN THI THAO\",\"130100014\",\"Nước khoáng bán thành phẩm\",147,0,0,\"Đơn hàng bán\",\"Xuất bán theo P000004982\",1,2025],[\"MITR1\",\"MITR1B\",\"2025-01-01T17:00:00.000Z\",\"B-KHHO-0136\",\"HO SI NUOI\",\"130100014\",\"Nước khoáng bán thành phẩm\",3832,1105,4234360,\"Đơn hàng bán\",\"Xuất bán theo P000004987\",1,2025]]}",
+  "data_bottom_values": [
+    [
+      "MITR2",
+      "MITR2A",
+      "2026-07-25",
+      "B-QUNG-0022",
+      "NPP HA CHAU",
+      "130300005",
+      "Nước khoáng thể thao - Sport Drink Đảnh Thạnh PET 430ml thùng 24 chai",
+      480,
+      7292,
+      3500160,
+      "Đơn hàng bán",
+      "Xuất bán theo N000000924",
+      7,
+      2026
+    ],
+    [
+      "MITR2",
+      "MITR2A",
+      "2026-07-25",
+      "B-QUNG-0022",
+      "NPP HA CHAU",
+      "130300005",
+      "Nước khoáng thể thao - Sport Drink Đảnh Thạnh PET 430ml thùng 24 chai",
+      120,
+      0,
+      0,
+      "Đơn hàng bán",
+      "Xuất bán theo N000000924",
+      7,
+      2026
+    ],
+    [
+      "MITR2",
+      "MITR2A",
+      "2026-07-25",
+      "B-QUNG-0022",
+      "NPP HA CHAU",
+      "130300006",
+      "Nước khoáng thể thao - Sport Drink Đảnh Thạnh hương chanh muối PET 430ml thùng 24 chai",
+      480,
+      7292,
+      3500160,
+      "Đơn hàng bán",
+      "Xuất bán theo N000000924",
+      7,
+      2026
+    ],
+    [
+      "MITR2",
+      "MITR2A",
+      "2026-07-25",
+      "B-QUNG-0022",
+      "NPP HA CHAU",
+      "130300006",
+      "Nước khoáng thể thao - Sport Drink Đảnh Thạnh hương chanh muối PET 430ml thùng 24 chai",
+      120,
+      0,
+      0,
+      "Đơn hàng bán",
+      "Xuất bán theo N000000924",
+      7,
+      2026
+    ]
+  ],
+  "error_scan": "{\"kind\":\"notice\",\"message\":\"Cell search matched 0 entries.\"}",
+  "preview_paths": [
+    "C:\\Users\\Si Huan\\Desktop\\Bao cao Sell in\\Data\\Work\\bao_cao\\target\\previews\\Target.png",
+    "C:\\Users\\Si Huan\\Desktop\\Bao cao Sell in\\Data\\Work\\bao_cao\\target\\previews\\Data.png"
+  ]
+}

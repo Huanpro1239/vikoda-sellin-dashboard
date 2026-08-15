@@ -1,0 +1,118 @@
+{
+  "workbook": "D:\\Vikoda\\Bao cao Sell in\\Data\\File bao cao\\Excel\\Bao_Cao_Sell_in.xlsx",
+  "period": "08/2026",
+  "as_of_date": "2026-08-11",
+  "pvt_rows": 3172,
+  "pvt_last_row": 3173,
+  "pivot": {
+    "first_data_row": 6,
+    "detail_rows": [
+      6,
+      7,
+      8,
+      9,
+      11,
+      12,
+      13,
+      14,
+      16,
+      17,
+      18,
+      20,
+      21,
+      23,
+      24,
+      25,
+      26,
+      28,
+      30,
+      32
+    ],
+    "subtotal_rows": [
+      10,
+      15,
+      19,
+      22,
+      27,
+      29,
+      31,
+      33
+    ],
+    "grand_total_row": 34,
+    "last_column": 19
+  },
+  "bc_sheets": [
+    {
+      "sheet": "BC_Miền Bắc",
+      "area": "Miền Bắc",
+      "region_rows": 4,
+      "customer_rows": 49,
+      "product_rows": 217,
+      "grand_total_row": 281
+    },
+    {
+      "sheet": "BC_Miền Nam",
+      "area": "Miền Nam",
+      "region_rows": 4,
+      "customer_rows": 59,
+      "product_rows": 230,
+      "grand_total_row": 304
+    },
+    {
+      "sheet": "BC_Miền Trung 1",
+      "area": "Miền Trung 1",
+      "region_rows": 3,
+      "customer_rows": 170,
+      "product_rows": 585,
+      "grand_total_row": 769
+    },
+    {
+      "sheet": "BC_Miền Trung 2",
+      "area": "Miền Trung 2",
+      "region_rows": 2,
+      "customer_rows": 36,
+      "product_rows": 194,
+      "grand_total_row": 243
+    },
+    {
+      "sheet": "BC_KA",
+      "area": "KA",
+      "region_rows": 4,
+      "customer_rows": 376,
+      "product_rows": 1011,
+      "grand_total_row": 1402
+    },
+    {
+      "sheet": "BC_MT",
+      "area": "MT",
+      "region_rows": 1,
+      "customer_rows": 267,
+      "product_rows": 733,
+      "grand_total_row": 1012
+    },
+    {
+      "sheet": "BC_B2C",
+      "area": "B2C",
+      "region_rows": 1,
+      "customer_rows": 18,
+      "product_rows": 76,
+      "grand_total_row": 106
+    },
+    {
+      "sheet": "BC_Other",
+      "area": "Other",
+      "region_rows": 1,
+      "customer_rows": 42,
+      "product_rows": 126,
+      "grand_total_row": 180
+    }
+  ],
+  "mapping_stats": {
+    "data_from_dmkh": 13393,
+    "data_fallback_other": 108,
+    "target_from_special_code": 2,
+    "target_from_staging": 523,
+    "target_from_dmkh": 0,
+    "target_fallback_other": 0
+  }
+}

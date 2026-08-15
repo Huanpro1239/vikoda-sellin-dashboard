@@ -124,14 +124,17 @@ def run_pipeline(project_root: Path) -> None:
     print(" 4/4 - XUAT DU LIEU WEB DASHBOARD VIKODA (EXPORT WEB DATA)")
     print("============================================================")
     staging_file = staging_dir / "sell_in_data.json"
-    if staging_file.exists():
+    target_file = project_root / "Data/Work/bao_cao/target/staging/target_records.json"
+    dmkh_file = project_root / "Data/Work/bao_cao/dmkh/staging/dmkh_data.json"
+    
+    if staging_file.exists() and target_file.exists() and dmkh_file.exists():
         run_command([
             sys.executable,
             str(scripts_baocao / "export_web_data.py"),
             "--project-root", str(project_root),
         ], cwd=project_root)
     else:
-        print("Staging data chua co tren runner. Su dung goi web/data hien tai da dong goi san.")
+        print("Staging data chua day du tren runner. Su dung goi web/data hien tai da dong goi san.")
 
     print("============================================================")
     print(" HOAN TAT TOAN BO CHUOI TACH DATA VA CAP NHAT WEB DASHBOARD!")

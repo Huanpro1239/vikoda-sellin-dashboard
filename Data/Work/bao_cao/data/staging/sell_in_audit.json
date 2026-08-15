@@ -1,0 +1,797 @@
+{
+  "generated_at": "2026-08-11T11:15:13.646603+07:00",
+  "source_dir": "D:\\Vikoda\\Bao cao Sell in\\Data\\out put\\Sell in hang  thang",
+  "data_file": "D:\\Vikoda\\Bao cao Sell in\\Data\\Work\\bao_cao\\data\\staging\\sell_in_data.json",
+  "as_of_date": "2026-08-11",
+  "expected_periods": [
+    "202501",
+    "202502",
+    "202503",
+    "202504",
+    "202505",
+    "202506",
+    "202507",
+    "202508",
+    "202601",
+    "202602",
+    "202603",
+    "202604",
+    "202605",
+    "202606",
+    "202607",
+    "202608"
+  ],
+  "invoice_type_filter": {
+    "source_column": "LoaiDonHang",
+    "business_meaning": "Loại hóa đơn",
+    "allowed": [
+      "Đơn hàng bán (tương đương Hóa đơn bán)",
+      "Đơn trả hàng (tương đương Hóa đơn trả hàng)"
+    ]
+  },
+  "periods": [
+    {
+      "period": "202501",
+      "file": "Sell in T01_2025.xlsx",
+      "source_rows": 5858,
+      "rows": 5306,
+      "quantity": "3337118",
+      "amount": 13846477028,
+      "excluded_rows": 552,
+      "excluded_quantity": "359914",
+      "excluded_amount": 400759558,
+      "invoice_types": [
+        {
+          "invoice_type": "Đơn hàng biếu tặng",
+          "included": false,
+          "rows": 144,
+          "quantity": "98822",
+          "amount": 400759558
+        },
+        {
+          "invoice_type": "Đơn hàng bán",
+          "included": true,
+          "rows": 5305,
+          "quantity": "3337142",
+          "amount": 13846536164
+        },
+        {
+          "invoice_type": "Đơn hàng khuyến mại",
+          "included": false,
+          "rows": 362,
+          "quantity": "237783",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn hàng sampling",
+          "included": false,
+          "rows": 6,
+          "quantity": "2.304E+4",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn hàng thanh lý",
+          "included": false,
+          "rows": 40,
+          "quantity": "269",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn trả hàng",
+          "included": true,
+          "rows": 1,
+          "quantity": "-24",
+          "amount": -59136
+        }
+      ]
+    },
+    {
+      "period": "202502",
+      "file": "Sell in T02_2025.xlsx",
+      "source_rows": 5196,
+      "rows": 4927,
+      "quantity": "7574708",
+      "amount": 30892870153,
+      "excluded_rows": 269,
+      "excluded_quantity": "169352",
+      "excluded_amount": 142202016,
+      "invoice_types": [
+        {
+          "invoice_type": "Đơn hàng biếu tặng",
+          "included": false,
+          "rows": 68,
+          "quantity": "38334",
+          "amount": 142202016
+        },
+        {
+          "invoice_type": "Đơn hàng bán",
+          "included": true,
+          "rows": 4927,
+          "quantity": "7574708",
+          "amount": 30892870153
+        },
+        {
+          "invoice_type": "Đơn hàng khuyến mại",
+          "included": false,
+          "rows": 183,
+          "quantity": "113786",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn hàng sampling",
+          "included": false,
+          "rows": 18,
+          "quantity": "17232",
+          "amount": 0
+        }
+      ]
+    },
+    {
+      "period": "202503",
+      "file": "Sell in T03_2025.xlsx",
+      "source_rows": 5385,
+      "rows": 4946,
+      "quantity": "6229849",
+      "amount": 25705261478,
+      "excluded_rows": 439,
+      "excluded_quantity": "370273",
+      "excluded_amount": 131595280,
+      "invoice_types": [
+        {
+          "invoice_type": "Đơn hàng biếu tặng",
+          "included": false,
+          "rows": 99,
+          "quantity": "6.511E+4",
+          "amount": 131595280
+        },
+        {
+          "invoice_type": "Đơn hàng bán",
+          "included": true,
+          "rows": 4943,
+          "quantity": "6232453",
+          "amount": 25711481894
+        },
+        {
+          "invoice_type": "Đơn hàng khuyến mại",
+          "included": false,
+          "rows": 296,
+          "quantity": "276987",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn hàng sampling",
+          "included": false,
+          "rows": 44,
+          "quantity": "28176",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn trả hàng",
+          "included": true,
+          "rows": 3,
+          "quantity": "-2604",
+          "amount": -6220416
+        }
+      ]
+    },
+    {
+      "period": "202504",
+      "file": "Sell in T04_2025.xlsx",
+      "source_rows": 6173,
+      "rows": 5641,
+      "quantity": "5443149",
+      "amount": 23711401626,
+      "excluded_rows": 532,
+      "excluded_quantity": "325205",
+      "excluded_amount": 259518200,
+      "invoice_types": [
+        {
+          "invoice_type": "Bán hàng khác",
+          "included": false,
+          "rows": 1,
+          "quantity": "1.2E+2",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn hàng biếu tặng",
+          "included": false,
+          "rows": 159,
+          "quantity": "119885",
+          "amount": 259518200
+        },
+        {
+          "invoice_type": "Đơn hàng bán",
+          "included": true,
+          "rows": 5636,
+          "quantity": "5447245",
+          "amount": 23734687690
+        },
+        {
+          "invoice_type": "Đơn hàng khuyến mại",
+          "included": false,
+          "rows": 331,
+          "quantity": "199556",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn hàng sampling",
+          "included": false,
+          "rows": 5,
+          "quantity": "5448",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn hàng thanh lý",
+          "included": false,
+          "rows": 36,
+          "quantity": "196",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn trả hàng",
+          "included": true,
+          "rows": 5,
+          "quantity": "-4096",
+          "amount": -23286064
+        }
+      ]
+    },
+    {
+      "period": "202505",
+      "file": "Sell in T05_2025.xlsx",
+      "source_rows": 6108,
+      "rows": 5815,
+      "quantity": "6629727",
+      "amount": 28960204584,
+      "excluded_rows": 293,
+      "excluded_quantity": "325453",
+      "excluded_amount": 165035700,
+      "invoice_types": [
+        {
+          "invoice_type": "Đơn hàng biếu tặng",
+          "included": false,
+          "rows": 105,
+          "quantity": "86266",
+          "amount": 165035700
+        },
+        {
+          "invoice_type": "Đơn hàng bán",
+          "included": true,
+          "rows": 5810,
+          "quantity": "6629987",
+          "amount": 28961870120
+        },
+        {
+          "invoice_type": "Đơn hàng khuyến mại",
+          "included": false,
+          "rows": 170,
+          "quantity": "227955",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn hàng sampling",
+          "included": false,
+          "rows": 18,
+          "quantity": "11232",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn trả hàng",
+          "included": true,
+          "rows": 5,
+          "quantity": "-2.6E+2",
+          "amount": -1665536
+        }
+      ]
+    },
+    {
+      "period": "202506",
+      "file": "Sell in T06_2025.xlsx",
+      "source_rows": 5405,
+      "rows": 5313,
+      "quantity": "8529247",
+      "amount": 38942338854,
+      "excluded_rows": 92,
+      "excluded_quantity": "77529",
+      "excluded_amount": 146881400,
+      "invoice_types": [
+        {
+          "invoice_type": "Đơn hàng biếu tặng",
+          "included": false,
+          "rows": 65,
+          "quantity": "68765",
+          "amount": 146881400
+        },
+        {
+          "invoice_type": "Đơn hàng bán",
+          "included": true,
+          "rows": 5313,
+          "quantity": "8529247",
+          "amount": 38942338854
+        },
+        {
+          "invoice_type": "Đơn hàng sampling",
+          "included": false,
+          "rows": 27,
+          "quantity": "8764",
+          "amount": 0
+        }
+      ]
+    },
+    {
+      "period": "202507",
+      "file": "Sell in T07_2025.xlsx",
+      "source_rows": 5067,
+      "rows": 4677,
+      "quantity": "8759372",
+      "amount": 39564614717,
+      "excluded_rows": 390,
+      "excluded_quantity": "375489",
+      "excluded_amount": 142881600,
+      "invoice_types": [
+        {
+          "invoice_type": "Đơn hàng biếu tặng",
+          "included": false,
+          "rows": 78,
+          "quantity": "71784",
+          "amount": 142881600
+        },
+        {
+          "invoice_type": "Đơn hàng bán",
+          "included": true,
+          "rows": 4677,
+          "quantity": "8759372",
+          "amount": 39564614717
+        },
+        {
+          "invoice_type": "Đơn hàng khuyến mại",
+          "included": false,
+          "rows": 291,
+          "quantity": "273249",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn hàng sampling",
+          "included": false,
+          "rows": 21,
+          "quantity": "30456",
+          "amount": 0
+        }
+      ]
+    },
+    {
+      "period": "202508",
+      "file": "Sell in T08_2025.xlsx",
+      "source_rows": 6127,
+      "rows": 5285,
+      "quantity": "9202907",
+      "amount": 42138496754,
+      "excluded_rows": 842,
+      "excluded_quantity": "614167",
+      "excluded_amount": 225891640,
+      "invoice_types": [
+        {
+          "invoice_type": "Đơn hàng biếu tặng",
+          "included": false,
+          "rows": 101,
+          "quantity": "81898",
+          "amount": 225891640
+        },
+        {
+          "invoice_type": "Đơn hàng bán",
+          "included": true,
+          "rows": 5283,
+          "quantity": "9203063",
+          "amount": 42139273322
+        },
+        {
+          "invoice_type": "Đơn hàng khuyến mại",
+          "included": false,
+          "rows": 673,
+          "quantity": "517848",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn hàng sampling",
+          "included": false,
+          "rows": 16,
+          "quantity": "14112",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn hàng thanh lý",
+          "included": false,
+          "rows": 52,
+          "quantity": "309",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn trả hàng",
+          "included": true,
+          "rows": 2,
+          "quantity": "-156",
+          "amount": -776568
+        }
+      ]
+    },
+    {
+      "period": "202601",
+      "file": "Sell in T01_2026.xlsx",
+      "source_rows": 4225,
+      "rows": 3542,
+      "quantity": "4115039",
+      "amount": 20045072698,
+      "excluded_rows": 683,
+      "excluded_quantity": "490552",
+      "excluded_amount": 164380400,
+      "invoice_types": [
+        {
+          "invoice_type": "Đơn hàng biếu tặng",
+          "included": false,
+          "rows": 93,
+          "quantity": "75239",
+          "amount": 164380400
+        },
+        {
+          "invoice_type": "Đơn hàng bán",
+          "included": true,
+          "rows": 3542,
+          "quantity": "4115039",
+          "amount": 20045072698
+        },
+        {
+          "invoice_type": "Đơn hàng khuyến mại",
+          "included": false,
+          "rows": 548,
+          "quantity": "401897",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn hàng sampling",
+          "included": false,
+          "rows": 37,
+          "quantity": "13396",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn hàng thanh lý",
+          "included": false,
+          "rows": 5,
+          "quantity": "2E+1",
+          "amount": 0
+        }
+      ]
+    },
+    {
+      "period": "202602",
+      "file": "Sell in T02_2026.xlsx",
+      "source_rows": 3594,
+      "rows": 3181,
+      "quantity": "4720285",
+      "amount": 21974583613,
+      "excluded_rows": 413,
+      "excluded_quantity": "277919",
+      "excluded_amount": 270420704,
+      "invoice_types": [
+        {
+          "invoice_type": "Đơn hàng biếu tặng",
+          "included": false,
+          "rows": 71,
+          "quantity": "107183",
+          "amount": 270420704
+        },
+        {
+          "invoice_type": "Đơn hàng bán",
+          "included": true,
+          "rows": 3181,
+          "quantity": "4720285",
+          "amount": 21974583613
+        },
+        {
+          "invoice_type": "Đơn hàng khuyến mại",
+          "included": false,
+          "rows": 265,
+          "quantity": "153101",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn hàng sampling",
+          "included": false,
+          "rows": 41,
+          "quantity": "17304",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn hàng thanh lý",
+          "included": false,
+          "rows": 36,
+          "quantity": "331",
+          "amount": 0
+        }
+      ]
+    },
+    {
+      "period": "202603",
+      "file": "Sell in T03_2026.xlsx",
+      "source_rows": 5071,
+      "rows": 4907,
+      "quantity": "9621768",
+      "amount": 44368327719,
+      "excluded_rows": 164,
+      "excluded_quantity": "3.0447E+5",
+      "excluded_amount": 549535844,
+      "invoice_types": [
+        {
+          "invoice_type": "Đơn hàng biếu tặng",
+          "included": false,
+          "rows": 93,
+          "quantity": "266983",
+          "amount": 549535844
+        },
+        {
+          "invoice_type": "Đơn hàng bán",
+          "included": true,
+          "rows": 4884,
+          "quantity": "9.63268E+6",
+          "amount": 44412805886
+        },
+        {
+          "invoice_type": "Đơn hàng khuyến mại",
+          "included": false,
+          "rows": 16,
+          "quantity": "8999",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn hàng sampling",
+          "included": false,
+          "rows": 55,
+          "quantity": "28488",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn trả hàng",
+          "included": true,
+          "rows": 23,
+          "quantity": "-10912",
+          "amount": -44478167
+        }
+      ]
+    },
+    {
+      "period": "202604",
+      "file": "Sell in T04_2026.xlsx",
+      "source_rows": 5400,
+      "rows": 4697,
+      "quantity": "7806932",
+      "amount": 37141546468,
+      "excluded_rows": 703,
+      "excluded_quantity": "491391",
+      "excluded_amount": 182326896,
+      "invoice_types": [
+        {
+          "invoice_type": "Đơn hàng biếu tặng",
+          "included": false,
+          "rows": 49,
+          "quantity": "67722",
+          "amount": 182326896
+        },
+        {
+          "invoice_type": "Đơn hàng bán",
+          "included": true,
+          "rows": 4696,
+          "quantity": "7807028",
+          "amount": 37142024356
+        },
+        {
+          "invoice_type": "Đơn hàng khuyến mại",
+          "included": false,
+          "rows": 541,
+          "quantity": "374728",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn hàng sampling",
+          "included": false,
+          "rows": 61,
+          "quantity": "48704",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn hàng thanh lý",
+          "included": false,
+          "rows": 52,
+          "quantity": "237",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn trả hàng",
+          "included": true,
+          "rows": 1,
+          "quantity": "-96",
+          "amount": -477888
+        }
+      ]
+    },
+    {
+      "period": "202605",
+      "file": "Sell in T05_2026.xlsx",
+      "source_rows": 4938,
+      "rows": 4814,
+      "quantity": "7576761",
+      "amount": 38856761339,
+      "excluded_rows": 124,
+      "excluded_quantity": "96954",
+      "excluded_amount": 194707800,
+      "invoice_types": [
+        {
+          "invoice_type": "Đơn hàng biếu tặng",
+          "included": false,
+          "rows": 50,
+          "quantity": "81208",
+          "amount": 194707800
+        },
+        {
+          "invoice_type": "Đơn hàng bán",
+          "included": true,
+          "rows": 4790,
+          "quantity": "7609061",
+          "amount": 39019623138
+        },
+        {
+          "invoice_type": "Đơn hàng khuyến mại",
+          "included": false,
+          "rows": 2,
+          "quantity": "242",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn hàng sampling",
+          "included": false,
+          "rows": 72,
+          "quantity": "15504",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn trả hàng",
+          "included": true,
+          "rows": 24,
+          "quantity": "-3.23E+4",
+          "amount": -162861799
+        }
+      ]
+    },
+    {
+      "period": "202606",
+      "file": "Sell in T06_2026.xlsx",
+      "source_rows": 7168,
+      "rows": 6294,
+      "quantity": "10588301.92",
+      "amount": 52492842733,
+      "excluded_rows": 874,
+      "excluded_quantity": "627591",
+      "excluded_amount": 501505422,
+      "invoice_types": [
+        {
+          "invoice_type": "Đơn hàng biếu tặng",
+          "included": false,
+          "rows": 157,
+          "quantity": "164884",
+          "amount": 501505422
+        },
+        {
+          "invoice_type": "Đơn hàng bán",
+          "included": true,
+          "rows": 6275,
+          "quantity": "10615171.92",
+          "amount": 52608007025
+        },
+        {
+          "invoice_type": "Đơn hàng khuyến mại",
+          "included": false,
+          "rows": 611,
+          "quantity": "442763",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn hàng sampling",
+          "included": false,
+          "rows": 106,
+          "quantity": "19944",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn trả hàng",
+          "included": true,
+          "rows": 19,
+          "quantity": "-2.687E+4",
+          "amount": -115164292
+        }
+      ]
+    },
+    {
+      "period": "202607",
+      "file": "Sell in T07_2026.xlsx",
+      "source_rows": 7285,
+      "rows": 6625,
+      "quantity": "11025254",
+      "amount": 53159777822,
+      "excluded_rows": 660,
+      "excluded_quantity": "538127",
+      "excluded_amount": 677106375,
+      "invoice_types": [
+        {
+          "invoice_type": "Đơn hàng biếu tặng",
+          "included": false,
+          "rows": 256,
+          "quantity": "240386",
+          "amount": 677106375
+        },
+        {
+          "invoice_type": "Đơn hàng bán",
+          "included": true,
+          "rows": 6625,
+          "quantity": "11025254",
+          "amount": 53159777822
+        },
+        {
+          "invoice_type": "Đơn hàng khuyến mại",
+          "included": false,
+          "rows": 328,
+          "quantity": "295968",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn hàng sampling",
+          "included": false,
+          "rows": 26,
+          "quantity": "1458",
+          "amount": 0
+        },
+        {
+          "invoice_type": "Đơn hàng thanh lý",
+          "included": false,
+          "rows": 50,
+          "quantity": "315",
+          "amount": 0
+        }
+      ]
+    },
+    {
+      "period": "202608",
+      "file": "Sell in T08_2026.xlsx",
+      "source_rows": 1628,
+      "rows": 1591,
+      "quantity": "2306894",
+      "amount": 11226171647,
+      "excluded_rows": 37,
+      "excluded_quantity": "5.208E+4",
+      "excluded_amount": 196044614,
+      "invoice_types": [
+        {
+          "invoice_type": "Đơn hàng biếu tặng",
+          "included": false,
+          "rows": 37,
+          "quantity": "5.208E+4",
+          "amount": 196044614
+        },
+        {
+          "invoice_type": "Đơn hàng bán",
+          "included": true,
+          "rows": 1591,
+          "quantity": "2306894",
+          "amount": 11226171647
+        }
+      ]
+    }
+  ],
+  "total_rows": 77561,
+  "total_source_rows": 84628,
+  "total_excluded_rows": 7067,
+  "total_quantity": "113467311.92",
+  "total_amount": 523026749233,
+  "total_excluded_quantity": "5496466",
+  "total_excluded_amount": 4350793449,
+  "warnings": [],
+  "problems": []
+}

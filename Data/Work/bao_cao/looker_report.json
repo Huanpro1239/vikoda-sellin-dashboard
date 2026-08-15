@@ -1,0 +1,170 @@
+{
+  "generated_at": "2026-08-15T10:44:25",
+  "output_dir": "D:\\Vikoda\\Bao cao Sell in\\Data\\File bao cao\\Sell In Thang",
+  "csv_file": "D:\\Vikoda\\Bao cao Sell in\\Data\\File bao cao\\Sell in tong hop.csv",
+  "columns": [
+    "KyBaoCao",
+    "Vung",
+    "KhuVuc",
+    "NgayHoaDon",
+    "MaKhachHangMoi",
+    "TenKhachHang",
+    "MaSanPhamMoi",
+    "TenSanPham",
+    "SoLuong",
+    "DonGia",
+    "ThanhTien",
+    "LoaiDonHang",
+    "GhiChu",
+    "Thang",
+    "Nam"
+  ],
+  "encoding": "utf-8 (no BOM)",
+  "workbook_count": 20,
+  "row_count": 104300,
+  "quantity_total": 155069375.0,
+  "amount_total": 689333562969.0,
+  "periods": [
+    {
+      "period": "2025-01",
+      "file": "Sell in T01_2025.xlsx",
+      "row_count": 5858,
+      "quantity_total": 3697032.0,
+      "amount_total": 14247236586.0
+    },
+    {
+      "period": "2025-02",
+      "file": "Sell in T02_2025.xlsx",
+      "row_count": 5196,
+      "quantity_total": 7744060.0,
+      "amount_total": 31035072169.0
+    },
+    {
+      "period": "2025-03",
+      "file": "Sell in T03_2025.xlsx",
+      "row_count": 5385,
+      "quantity_total": 6600122.0,
+      "amount_total": 25836856758.0
+    },
+    {
+      "period": "2025-04",
+      "file": "Sell in T04_2025.xlsx",
+      "row_count": 6173,
+      "quantity_total": 5768354.0,
+      "amount_total": 23970919826.0
+    },
+    {
+      "period": "2025-05",
+      "file": "Sell in T05_2025.xlsx",
+      "row_count": 6108,
+      "quantity_total": 6955180.0,
+      "amount_total": 29125240284.0
+    },
+    {
+      "period": "2025-06",
+      "file": "Sell in T06_2025.xlsx",
+      "row_count": 5405,
+      "quantity_total": 8606776.0,
+      "amount_total": 39089220254.0
+    },
+    {
+      "period": "2025-07",
+      "file": "Sell in T07_2025.xlsx",
+      "row_count": 5067,
+      "quantity_total": 9134861.0,
+      "amount_total": 39707496317.0
+    },
+    {
+      "period": "2025-08",
+      "file": "Sell in T08_2025.xlsx",
+      "row_count": 6127,
+      "quantity_total": 9817074.0,
+      "amount_total": 42364388394.0
+    },
+    {
+      "period": "2025-09",
+      "file": "Sell in T09_2025.xlsx",
+      "row_count": 4676,
+      "quantity_total": 8694999.0,
+      "amount_total": 38603472800.0
+    },
+    {
+      "period": "2025-10",
+      "file": "Sell in T10_2025.xlsx",
+      "row_count": 4941,
+      "quantity_total": 7284695.0,
+      "amount_total": 32892048543.0
+    },
+    {
+      "period": "2025-11",
+      "file": "Sell in T11_2025.xlsx",
+      "row_count": 4321,
+      "quantity_total": 8696921.0,
+      "amount_total": 36871693921.0
+    },
+    {
+      "period": "2025-12",
+      "file": "Sell in T12_2025.xlsx",
+      "row_count": 4264,
+      "quantity_total": 8005533.0,
+      "amount_total": 37628141395.0
+    },
+    {
+      "period": "2026-01",
+      "file": "Sell in T01_2026.xlsx",
+      "row_count": 4225,
+      "quantity_total": 4605591.0,
+      "amount_total": 20209453098.0
+    },
+    {
+      "period": "2026-02",
+      "file": "Sell in T02_2026.xlsx",
+      "row_count": 3594,
+      "quantity_total": 4998204.0,
+      "amount_total": 22245004317.0
+    },
+    {
+      "period": "2026-03",
+      "file": "Sell in T03_2026.xlsx",
+      "row_count": 5071,
+      "quantity_total": 9926238.0,
+      "amount_total": 44917863563.0
+    },
+    {
+      "period": "2026-04",
+      "file": "Sell in T04_2026.xlsx",
+      "row_count": 5400,
+      "quantity_total": 8298323.0,
+      "amount_total": 37323873364.0
+    },
+    {
+      "period": "2026-05",
+      "file": "Sell in T05_2026.xlsx",
+      "row_count": 4938,
+      "quantity_total": 7673715.0,
+      "amount_total": 39051469139.0
+    },
+    {
+      "period": "2026-06",
+      "file": "Sell in T06_2026.xlsx",
+      "row_count": 7168,
+      "quantity_total": 11215892.92,
+      "amount_total": 52994348155.0
+    },
+    {
+      "period": "2026-07",
+      "file": "Sell in T07_2026.xlsx",
+      "row_count": 7285,
+      "quantity_total": 11563381.0,
+      "amount_total": 53836884197.0
+    },
+    {
+      "period": "2026-08",
+      "file": "Sell in T08_2026.xlsx",
+      "row_count": 3098,
+      "quantity_total": 5782423.08,
+      "amount_total": 27382879889.0
+    }
+  ],
+  "size_bytes": 20655535
+}

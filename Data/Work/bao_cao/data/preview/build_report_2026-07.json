@@ -1,0 +1,26 @@
+[
+  {
+    "period": "2026-07",
+    "outputPath": "D:\\Vikoda\\Bao cao Sell in\\Data\\File bao cao\\Sell In Thang\\Sell in T07_2026.xlsx",
+    "outputRows": 7285,
+    "verification": {
+      "file": "D:\\Vikoda\\Bao cao Sell in\\Data\\File bao cao\\Sell In Thang\\Sell in T07_2026.xlsx",
+      "sheet_count": 1,
+      "sheet_name": "Sell in",
+      "headers_ok": true,
+      "row_count": 7285,
+      "expected_rows": 7285,
+      "invalid_dates": 0,
+      "invalid_product_prefix": 0,
+      "nontext_product_codes": 0,
+      "invalid_period": 0,
+      "formula_cells": 0,
+      "invalid_quantity_type": 0,
+      "invalid_quantity_number_format": 0,
+      "trailing_quantity_text": 0,
+      "sum_quantity": 11563381.0,
+      "sum_revenue": 53836884197.0,
+      "ok": true
+    }
+  }
+]

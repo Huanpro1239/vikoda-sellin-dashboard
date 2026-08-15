@@ -2,8 +2,8 @@
 # Dữ liệu và file nhị phân không đưa vào git: file Excel không diff được và
 # làm repo phình rất nhanh.
 
-# Chỉ bỏ qua thư mục tạm Work trong Data
-/Data/Work/
+# Du lieu staging cho bao cao
+!/Data/Work/bao_cao/
 
 # Workbook rời ở gốc dự án: dữ liệu, không phải mã chạy. Chưa có script nào đọc
 # nên tạm để nguyên chỗ cũ; nếu sau này đưa vào quy trình thì chuyển vào /Data/.
