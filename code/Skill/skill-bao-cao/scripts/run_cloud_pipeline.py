@@ -107,7 +107,60 @@ def run_pipeline(project_root: Path) -> None:
         print("Khong co file moi trong Data/Nguon/ hoac da co staging data san.")
 
     print("============================================================")
-    print(" 3/4 - XUAT DU LIEU CONG DONG LOOKER STUDIO (BUILD LOOKER CSV)")
+    print(" 3/5 - TAO BAO CAO TARGET, DMKH VA PIVOT (TAO BAO CAO)")
+    print("============================================================")
+    target_src = project_root / "Data/Target"
+    dmkh_src = project_root / "Data/Danh muc KH"
+    target_staging = project_root / "Data/Work/bao_cao/target/staging"
+    dmkh_staging = project_root / "Data/Work/bao_cao/dmkh/staging"
+    target_staging.mkdir(parents=True, exist_ok=True)
+    dmkh_staging.mkdir(parents=True, exist_ok=True)
+
+    # 3.1 - Chuan hoa Target
+    if target_src.exists():
+        run_command([
+            sys.executable,
+            str(scripts_baocao / "extract_targets.py"),
+            "--source-dir", str(target_src),
+            "--staging-dir", str(target_staging),
+        ], cwd=project_root)
+
+    # 3.2 - Chuan hoa Danh muc Khach hang
+    if dmkh_src.exists():
+        run_command([
+            sys.executable,
+            str(scripts_baocao / "extract_customers.py"),
+            "--source-dir", str(dmkh_src),
+            "--staging-dir", str(dmkh_staging),
+        ], cwd=project_root)
+
+    # 3.3 - Chuan hoa du lieu Sell In da tach sang staging
+    if output_dir.exists() and any(output_dir.glob("*.xlsx")):
+        run_command([
+            sys.executable,
+            str(scripts_baocao / "extract_sell_in_data.py"),
+            "--source-dir", str(output_dir),
+            "--staging-dir", str(staging_dir),
+        ], cwd=project_root)
+
+    # 3.4 - Tao file bao cao Tong hop Excel Bao_Cao_Sell_in.xlsx
+    master_report_xlsx = project_root / "Data/File bao cao/Bao_Cao_Sell_in.xlsx"
+    target_data_file = target_staging / "target_records.json"
+    sell_in_data_file = staging_dir / "sell_in_data.json"
+    dmkh_data_file = dmkh_staging / "dmkh_data.json"
+    
+    if target_data_file.exists() and sell_in_data_file.exists() and dmkh_data_file.exists():
+        run_command([
+            sys.executable,
+            str(scripts_baocao / "build_report_workbook.py"),
+            "--target-data-file", str(target_data_file),
+            "--sell-in-data-file", str(sell_in_data_file),
+            "--dmkh-data-file", str(dmkh_data_file),
+            "--output-file", str(master_report_xlsx),
+        ], cwd=project_root)
+
+    print("============================================================")
+    print(" 4/5 - XUAT DU LIEU CONG DONG LOOKER STUDIO (BUILD LOOKER CSV)")
     print("============================================================")
     looker_csv = project_root / "Data/File bao cao/Sell in tong hop.csv"
     looker_report = project_root / "Data/Work/bao_cao/looker_report.json"
@@ -121,13 +174,9 @@ def run_pipeline(project_root: Path) -> None:
         ], cwd=project_root)
 
     print("============================================================")
-    print(" 4/4 - XUAT DU LIEU WEB DASHBOARD VIKODA (EXPORT WEB DATA)")
+    print(" 5/5 - XUAT DU LIEU WEB DASHBOARD VIKODA (EXPORT WEB DATA)")
     print("============================================================")
-    staging_file = staging_dir / "sell_in_data.json"
-    target_file = project_root / "Data/Work/bao_cao/target/staging/target_records.json"
-    dmkh_file = project_root / "Data/Work/bao_cao/dmkh/staging/dmkh_data.json"
-    
-    if staging_file.exists() and target_file.exists() and dmkh_file.exists():
+    if sell_in_data_file.exists() and target_data_file.exists() and dmkh_data_file.exists():
         run_command([
             sys.executable,
             str(scripts_baocao / "export_web_data.py"),
@@ -137,7 +186,7 @@ def run_pipeline(project_root: Path) -> None:
         print("Staging data chua day du tren runner. Su dung goi web/data hien tai da dong goi san.")
 
     print("============================================================")
-    print(" HOAN TAT TOAN BO CHUOI TACH DATA VA CAP NHAT WEB DASHBOARD!")
+    print(" HOAN TAT TOAN BO CHUOI TACH DATA VA TAO BAO CAO DASHBOARD!")
     print("============================================================")
 
 
