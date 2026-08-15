@@ -59,18 +59,34 @@ def export_web_dataset(
             "vung": c["Vung"],
         }
 
-    # Rút gọn danh mục sản phẩm
+    # Rút gọn danh mục sản phẩm với phân nhóm rõ ràng (Vikoda, Đảnh Thạnh, KDT)
     prod_map = {}
     for p in dim_product:
+        p_name = str(p.get("ProductName") or "")
+        p_norm = p_name.upper()
+
+        if "VIKODA" in p_norm:
+            group = "Khoáng kiềm Vikoda"
+            brand = "Vikoda"
+        elif "ĐẢNH THẠNH" in p_norm or "DANH THANH" in p_norm or "KHOÁNG" in p_norm or "KHOANG" in p_norm:
+            group = "Khoáng ngọt Đảnh Thạnh"
+            brand = "Đảnh Thạnh"
+        elif "KDT" in p_norm or p.get("IsKDT"):
+            group = "KDT Thương Mại"
+            brand = "KDT"
+        else:
+            group = "Sản phẩm khác"
+            brand = p.get("CoBrand") or "Khác"
+
         prod_map[p["ProductKey"]] = {
             "code": p["ProductCode"],
-            "name": p["ProductName"],
+            "name": p_name,
             "short_name": p["ProductShortName"],
-            "group": p["ProductGroup"],
+            "group": group,
             "unit": p["PackUnit"],
-            "brand": p["CoBrand"] or "Vikoda",
-            "is_vikoda": bool(p["IsVikoda"]),
-            "is_kdt": bool(p["IsKDT"]),
+            "brand": brand,
+            "is_vikoda": bool(p.get("IsVikoda")),
+            "is_kdt": bool(p.get("IsKDT")),
         }
 
     # Rút gọn danh mục địa bàn
