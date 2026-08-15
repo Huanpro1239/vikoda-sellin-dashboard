@@ -28,9 +28,24 @@ class VikodaCharts {
     window.addEventListener('resize', () => this.resizeAll());
   }
 
+  escapeHTML(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;',
+    })[char]);
+  }
+
   getOrCreate(domId) {
     const el = document.getElementById(domId);
     if (!el) return null;
+    if (!el.hasAttribute('aria-label')) {
+      const title = el.closest('.chart-card')?.querySelector('.chart-title')?.textContent?.trim();
+      if (title) el.setAttribute('aria-label', `Biểu đồ: ${title}`);
+    }
+    el.setAttribute('role', 'img');
     if (!this.instances[domId]) {
       this.instances[domId] = echarts.init(el);
     }
@@ -61,11 +76,11 @@ class VikodaCharts {
         trigger: 'axis',
         axisPointer: { type: 'cross' },
         formatter: (params) => {
-          let res = `<strong>${params[0].name}</strong><br/>`;
+          let res = `<strong>${this.escapeHTML(params[0].name)}</strong><br/>`;
           params.forEach((p) => {
             const val = p.value !== null && p.value !== undefined ? p.value.toLocaleString() : '-';
             const unit = p.seriesName.includes('%') ? '%' : ' Tr.đ';
-            res += `<span style="color:${p.color}">●</span> ${p.seriesName}: <strong>${val}${unit}</strong><br/>`;
+            res += `<span style="color:${p.color}">●</span> ${this.escapeHTML(p.seriesName)}: <strong>${val}${unit}</strong><br/>`;
           });
           return res;
         },
@@ -177,7 +192,7 @@ class VikodaCharts {
     }));
 
     const option = {
-      tooltip: { trigger: 'item', formatter: '{b}: <strong>{c} Tr.đ</strong> ({d}%)' },
+      tooltip: { trigger: 'item', formatter: (p) => `${this.escapeHTML(p.name)}: <strong>${Number(p.value).toLocaleString()} Tr.đ</strong> (${p.percent}%)` },
       legend: { bottom: 0, icon: 'circle', itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#475569', fontWeight: 600 } },
       series: [{
         type: 'pie',
@@ -222,7 +237,7 @@ class VikodaCharts {
     }));
 
     const option = {
-      tooltip: { trigger: 'item', formatter: '{b}: <strong>{c} Tr.đ</strong> ({d}%)' },
+      tooltip: { trigger: 'item', formatter: (p) => `${this.escapeHTML(p.name)}: <strong>${Number(p.value).toLocaleString()} Tr.đ</strong> (${p.percent}%)` },
       legend: { bottom: 0, icon: 'circle', itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#475569', fontWeight: 600 } },
       series: [{
         type: 'pie',
@@ -253,7 +268,7 @@ class VikodaCharts {
     const option = {
       tooltip: {
         trigger: 'axis',
-        formatter: (p) => `${p[0].name}: <strong>${p[0].value.toLocaleString()} Tr.đ</strong> (${p[0].value >= 0 ? 'Vượt Target' : 'Hụt Target'})`,
+        formatter: (p) => `${this.escapeHTML(p[0].name)}: <strong>${p[0].value.toLocaleString()} Tr.đ</strong> (${p[0].value >= 0 ? 'Vượt Target' : 'Hụt Target'})`,
       },
       grid: { left: '3%', right: '3%', bottom: '12%', top: '36px', containLabel: true },
       xAxis: {
@@ -409,7 +424,7 @@ class VikodaCharts {
     const data = this.engine.getSystemMTRevenue();
 
     const option = {
-      tooltip: { trigger: 'axis', formatter: (p) => `${p[0].name}: <strong>${p[0].value.toLocaleString()} Tr.đ</strong>` },
+      tooltip: { trigger: 'axis', formatter: (p) => `${this.escapeHTML(p[0].name)}: <strong>${p[0].value.toLocaleString()} Tr.đ</strong>` },
       grid: { left: '3%', right: '6%', bottom: '5%', top: '5%', containLabel: true },
       xAxis: {
         type: 'value',
@@ -458,9 +473,9 @@ class VikodaCharts {
         padding: [6, 10],
         borderRadius: 6,
         formatter: (params) => {
-          let html = `<strong>Kênh: ${params[0].name}</strong><br/>`;
+          let html = `<strong>Kênh: ${this.escapeHTML(params[0].name)}</strong><br/>`;
           params.forEach((p) => {
-            html += `${p.marker} ${p.seriesName}: <strong>${p.value.toLocaleString()} KH</strong><br/>`;
+            html += `${p.marker} ${this.escapeHTML(p.seriesName)}: <strong>${p.value.toLocaleString()} KH</strong><br/>`;
           });
           return html;
         },
@@ -543,7 +558,9 @@ class VikodaCharts {
   setP2CustomerFilter(mode) {
     this.p2CustMode = mode;
     document.querySelectorAll('.p2-tab-btn').forEach((btn) => {
-      btn.classList.toggle('active', btn.getAttribute('data-mode') === mode);
+      const isActive = btn.getAttribute('data-mode') === mode;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-pressed', String(isActive));
     });
     this.renderP2CustomerTable();
   }
@@ -557,9 +574,9 @@ class VikodaCharts {
     tbody.innerHTML = data.map((c, i) => `
       <tr>
         <td><strong>${i + 1}</strong></td>
-        <td><strong>${c.name}</strong></td>
-        <td><span class="meta-badge">${c.channel}</span></td>
-        <td>${c.mien}</td>
+        <td><strong>${this.escapeHTML(c.name)}</strong></td>
+        <td><span class="meta-badge">${this.escapeHTML(c.channel)}</span></td>
+        <td>${this.escapeHTML(c.mien)}</td>
         <td class="num"><strong>${c.actual.toLocaleString()}</strong></td>
         <td class="num">${c.ly.toLocaleString()}</td>
         <td class="num" style="color: ${c.diff >= 0 ? '#16A34A' : '#DC2626'}; font-weight: 700;">
@@ -590,11 +607,11 @@ class VikodaCharts {
         trigger: 'axis',
         axisPointer: { type: 'cross' },
         formatter: (params) => {
-          let html = `<strong>${params[0].name}</strong><br/>`;
+          let html = `<strong>${this.escapeHTML(params[0].name)}</strong><br/>`;
           params.forEach((p) => {
             if (p.value !== null && p.value !== undefined) {
               const unit = p.seriesName.includes('%') ? '%' : ' Tr.đ';
-              html += `${p.marker} ${p.seriesName}: <strong>${p.value.toLocaleString()}${unit}</strong><br/>`;
+              html += `${p.marker} ${this.escapeHTML(p.seriesName)}: <strong>${p.value.toLocaleString()}${unit}</strong><br/>`;
             }
           });
           return html;
@@ -702,7 +719,7 @@ class VikodaCharts {
     }));
 
     const option = {
-      tooltip: { trigger: 'item', formatter: '{b}: <strong>{c} Tr.đ</strong> ({d}%)' },
+      tooltip: { trigger: 'item', formatter: (p) => `${this.escapeHTML(p.name)}: <strong>${Number(p.value).toLocaleString()} Tr.đ</strong> (${p.percent}%)` },
       legend: { bottom: 0, icon: 'circle', itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#475569', fontWeight: 600 } },
       series: [{
         type: 'pie',
@@ -728,7 +745,7 @@ class VikodaCharts {
     const data = this.engine.getHeroSKUs(8);
 
     const option = {
-      tooltip: { trigger: 'axis', formatter: (p) => `${p[0].name}: <strong>${p[0].value.toLocaleString()} Tr.đ</strong>` },
+      tooltip: { trigger: 'axis', formatter: (p) => `${this.escapeHTML(p[0].name)}: <strong>${p[0].value.toLocaleString()} Tr.đ</strong>` },
       grid: { left: '3%', right: '6%', bottom: '5%', top: '5%', containLabel: true },
       xAxis: { type: 'value', name: 'Triệu VNĐ', splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } }, axisLabel: { color: '#64748B', fontSize: 10 } },
       yAxis: { type: 'category', data: data.map((d) => d.name).reverse(), axisLabel: { color: '#475569', fontSize: 11 } },
@@ -751,7 +768,7 @@ class VikodaCharts {
     const data = this.engine.getDecliningSKUs(8);
 
     const option = {
-      tooltip: { trigger: 'axis', formatter: (p) => `${p[0].name}: <strong>${p[0].value}% YoY</strong>` },
+      tooltip: { trigger: 'axis', formatter: (p) => `${this.escapeHTML(p[0].name)}: <strong>${p[0].value}% YoY</strong>` },
       grid: { left: '3%', right: '6%', bottom: '5%', top: '5%', containLabel: true },
       xAxis: { type: 'value', name: 'Tăng trưởng YoY (%)', splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } }, axisLabel: { color: '#64748B', fontSize: 10, formatter: '{value}%' } },
       yAxis: { type: 'category', data: data.map((d) => d.name).reverse(), axisLabel: { color: '#475569', fontSize: 11 } },
@@ -813,7 +830,7 @@ class VikodaCharts {
     const data = this.engine.getTerritoryTreemap();
 
     const option = {
-      tooltip: { formatter: '{b}: <strong>{c} Tr.đ</strong>' },
+      tooltip: { formatter: (p) => `${this.escapeHTML(p.name)}: <strong>${Number(p.value).toLocaleString()} Tr.đ</strong>` },
       series: [{
         type: 'treemap',
         data: data,
@@ -849,7 +866,7 @@ class VikodaCharts {
     }));
 
     const option = {
-      tooltip: { trigger: 'item', formatter: '{b}: <strong>{c} đơn vị</strong> ({d}%)' },
+      tooltip: { trigger: 'item', formatter: (p) => `${this.escapeHTML(p.name)}: <strong>${Number(p.value).toLocaleString()} đơn vị</strong> (${p.percent}%)` },
       legend: { bottom: 0, icon: 'circle', itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#475569', fontWeight: 600 } },
       series: [{
         type: 'pie',
@@ -875,7 +892,7 @@ class VikodaCharts {
     const data = this.engine.getRegionTargetAttainment();
 
     const option = {
-      tooltip: { trigger: 'axis', formatter: (p) => `${p[0].name}: <strong>${p[0].value}% Target</strong>` },
+      tooltip: { trigger: 'axis', formatter: (p) => `${this.escapeHTML(p[0].name)}: <strong>${p[0].value}% Target</strong>` },
       grid: { left: '3%', right: '6%', bottom: '5%', top: '5%', containLabel: true },
       xAxis: { type: 'value', name: '% Đạt Target', splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } }, axisLabel: { color: '#64748B', fontSize: 10, formatter: '{value}%' } },
       yAxis: { type: 'category', data: data.map((d) => d.name), axisLabel: { color: '#475569', fontSize: 10 } },
@@ -911,7 +928,9 @@ class VikodaCharts {
   setForecastHorizon(horizon) {
     this.forecastHorizon = horizon;
     document.querySelectorAll('.fc-horizon-btn').forEach((btn) => {
-      btn.classList.toggle('active', btn.getAttribute('data-horizon') === horizon);
+      const isActive = btn.getAttribute('data-horizon') === horizon;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-pressed', String(isActive));
     });
     this.renderPage6();
     if (window.app && window.app.updateP6PredictiveMetrics) {
@@ -937,10 +956,10 @@ class VikodaCharts {
           trigger: 'axis',
           axisPointer: { type: 'cross' },
           formatter: (params) => {
-            let html = `<strong>Ngày ${params[0].name.replace('N', '')}</strong><br/>`;
+            let html = `<strong>Ngày ${this.escapeHTML(params[0].name.replace('N', ''))}</strong><br/>`;
             params.forEach((p) => {
               if (p.value !== null && p.value !== undefined) {
-                html += `${p.marker} ${p.seriesName}: <strong>${Number(p.value).toLocaleString()} Tr.đ</strong><br/>`;
+                html += `${p.marker} ${this.escapeHTML(p.seriesName)}: <strong>${Number(p.value).toLocaleString()} Tr.đ</strong><br/>`;
               }
             });
             return html;
@@ -1006,10 +1025,10 @@ class VikodaCharts {
           trigger: 'axis',
           axisPointer: { type: 'cross' },
           formatter: (params) => {
-            let html = `<strong>${params[0].name}</strong><br/>`;
+            let html = `<strong>${this.escapeHTML(params[0].name)}</strong><br/>`;
             params.forEach((p) => {
               if (p.value !== null && p.value !== undefined) {
-                html += `${p.marker} ${p.seriesName}: <strong>${Number(p.value).toLocaleString()} Tr.đ</strong><br/>`;
+                html += `${p.marker} ${this.escapeHTML(p.seriesName)}: <strong>${Number(p.value).toLocaleString()} Tr.đ</strong><br/>`;
               }
             });
             return html;
@@ -1086,10 +1105,10 @@ class VikodaCharts {
         trigger: 'axis',
         formatter: (p) => {
           const item = data[p[0].dataIndex];
-          return `<strong>${item.name}</strong><br/>` +
+          return `<strong>${this.escapeHTML(item.name)}</strong><br/>` +
             `• Vận tốc thực tế: <strong>${item.currentVelocity} Tr.đ/ngày</strong><br/>` +
             `• Vận tốc yêu cầu: <strong>${item.requiredVelocity} Tr.đ/ngày</strong><br/>` +
-            `• Hệ số tải áp lực: <strong>${item.burden}x</strong> (${item.riskLabel})<br/>` +
+            `• Hệ số tải áp lực: <strong>${item.burden}x</strong> (${this.escapeHTML(item.riskLabel)})<br/>` +
             `• Dự báo về đích: <strong>${item.forecastAttainment}% Target</strong>`;
         },
       },
@@ -1154,14 +1173,14 @@ class VikodaCharts {
     const memos = this.engine.getCEODecisionMemo(horizon);
 
     el.innerHTML = memos.map((m) => `
-      <div class="alert-card alert-${m.severity}">
+      <div class="alert-card alert-${this.escapeHTML(m.severity)}">
         <div class="alert-header-row">
-          <span class="alert-badge alert-badge-${m.severity}">${m.tag}</span>
-          <h4 class="alert-title">${m.title}</h4>
+          <span class="alert-badge alert-badge-${this.escapeHTML(m.severity)}">${this.escapeHTML(m.tag)}</span>
+          <h4 class="alert-title">${this.escapeHTML(m.title)}</h4>
         </div>
-        <p class="alert-desc">${m.desc}</p>
+        <p class="alert-desc">${this.escapeHTML(m.desc)}</p>
         <div class="alert-action-box">
-          <strong>⚡ Quyết định CEO đề xuất:</strong> ${m.decision}
+          <strong>⚡ Quyết định CEO đề xuất:</strong> ${this.escapeHTML(m.decision)}
         </div>
       </div>
     `).join('');

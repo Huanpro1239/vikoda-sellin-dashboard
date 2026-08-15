@@ -1,0 +1,7 @@
+# Default reviewer for source, workflow, data-boundary and security changes.
+* @Huanpro1239
+
+/.github/ @Huanpro1239
+/code/ @Huanpro1239
+/SECURITY.md @Huanpro1239
+/PROPRIETARY_NOTICE.md @Huanpro1239

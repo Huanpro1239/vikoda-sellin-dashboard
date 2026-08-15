@@ -26,7 +26,7 @@ CÁCH LÀM ĐÚNG
 2. Trên máy mới, mở thư mục "Bao cao Sell in\Chay CT" rồi bấm đúp launcher
    cần dùng (Tach data.cmd, Bao cao Power BI.cmd, ...).
 
-3. Yêu cầu máy: chỉ cần Python 3.8 trở lên.
+3. Yêu cầu máy: Python 3.10 trở lên (khuyến nghị Python 3.12 như CI).
    - Nếu máy đã cài Python (tích "Add python.exe to PATH" lúc cài) thì chạy được ngay.
    - Nếu chưa có Python, cài từ https://www.python.org rồi chạy lại.
    - Thư viện openpyxl KHÔNG cần cài thêm: đã có sẵn bản vendored trong
@@ -36,9 +36,12 @@ CÁCH LÀM ĐÚNG
 
 NẾU CHỈ MUỐN CHUYỂN QUA GIT
 ---------------------------
-File .gitignore đang bỏ qua thư mục "Data\", bản vendored openpyxl và ".runtime".
-Nếu clone repo bằng git, máy mới sẽ THIẾU dữ liệu và thiếu openpyxl. Khi đó phải
-copy tay các thứ này sang, hoặc cứ chép nguyên cả thư mục như mục "CÁCH LÀM ĐÚNG".
+File .gitignore bỏ qua thư mục "Data\", bản vendored openpyxl và ".runtime".
+Nếu clone repo bằng git, máy mới sẽ KHÔNG có dữ liệu nội bộ và thư viện vendored.
+Chỉ lấy dữ liệu qua kênh SharePoint/ổ dùng chung đã được cấp quyền; không commit
+dữ liệu vào Git. Cài dependency lõi đã pin tại thư mục gốc bằng:
+
+    py -3.12 -m pip install -r requirements.txt
 
 
 KIỂM TRA NHANH

@@ -182,13 +182,25 @@ def export_web_dataset(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Xuat du lieu Web Dashboard Vikoda")
     parser.add_argument("--project-root", default=".")
+    parser.add_argument(
+        "--product-catalog",
+        help="File danh mục sản phẩm; path tương đối tính từ project root.",
+    )
     args = parser.parse_args()
 
     root = Path(args.project_root).resolve()
     sell_in_path = root / "Data/Work/bao_cao/data/staging/sell_in_data.json"
     target_path = root / "Data/Work/bao_cao/target/staging/target_records.json"
     dmkh_path = root / "Data/Work/bao_cao/dmkh/staging/dmkh_data.json"
-    product_catalog = root / "Data/Danh muc SP/Danh Muc San Pham.xlsx"
+    if args.product_catalog:
+        configured_catalog = Path(args.product_catalog)
+        product_catalog = (
+            configured_catalog
+            if configured_catalog.is_absolute()
+            else root / configured_catalog
+        )
+    else:
+        product_catalog = root / "Data/Danh muc SP/Danh Muc San Pham.xlsx"
     output_dir = root / "web/data"
 
     if not sell_in_path.exists():

@@ -1,46 +1,111 @@
 /**
- * VIKODA WEB DASHBOARD - AUTHENTICATION & SECURITY MODULE
- * Bảo vệ quyền truy cập bằng mã hóa SHA-256 an toàn, ghi nhớ phiên làm việc.
+ * VIKODA WEB DASHBOARD - LOCAL ACCESS GATE
+ *
+ * This module improves the local user experience only. Because the dashboard is
+ * a static site, it is NOT a security boundary: confidential data must still be
+ * protected by the hosting layer (for example Entra ID / an authenticated API).
  */
 
 class VikodaAuth {
-  constructor() {
-    // Hash SHA-256 của mật khẩu mặc định "vikoda1979"
-    // Bạn có thể đổi mật khẩu bằng cách băm mật khẩu mới thành mã SHA-256
-    this.DEFAULT_PASSWORD_HASH = '90515694a5e2f7bcae8841029c3f71c48f8a129d20c5d5e2e88a0b0d39e3cbe8'; // "vikoda1979"
+  constructor(options = {}) {
+    // Keep only the legacy SHA-256 verifier; never embed plaintext passwords.
+    this.PASSWORD_HASH = '90515694a5e2f7bcae8841029c3f71c48f8a129d20c5d5e2e88a0b0d39e3cbe8';
     this.STORAGE_KEY = 'vikoda_auth_session';
+    this.SESSION_VERSION = 2;
+    this.SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+    this.REMEMBER_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+    const browserWindow = typeof window !== 'undefined' ? window : null;
+    this.localStore = options.localStore || (browserWindow && browserWindow.localStorage) || null;
+    this.sessionStore = options.sessionStore || (browserWindow && browserWindow.sessionStorage) || null;
+    this.cryptoProvider = options.cryptoProvider || globalThis.crypto;
+    this.now = options.now || (() => Date.now());
+    this.reload = options.reload || (() => {
+      if (browserWindow && browserWindow.location) browserWindow.location.reload();
+    });
   }
 
   async sha256(message) {
+    if (!this.cryptoProvider || !this.cryptoProvider.subtle) {
+      throw new Error('Web Crypto API is unavailable.');
+    }
     const msgBuffer = new TextEncoder().encode(message);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashBuffer = await this.cryptoProvider.subtle.digest('SHA-256', msgBuffer);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
   }
 
-  isAuthenticated() {
-    const session = localStorage.getItem(this.STORAGE_KEY) || sessionStorage.getItem(this.STORAGE_KEY);
-    return session === 'authenticated';
+  hashesEqual(left, right) {
+    if (typeof left !== 'string' || typeof right !== 'string' || left.length !== right.length) return false;
+    let mismatch = 0;
+    for (let i = 0; i < left.length; i += 1) {
+      mismatch |= left.charCodeAt(i) ^ right.charCodeAt(i);
+    }
+    return mismatch === 0;
   }
 
-  async login(password, rememberMe = true) {
-    const hash = await this.sha256(password.trim());
-    if (hash === this.DEFAULT_PASSWORD_HASH || password === 'vikoda1979' || password === 'vikoda@2026') {
-      if (rememberMe) {
-        localStorage.setItem(this.STORAGE_KEY, 'authenticated');
-      } else {
-        sessionStorage.setItem(this.STORAGE_KEY, 'authenticated');
-      }
-      return true;
+  clearSessions() {
+    if (this.localStore) this.localStore.removeItem(this.STORAGE_KEY);
+    if (this.sessionStore) this.sessionStore.removeItem(this.STORAGE_KEY);
+  }
+
+  readValidSession(store) {
+    if (!store) return false;
+    const raw = store.getItem(this.STORAGE_KEY);
+    if (!raw) return false;
+
+    try {
+      const session = JSON.parse(raw);
+      const valid = session
+        && session.version === this.SESSION_VERSION
+        && Number.isFinite(session.expiresAt)
+        && session.expiresAt > this.now();
+      if (valid) return true;
+    } catch (_) {
+      // Legacy or malformed sessions are invalidated below.
     }
+
+    store.removeItem(this.STORAGE_KEY);
     return false;
   }
 
-  logout() {
-    localStorage.removeItem(this.STORAGE_KEY);
-    sessionStorage.removeItem(this.STORAGE_KEY);
-    window.location.reload();
+  isAuthenticated() {
+    return this.readValidSession(this.sessionStore) || this.readValidSession(this.localStore);
+  }
+
+  async login(password, rememberMe = false) {
+    const candidate = typeof password === 'string' ? password.trim() : '';
+    if (!candidate) return false;
+
+    const hash = await this.sha256(candidate);
+    if (!this.hashesEqual(hash, this.PASSWORD_HASH)) return false;
+
+    const now = this.now();
+    const ttl = rememberMe ? this.REMEMBER_TTL_MS : this.SESSION_TTL_MS;
+    const session = JSON.stringify({
+      version: this.SESSION_VERSION,
+      issuedAt: now,
+      expiresAt: now + ttl,
+    });
+
+    this.clearSessions();
+    const targetStore = rememberMe ? this.localStore : this.sessionStore;
+    if (!targetStore) return false;
+    targetStore.setItem(this.STORAGE_KEY, session);
+    return true;
+  }
+
+  logout({ reload = true } = {}) {
+    this.clearSessions();
+    if (reload) this.reload();
   }
 }
 
-window.auth = new VikodaAuth();
+if (typeof window !== 'undefined') {
+  window.VikodaAuth = VikodaAuth;
+  window.auth = new VikodaAuth();
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { VikodaAuth };
+}

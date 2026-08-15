@@ -57,21 +57,22 @@ Launcher tự tìm runtime theo thứ tự:
 
 ## Google Drive trên máy chuyển giao
 
-Máy chuyển giao vẫn đẩy lên Drive **giống luồng chính**: toàn bộ file
+Máy chuyển giao vẫn đẩy lên Drive **giống luồng chính** sau khi được cấu hình:
+toàn bộ file
 `Sell in T*.xlsx` cộng CSV gộp `Sell in tong hop.csv`, mỗi lần chạy, kể cả khi
 không có tháng nào `REBUILD`.
 
-**Máy này KHÔNG cần cài Google Drive for Desktop.** File tải lên bằng `rclone` gọi
-thẳng Drive API, đích xác định bằng folder ID của thư mục dùng chung nên chắc chắn
-trùng với máy gốc:
-
-<https://drive.google.com/drive/folders/1zJHdr3L9g9VAQVYM8KR_Bl0jpV2FClv5>
+**Máy này KHÔNG cần cài Google Drive for Desktop.** File tải lên bằng `rclone`
+gọi thẳng Drive API. Folder ID nội bộ không nằm trong source; lấy từ
+`TACH_DATA_DRIVE_FOLDER_ID` hoặc bản cục bộ `Chay CT/drive.conf` (tạo từ
+`drive.conf.example`).
 
 Cả hai luồng dùng chung `scripts/drive_sync.py` nên không thể lệch hành vi. Luồng
 chính gọi qua CLI `scripts/sync_drive.py`; luồng chuyển giao import trực tiếp vì
 được đóng gói thành EXE, không chạy được script con.
 
-Việc phải làm một lần trên máy chuyển giao: đặt `rclone.exe` vào
+Việc phải làm một lần trên máy chuyển giao: khai báo folder ID được quản trị viên
+cấp, đặt `rclone.exe` vào
 `.runtime\rclone\` rồi chạy `rclone config` tạo remote tên `vikoda-drive`. Máy
 không có trình duyệt vẫn cấu hình được bằng `rclone authorize` chạy hộ ở máy khác.
 Toàn bộ các bước trong `references/google-drive-rclone.md`.

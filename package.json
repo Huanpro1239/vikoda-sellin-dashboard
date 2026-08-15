@@ -1,0 +1,14 @@
+{
+  "name": "vikoda-sellin-dashboard",
+  "private": true,
+  "version": "2.2.0",
+  "description": "Regression checks for the Vikoda Sell-In static dashboard.",
+  "scripts": {
+    "check:web": "node --check web/js/auth.js && node --check web/js/data-engine.js && node --check web/js/charts.js && node --check web/js/app.js",
+    "test:web": "node web/tests/run-tests.js",
+    "verify:web": "npm run check:web && npm run test:web"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

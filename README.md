@@ -1,10 +1,18 @@
 # 🌊 VIKODA | SELL-IN MANAGEMENT & AUTOMATION PLATFORM
 ### Nền tảng Quản trị & Tự động hóa Báo cáo Doanh số Sell-In Vikoda
 
-[![Web Dashboard](https://img.shields.io/badge/Live_Dashboard-GitHub_Pages-2563EB?style=for-the-badge&logo=google-chrome&logoColor=white)](https://huanpro1239.github.io/vikoda-sellin-dashboard/)
+[![Web Dashboard](https://img.shields.io/badge/Dashboard-Internal_Access_Only-2563EB?style=for-the-badge&logo=google-chrome&logoColor=white)](#-2-truy-cập-web-dashboard-điều-hành)
 [![Build Status](https://img.shields.io/badge/Pipeline-GitHub_Actions_24/7-16A34A?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/Huanpro1239/vikoda-sellin-dashboard/actions)
 [![Python](https://img.shields.io/badge/Python-3.11+-38BDF8?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![Platform](https://img.shields.io/badge/Platform-Web_%7C_Mobile_%7C_Cloud-7C3AED?style=for-the-badge)](https://huanpro1239.github.io/vikoda-sellin-dashboard/)
+[![Platform](https://img.shields.io/badge/Platform-Web_%7C_Mobile_%7C_Cloud-7C3AED?style=for-the-badge)](#-2-truy-cập-web-dashboard-điều-hành)
+
+---
+
+> **Cảnh báo bảo mật:** GitHub Pages là static hosting. Màn hình mật khẩu chạy
+> phía trình duyệt chỉ là lớp UX, không bảo vệ file dữ liệu khỏi tải trực tiếp.
+> Không xuất bản dữ liệu khách hàng/doanh thu nội bộ trước khi có access control
+> phía server hoặc identity proxy và phê duyệt dữ liệu. Xem
+> [`SECURITY.md`](SECURITY.md) và [`PROPRIETARY_NOTICE.md`](PROPRIETARY_NOTICE.md).
 
 ---
 
@@ -19,8 +27,8 @@ Hệ thống **Vikoda Sell-In Platform** là giải pháp tự động hóa toà
 
 ## 🌐 2. TRUY CẬP WEB DASHBOARD ĐIỀU HÀNH
 
-* 🔗 **Đường dẫn xem báo cáo:** **[https://huanpro1239.github.io/vikoda-sellin-dashboard/](https://huanpro1239.github.io/vikoda-sellin-dashboard/)**
-* 🔐 **Mật khẩu truy cập:** `vikoda1979` hoặc `vikoda@2026` *(Có tùy chọn "Ghi nhớ đăng nhập" trên thiết bị).*
+* 🔗 **Đường dẫn xem báo cáo:** URL nội bộ do quản trị viên/IT cấp sau khi hoàn tất phê duyệt dữ liệu và access control.
+* 🔐 **Quyền truy cập:** Chỉ triển khai sau khi artifact đã qua data-classification review/phê duyệt và site nằm sau cơ chế xác thực thật. Không lưu hoặc công bố mật khẩu trong source/tài liệu.
 * 📱 **Hỗ trợ thiết bị:** Tối ưu hóa giao diện điều hành chuẩn quốc tế trên cả **Máy tính để bàn, Laptop, Tablet và Điện thoại di động (Mobile-First UX)**.
 
 ---
@@ -80,8 +88,8 @@ d:/Vikoda/Bao cao Sell in/
 │   └── 📁 Danh Sach Sales/        # Danh sách nhân sự quản lý (RSM, ASM, Sales Rep)
 ├── 📁 web/                        # Mã nguồn giao diện Web Dashboard (HTML5, Vanilla CSS, JS)
 │   ├── 📁 css/                    # Hệ thống thiết kế Dark Navy Executive & Responsive Mobile
-│   ├── 📁 js/                     # Logic bộ lọc đa chiều, biểu đồ ECharts & xác thực bảo mật
-│   └── 📁 data/                   # Gói dữ liệu nén (<1MB) phục vụ Web Dashboard chạy siêu tốc
+│   ├── 📁 js/                     # Logic bộ lọc đa chiều và biểu đồ ECharts
+│   └── 📁 data/                   # Artifact web sinh tự động; phải được phân loại trước khi publish
 ├── 📄 Quy_Trinh_Tu_Dong_Hoa_Bao_Cao_SellIn_Vikoda.docx # Tài liệu quy trình chuẩn hóa gửi Ban Giám Đốc
 └── 📄 README.md                   # Hướng dẫn toàn diện về hệ thống
 ```
@@ -91,8 +99,8 @@ d:/Vikoda/Bao cao Sell in/
 ## 👥 5. HƯỚNG DẪN SỬ DỤNG THEO VAI TRÒ (USER GUIDES)
 
 ### 👔 Dành cho Ban Giám Đốc & Quản lý Kinh doanh
-1. Truy cập trực tiếp link: **[https://huanpro1239.github.io/vikoda-sellin-dashboard/](https://huanpro1239.github.io/vikoda-sellin-dashboard/)**
-2. Nhập mật khẩu: `vikoda1979`
+1. Mở URL nội bộ do quản trị viên/IT cấp; không dùng link static public cho dữ liệu sản xuất.
+2. Xác thực qua cổng truy cập doanh nghiệp đã được quản trị viên phê duyệt. Không xem prompt JavaScript phía client là cơ chế bảo mật.
 3. Sử dụng các bộ lọc ở thanh bên trái hoặc thanh điều hướng nhanh dưới đáy màn hình (trên điện thoại) để xem phân tích:
    * **01. Tổng quan điều hành:** Doanh thu Actual vs Target, Tăng trưởng YoY, Nhịp độ Pacing.
    * **02. Kênh & Khách hàng:** Phân bổ tỷ trọng GT/MT/KA và Top 20 khách hàng lớn nhất.
@@ -110,8 +118,10 @@ d:/Vikoda/Bao cao Sell in/
 ---
 
 ### 💻 Dành cho Kỹ sư / Chạy trên máy tính cá nhân
-* **Chạy nhanh thủ công:** Nhấp đúp chuột vào file [`Chay CT/Tach data.cmd`](file:///d:/Vikoda/Bao%20cao%20Sell%20in/Chay%20CT/Tach%20data.cmd) hoặc [`Chay CT/Bao cao Target.cmd`](file:///d:/Vikoda/Bao%20cao%20Sell%20in/Chay%20CT/Bao%20cao%20Target.cmd).
-* **Chạy ngầm tự động:** Nhấp đúp chuột vào file [`Chay CT/Tu dong chay khi SharePoint cap nhat.cmd`](file:///d:/Vikoda/Bao%20cao%20Sell%20in/Chay%20CT/Tu%20dong%20chay%20khi%20SharePoint%20cap%20nhat.cmd) để máy tự động theo dõi và xử lý khi có file mới.
+* **Cài dependency lõi:** `py -3.12 -m pip install -r requirements.txt`.
+* **Công cụ tùy chọn:** `py -3.12 -m pip install -r requirements-optional.txt` chỉ khi cần xuất Word hoặc chạy local MCP server.
+* **Chạy nhanh thủ công:** Nhấp đúp [`Chay CT/Tach data.cmd`](Chay%20CT/Tach%20data.cmd) hoặc [`Chay CT/Bao cao Target.cmd`](Chay%20CT/Bao%20cao%20Target.cmd).
+* **Chạy ngầm tự động:** Nhấp đúp [`Chay CT/Tu dong chay khi SharePoint cap nhat.cmd`](Chay%20CT/Tu%20dong%20chay%20khi%20SharePoint%20cap%20nhat.cmd) để máy tự động theo dõi và xử lý khi có file mới.
 
 ---
 
@@ -127,9 +137,12 @@ Mọi AI Agent trên máy tính có thể gọi trực tiếp các công cụ:
 
 ## 🔒 6. BẢO MẬT & ĐỘ TIN CẬY (SECURITY & RELIABILITY)
 
-* **Xác thực bảo vệ:** Client-side SHA-256 hashing bảo vệ báo cáo nội bộ doanh nghiệp.
+* **Ranh giới bảo mật:** Client-side hashing/prompt không phải access control. Dữ liệu nội bộ chỉ được phục vụ sau lớp xác thực phía server hoặc identity-aware proxy.
+* **CI tối thiểu quyền:** Pull request chỉ chạy job read-only và không nhận production secrets. Deploy bị khóa bởi repository variable `ENABLE_PAGES_DEPLOY=true`, input xác nhận thủ công hoặc lịch đã duyệt, cùng GitHub environment protection.
+* **Fail closed:** Cloud sync dừng khi thiếu bất kỳ credential bắt buộc hoặc khi SharePoint không trả về workbook `.xlsm`/`.xlsx` hợp lệ, tránh âm thầm dùng dữ liệu cũ.
+* **Không ghi dữ liệu về Git:** Job deploy không commit/push workbook, raw data hay artifact ETL trở lại `main`.
 * **Toàn vẹn dữ liệu:** Không chỉnh sửa file nguồn gốc ERP, tạo bản sao đối soát minh bạch.
-* **Kiến trúc Serverless:** Hoạt động ổn định 99.99% trên hạ tầng CDN toàn cầu của GitHub Pages và máy chủ Microsoft Azure.
+* **Quy trình sự cố:** Xem hướng dẫn báo cáo riêng tư, thu hồi secret và xử lý lịch sử tại [`SECURITY.md`](SECURITY.md).
 
 ---
 

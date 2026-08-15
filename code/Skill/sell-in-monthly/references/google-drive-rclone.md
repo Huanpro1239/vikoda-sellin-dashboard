@@ -10,12 +10,11 @@ do Drive for Desktop mount. Cách đó có hai vấn đề:
 - Mỗi máy mount Drive một ổ khác nhau, phải dò hoặc khai báo đường dẫn, và không có
   gì bảo đảm hai máy đẩy vào **cùng một** thư mục.
 
-Giờ dùng `rclone` gọi thẳng Drive API. Đích xác định bằng **folder ID**, nên mọi máy
-chắc chắn đẩy vào đúng một thư mục:
-
-<https://drive.google.com/drive/folders/1zJHdr3L9g9VAQVYM8KR_Bl0jpV2FClv5>
-
-Folder ID này đã là mặc định trong `scripts/drive_sync.py`, không cần cấu hình gì.
+Giờ dùng `rclone` gọi thẳng Drive API. Đích xác định bằng **folder ID** do quản
+trị viên cấp. Không commit ID thật vào source hoặc tài liệu; mỗi máy khai báo qua
+biến `TACH_DATA_DRIVE_FOLDER_ID` hoặc `Chay CT/drive.conf` (copy từ
+`Chay CT/drive.conf.example`). Thiếu cấu hình thì bước Drive dừng an toàn và file
+cục bộ vẫn được giữ.
 
 ## Vì sao `copy` chứ không phải `sync`
 
@@ -82,10 +81,13 @@ Chạy đúng lệnh đó trên **máy khác có trình duyệt** (máy nào cũ
 rclone), đăng nhập, rồi copy đoạn token dài nó in ra và dán trở lại máy đang cấu
 hình. Cách này để cấu hình được máy không có giao diện.
 
-### 4. Kiểm tra
+### 4. Khai báo folder ID và kiểm tra
+
+Tạo file `Chay CT/drive.conf` từ file example rồi thay placeholder bằng folder ID
+đã được cấp. File thật đã nằm trong `.gitignore`.
 
 ```powershell
-.\.runtime\rclone\rclone.exe lsjson vikoda-drive: --drive-root-folder-id 1zJHdr3L9g9VAQVYM8KR_Bl0jpV2FClv5 --max-depth 1
+.\.runtime\rclone\rclone.exe lsjson vikoda-drive: --drive-root-folder-id <FOLDER_ID_DUOC_CAP> --max-depth 1
 ```
 
 Ra danh sách JSON các file trong thư mục là xong. Nếu báo
@@ -107,7 +109,7 @@ Kết quả đầy đủ ghi ở:
 Dòng in ra khi chạy có dạng:
 
 ```
-Google Drive: da tai len thu muc 1zJHdr3L... (remote 'vikoda-drive')
+Google Drive: da tai len thu muc <ID da rut gon trong log> (remote 'vikoda-drive')
   Doi soat: thu muc Drive hien co 20 file, mong doi it nhat 20.
 ```
 

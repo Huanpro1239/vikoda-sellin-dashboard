@@ -27,7 +27,12 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from drive_sync import RcloneNotFound, RcloneRemoteMissing, upload
+from drive_sync import (
+    DriveConfigurationMissing,
+    RcloneNotFound,
+    RcloneRemoteMissing,
+    upload,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -103,7 +108,7 @@ def main() -> int:
             rclone_path=args.rclone,
             verify=not args.no_verify,
         )
-    except (RcloneNotFound, RcloneRemoteMissing) as error:
+    except (DriveConfigurationMissing, RcloneNotFound, RcloneRemoteMissing) as error:
         # Chua cai/cau hinh rclone la viec setup mot lan, khong phai loi du lieu.
         print(str(error))
         base_report.update({"skipped": True, "reason": "rclone_not_ready"})

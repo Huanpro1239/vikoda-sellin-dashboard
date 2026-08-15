@@ -9,7 +9,12 @@ from datetime import datetime
 from pathlib import Path
 
 from build_looker_dataset import build_looker_csv
-from drive_sync import RcloneNotFound, RcloneRemoteMissing, upload as upload_to_drive
+from drive_sync import (
+    DriveConfigurationMissing,
+    RcloneNotFound,
+    RcloneRemoteMissing,
+    upload as upload_to_drive,
+)
 from extraction import (
     extract_file,
     is_candidate_source,
@@ -74,8 +79,8 @@ def parse_args() -> argparse.Namespace:
         default="",
         help=(
             "Folder ID hoặc URL thư mục Drive đích. Bỏ trống thì lấy biến môi "
-            "trường TACH_DATA_DRIVE_FOLDER_ID, rồi Chay CT/drive.conf, rồi thư "
-            "mục dùng chung mặc định của dự án."
+            "trường TACH_DATA_DRIVE_FOLDER_ID, rồi Chay CT/drive.conf. Thiếu "
+            "cấu hình thì bỏ qua đồng bộ Drive an toàn."
         ),
     )
     parser.add_argument(
@@ -383,7 +388,7 @@ def run(args: argparse.Namespace) -> dict:
                 )
             for job in drive_payload.get("failed_jobs", []):
                 print(f"  Loi khi tai {job['source_dir']}: {job['stderr']}")
-        except (RcloneNotFound, RcloneRemoteMissing) as error:
+        except (DriveConfigurationMissing, RcloneNotFound, RcloneRemoteMissing) as error:
             # Chua cai/cau hinh rclone la viec setup mot lan, khong phai loi du
             # lieu, nen khong lam do lan tach data.
             drive_payload = {"skipped": True, "reason": "rclone_not_ready"}

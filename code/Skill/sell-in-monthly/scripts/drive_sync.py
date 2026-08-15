@@ -4,10 +4,8 @@ Trước đây bước này chép file vào thư mục `G:\\My Drive\\...` do Go
 Desktop mount. Cách đó chỉ chạy được trên máy đã cài Drive for Desktop, nên máy
 chuyển giao không cài được là mất luôn bước đồng bộ. Giờ đổi sang gọi Drive API
 qua `rclone`: chỉ cần một file `rclone.exe` và một lần đăng nhập, không cần cài
-Drive for Desktop, và mọi máy đẩy vào **đúng một thư mục** xác định bằng folder ID.
-
-Đích mặc định là thư mục đã chia sẻ của dự án:
-https://drive.google.com/drive/folders/1zJHdr3L9g9VAQVYM8KR_Bl0jpV2FClv5
+Drive for Desktop, và mọi máy đẩy vào **đúng một thư mục** xác định bằng folder ID
+được cấp qua biến môi trường hoặc file cấu hình cục bộ (không lưu trong source).
 
 ## Vì sao `rclone copy` chứ không phải `rclone sync`
 
@@ -34,8 +32,6 @@ import shutil
 import subprocess
 from pathlib import Path
 
-# Thư mục Drive dùng chung của dự án. Lấy từ phần cuối URL chia sẻ.
-DEFAULT_FOLDER_ID = "1zJHdr3L9g9VAQVYM8KR_Bl0jpV2FClv5"
 # Tên remote trong cấu hình rclone, tạo một lần bằng `rclone config`.
 DEFAULT_REMOTE = "vikoda-drive"
 
@@ -64,6 +60,10 @@ class RcloneNotFound(RuntimeError):
 
 class RcloneRemoteMissing(RuntimeError):
     """rclone có nhưng chưa cấu hình remote, cần chạy `rclone config` một lần."""
+
+
+class DriveConfigurationMissing(RuntimeError):
+    """Chưa khai báo folder ID; không được đoán hoặc dùng định danh hard-code."""
 
 
 def config_file_candidates(project_root: Path) -> list[Path]:
@@ -99,14 +99,13 @@ def resolve_settings(
     folder_id: str = "",
     remote: str = "",
 ) -> dict[str, str]:
-    """Giải folder ID và tên remote theo thứ tự: tham số → env → drive.conf → mặc định."""
+    """Giải folder ID và tên remote theo thứ tự: tham số → env → drive.conf."""
     config = read_config(project_root)
 
     resolved_folder = (
         (folder_id or "").strip()
         or os.environ.get(ENV_FOLDER_ID, "").strip()
         or config.get("folder_id", "").strip()
-        or DEFAULT_FOLDER_ID
     )
     resolved_remote = (
         (remote or "").strip()
@@ -114,8 +113,14 @@ def resolve_settings(
         or config.get("remote", "").strip()
         or DEFAULT_REMOTE
     )
+    normalized_folder = extract_folder_id(resolved_folder)
+    if not normalized_folder:
+        raise DriveConfigurationMissing(
+            "Chua cau hinh Google Drive folder ID. Dat bien "
+            f"{ENV_FOLDER_ID} hoac tao Chay CT/{CONFIG_FILENAME} tu file example."
+        )
     return {
-        "folder_id": extract_folder_id(resolved_folder),
+        "folder_id": normalized_folder,
         "remote": resolved_remote,
         "config_source": config.get("_source", ""),
     }

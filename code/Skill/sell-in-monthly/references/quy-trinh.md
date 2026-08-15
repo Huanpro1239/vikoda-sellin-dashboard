@@ -153,10 +153,10 @@ Mỗi lần chạy, bước đồng bộ tải **toàn bộ** file `Sell in T*.x
 output lên Drive, kể cả các tháng `SKIP`, để Drive luôn là bản đầy đủ và khớp
 local. Bước này chạy dù không có tháng nào `REBUILD`.
 
-Đích là thư mục Drive dùng chung, xác định bằng **folder ID**
-`1zJHdr3L9g9VAQVYM8KR_Bl0jpV2FClv5`, không phải đường dẫn ổ đĩa. Tải lên bằng
-`rclone` gọi Drive API, nên máy đích **không cần cài Google Drive for Desktop** và
-mọi máy chắc chắn đẩy vào đúng một thư mục.
+Đích là thư mục Drive dùng chung, xác định bằng **folder ID** do quản trị viên
+cấp, không phải đường dẫn ổ đĩa. ID thật không lưu trong source/tài liệu. Tải lên
+bằng `rclone` gọi Drive API, nên máy đích **không cần cài Google Drive for
+Desktop** và các máy dùng cùng cấu hình sẽ đẩy vào đúng một thư mục.
 
 Dùng `rclone copy`, tuyệt đối không `sync`: `sync` sẽ xóa mọi thứ trong thư mục
 Drive mà local không có, kể cả Google Sheet đang dùng để vẽ Looker. `copy` cũng tự
@@ -164,7 +164,7 @@ bỏ qua file không đổi, nên vẫn đối chiếu cả thư mục mà chỉ
 vậy tham số `-SyncChangedOnly` cũ đã bỏ.
 
 Thứ tự giải đích: `-DriveFolderId` → `TACH_DATA_DRIVE_FOLDER_ID` →
-`Chay CT/drive.conf` → mặc định trong `drive_sync.py`. Logic nằm ở `drive_sync.py`,
+`Chay CT/drive.conf`. Thiếu cả ba thì không đồng bộ Drive. Logic nằm ở `drive_sync.py`,
 dùng chung với luồng chuyển giao; luồng chính gọi qua CLI `sync_drive.py`.
 
 Sau khi tải, script gọi `rclone lsjson` đếm lại số file trong thư mục Drive và so

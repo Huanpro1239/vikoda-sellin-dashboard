@@ -2,11 +2,11 @@
 # Dữ liệu và file nhị phân không đưa vào git: file Excel không diff được và
 # làm repo phình rất nhanh.
 
-# Du lieu staging cho bao cao
-!/Data/Work/bao_cao/
-/Data/Logs/
-/Data/out put/
-/Data/Work/sell_in/
+# Dữ liệu nghiệp vụ, workbook nguồn và mọi artifact ETL không thuộc source code.
+# Các file đã tracked trước đây vẫn còn cho tới khi có kế hoạch purge riêng;
+# quy tắc này ngăn dữ liệu mới bị add lại sau khi được di chuyển khỏi Git.
+/Data/
+/web/data/
 
 # Workbook rời ở gốc dự án
 /Chiet khau tra sau/
@@ -21,6 +21,9 @@
 /.codex_work/
 /.runtime/
 node_modules/
+.pytest_cache/
+.coverage
+htmlcov/
 
 # File thực thi đóng gói
 code/Skill/sell-in-monthly/assets/portable/*.exe
@@ -31,6 +34,7 @@ code/Skill/skill-bao-cao/scripts/vendor/
 # Rác của Python và Excel
 __pycache__/
 *.py[cod]
+*.log
 ~$*
 *.tmp
 *.tmp.*
@@ -51,3 +55,8 @@ credentials*
 *.key
 *.pem
 *.pfx
+*.p12
+*.jks
+*.kdbx
+id_rsa
+id_ed25519

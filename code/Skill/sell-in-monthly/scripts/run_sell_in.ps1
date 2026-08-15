@@ -3,8 +3,8 @@ param(
     [string]$ProjectRoot = '',
     [string]$OutputDirectory = '',
     # Thu muc Drive dich, nhan ca folder ID tran va URL day du. Bo trong de
-    # sync_drive.py giai theo: TACH_DATA_DRIVE_FOLDER_ID -> Chay CT\drive.conf ->
-    # thu muc dung chung mac dinh cua du an.
+    # sync_drive.py giai theo: TACH_DATA_DRIVE_FOLDER_ID -> Chay CT\drive.conf.
+    # Khong co cau hinh thi khong dong bo Drive.
     [string]$DriveFolderId = '',
     [string]$RcloneRemote = '',
     [string]$RclonePath = '',

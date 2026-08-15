@@ -77,6 +77,36 @@ html, body {
   overflow: hidden;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 10001;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: #FFFFFF;
+  color: var(--primary-navy);
+  font-weight: 700;
+  transform: translateY(-150%);
+  transition: transform var(--transition-fast);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
 /* --------------------------------------------------------------------------
    App Layout
    -------------------------------------------------------------------------- */
@@ -257,6 +287,17 @@ html, body {
 }
 
 .filter-pill .remove-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: inherit;
+  font: inherit;
   cursor: pointer;
   opacity: 0.7;
   transition: opacity var(--transition-fast);
@@ -264,6 +305,24 @@ html, body {
 
 .filter-pill .remove-pill:hover {
   opacity: 1;
+  color: #FFFFFF;
+}
+
+.btn-logout {
+  background: rgba(148, 163, 184, 0.12);
+  color: #E2E8F0;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-logout:hover {
+  background: rgba(148, 163, 184, 0.25);
   color: #FFFFFF;
 }
 
@@ -609,6 +668,7 @@ html, body {
 
 /* Executive Alert Banner */
 .executive-alert-strip {
+  width: 100%;
   background: linear-gradient(90deg, #1E1B4B 0%, #0F172A 100%);
   border: 1px solid #4338CA;
   border-left: 4px solid #F43F5E;
@@ -618,6 +678,9 @@ html, body {
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   box-shadow: 0 4px 12px rgba(244, 63, 94, 0.15);
   transition: all var(--transition-fast);
 }
@@ -1002,7 +1065,7 @@ html, body {
   gap: 4px;
 }
 
-.page-btn {
+.btn-page {
   background: #FFFFFF;
   border: 1px solid var(--border-card);
   padding: 4px 10px;
@@ -1011,10 +1074,54 @@ html, body {
   font-weight: 600;
 }
 
-.page-btn.active, .page-btn:hover {
+.btn-page.active, .btn-page:not(:disabled):hover {
   background: var(--primary-blue);
   color: #FFFFFF;
   border-color: var(--primary-blue);
+}
+
+.btn-page:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.system-error {
+  width: min(600px, calc(100% - 32px));
+  margin: 40px auto;
+  padding: 28px;
+  border: 1px solid #FDA4AF;
+  border-radius: 12px;
+  background: #FFF1F2;
+  color: #9F1239;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+}
+
+.system-error-icon {
+  margin-bottom: 12px;
+  font-size: 40px;
+}
+
+.system-error h3 {
+  margin-bottom: 8px;
+  font-size: 18px;
+}
+
+.system-error p {
+  margin-bottom: 20px;
+  color: #4B5563;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.system-error button {
+  padding: 9px 20px;
+  border: none;
+  border-radius: 6px;
+  background: #E11D48;
+  color: #FFFFFF;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 /* --------------------------------------------------------------------------
@@ -1497,7 +1604,9 @@ html, body {
   .brand-logo { font-size: 15px; }
   .brand-tag { display: none; }
   .meta-badge { font-size: 10px; padding: 3px 6px; }
-  .btn-clear-all { display: none; } /* Đã có trong filter bar */
+  .btn-clear-all { display: inline-flex; padding: 5px 8px; }
+  .btn-clear-all span { display: none; }
+  .btn-logout { padding: 5px 8px; font-size: 10px; }
 
   .app-body {
     flex-direction: column;
@@ -1576,6 +1685,20 @@ html, body {
   .table-toolbar {
     flex-direction: column;
     align-items: stretch;
+  }
+}
+
+*:focus-visible {
+  outline: 3px solid var(--accent-sky);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

@@ -1,4 +1,4 @@
-# Auto-Watch SharePoint & Run Full Pipeline + Auto Git Push 24/7
+# Auto-Watch SharePoint & Run Full Pipeline locally (no source-control publish)
 param(
     [string]$ProjectRoot = "$PSScriptRoot\..\..\..\.."
 )
@@ -14,7 +14,7 @@ $watchPaths = @(
 )
 
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host " VIKODA 24/7 AUTO-WATCHER: TU DONG CAP NHAT WEB & GITHUB" -ForegroundColor Green
+Write-Host " VIKODA 24/7 AUTO-WATCHER: TU DONG CAP NHAT ARTIFACT NOI BO" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Cyan
 
 $validWatchers = @()
@@ -39,7 +39,7 @@ Write-Host "`nHe thong dang chay ngam 24/7..." -ForegroundColor Green
 Write-Host "Moi khi SharePoint co file moi trong 'Data ERP':" -ForegroundColor White
 Write-Host "  1. Tu dong Tách data & Tinh toan Doanh so / Target" -ForegroundColor Gray
 Write-Host "  2. Tu dong Xuat bao cao Excel & Web Dashboard" -ForegroundColor Gray
-Write-Host "  3. Tu dong Day len GitHub & Vercel ngay lap tuc!`n" -ForegroundColor Gray
+Write-Host "  3. Luu artifact cuc bo de doi soat va phe duyet truoc khi phat hanh.`n" -ForegroundColor Gray
 
 $lastRun = [DateTime]::MinValue
 
@@ -58,15 +58,15 @@ while ($true) {
                     
                     Write-Host "-> Dang chay chuoi tach data va xuat dashboard..." -ForegroundColor Yellow
                     Set-Location -LiteralPath $ProjectRoot
-                    python "$pipelinePy" --project-root "$ProjectRoot"
-                    
-                    Write-Host "-> Dang tu dong day len GitHub & Vercel..." -ForegroundColor Yellow
-                    git add web/ Data/
-                    $commitMsg = "🤖 [Auto-Sync] Tu dong cap nhat du lieu moi tu SharePoint: $($change.Name) [$(Get-Date -Format 'yyyy-MM-dd HH:mm')]"
-                    git commit -m "$commitMsg"
-                    git push origin main
-                    
-                    Write-Host "[$(Get-Date -Format 'HH:mm:ss')] DA HOAN TAT & CAP NHAT LEN GITHUB / VERCEL THANH CONG!`n" -ForegroundColor Green
+                    & python "$pipelinePy" --project-root "$ProjectRoot"
+                    if ($LASTEXITCODE -ne 0) {
+                        Write-Error "Pipeline that bai (exit code $LASTEXITCODE). Khong phat hanh artifact."
+                        continue
+                    }
+
+                    # Tuyet doi khong git add/commit/push Data hoac web/data tu may watcher.
+                    # Phat hanh phai di qua CI read-only, quality gate va approval cua moi truong.
+                    Write-Host "[$(Get-Date -Format 'HH:mm:ss')] DA HOAN TAT PIPELINE CUC BO. ARTIFACT DANG CHO DOI SOAT/PHET DUYET.`n" -ForegroundColor Green
                 }
             }
         }

@@ -27,8 +27,8 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 import drive_sync  # noqa: E402
 from drive_sync import (  # noqa: E402
-    DEFAULT_FOLDER_ID,
     DEFAULT_REMOTE,
+    DriveConfigurationMissing,
     ENV_FOLDER_ID,
     ENV_REMOTE,
     RcloneNotFound,
@@ -41,20 +41,22 @@ from drive_sync import (  # noqa: E402
     upload,
 )
 
+TEST_FOLDER_ID = "TEST_DRIVE_FOLDER_ID_123"
+
 
 class ExtractFolderIdTests(unittest.TestCase):
     def test_accepts_bare_id(self) -> None:
-        self.assertEqual(extract_folder_id(DEFAULT_FOLDER_ID), DEFAULT_FOLDER_ID)
+        self.assertEqual(extract_folder_id(TEST_FOLDER_ID), TEST_FOLDER_ID)
 
     def test_accepts_full_share_url(self) -> None:
         """Người dùng hay dán nguyên URL từ thanh địa chỉ."""
         for url in (
-            f"https://drive.google.com/drive/folders/{DEFAULT_FOLDER_ID}",
-            f"https://drive.google.com/drive/u/0/folders/{DEFAULT_FOLDER_ID}",
-            f"https://drive.google.com/drive/folders/{DEFAULT_FOLDER_ID}?usp=sharing",
-            f'  "https://drive.google.com/drive/folders/{DEFAULT_FOLDER_ID}/"  ',
+            f"https://drive.google.com/drive/folders/{TEST_FOLDER_ID}",
+            f"https://drive.google.com/drive/u/0/folders/{TEST_FOLDER_ID}",
+            f"https://drive.google.com/drive/folders/{TEST_FOLDER_ID}?usp=sharing",
+            f'  "https://drive.google.com/drive/folders/{TEST_FOLDER_ID}/"  ',
         ):
-            self.assertEqual(extract_folder_id(url), DEFAULT_FOLDER_ID, url)
+            self.assertEqual(extract_folder_id(url), TEST_FOLDER_ID, url)
 
 
 class BuildCommandTests(unittest.TestCase):
@@ -64,7 +66,7 @@ class BuildCommandTests(unittest.TestCase):
             self.rclone,
             Path("/du an/Data/out put"),
             "vikoda-drive",
-            DEFAULT_FOLDER_ID,
+            TEST_FOLDER_ID,
             ["Sell in T*.xlsx"],
         )
 
@@ -78,7 +80,7 @@ class BuildCommandTests(unittest.TestCase):
 
     def test_targets_folder_by_id(self) -> None:
         index = self.command.index("--drive-root-folder-id")
-        self.assertEqual(self.command[index + 1], DEFAULT_FOLDER_ID)
+        self.assertEqual(self.command[index + 1], TEST_FOLDER_ID)
         self.assertIn("vikoda-drive:", self.command)
 
     def test_passes_every_include_pattern(self) -> None:
@@ -99,10 +101,10 @@ class BuildCommandTests(unittest.TestCase):
         self.assertEqual(self.command[index + 1], "1")
 
     def test_verify_command_lists_the_same_folder(self) -> None:
-        command = build_verify_command(self.rclone, "vikoda-drive", DEFAULT_FOLDER_ID)
+        command = build_verify_command(self.rclone, "vikoda-drive", TEST_FOLDER_ID)
         self.assertEqual(command[1], "lsjson")
         index = command.index("--drive-root-folder-id")
-        self.assertEqual(command[index + 1], DEFAULT_FOLDER_ID)
+        self.assertEqual(command[index + 1], TEST_FOLDER_ID)
 
 
 class ResolveSettingsTests(unittest.TestCase):
@@ -122,11 +124,10 @@ class ResolveSettingsTests(unittest.TestCase):
     def write_config(self, text: str) -> None:
         (self.root / "Chay CT" / "drive.conf").write_text(text, encoding="utf-8")
 
-    def test_falls_back_to_project_default(self) -> None:
-        """Không cấu hình gì thì vẫn phải ra thư mục dùng chung của dự án."""
-        settings = resolve_settings(self.root)
-        self.assertEqual(settings["folder_id"], DEFAULT_FOLDER_ID)
-        self.assertEqual(settings["remote"], DEFAULT_REMOTE)
+    def test_missing_folder_id_fails_closed(self) -> None:
+        """Không cấu hình thì không được dùng một resource ID nằm trong source."""
+        with self.assertRaises(DriveConfigurationMissing):
+            resolve_settings(self.root)
 
     def test_argument_beats_env_beats_config(self) -> None:
         import os
@@ -148,11 +149,11 @@ class ResolveSettingsTests(unittest.TestCase):
         self.write_config(
             "# ghi chu\n"
             "\n"
-            f"folder_id = https://drive.google.com/drive/folders/{DEFAULT_FOLDER_ID}\n"
+            f"folder_id = https://drive.google.com/drive/folders/{TEST_FOLDER_ID}\n"
             'remote = "vikoda-drive"\n'
         )
         settings = resolve_settings(self.root)
-        self.assertEqual(settings["folder_id"], DEFAULT_FOLDER_ID)
+        self.assertEqual(settings["folder_id"], TEST_FOLDER_ID)
         self.assertEqual(settings["remote"], "vikoda-drive")
         self.assertIn("drive.conf", settings["config_source"])
 
@@ -234,6 +235,7 @@ class UploadTests(unittest.TestCase):
                 project_root=self.root,
                 output_dir=self.output_dir,
                 extra_files=[csv_file],
+                folder_id=TEST_FOLDER_ID,
                 rclone_path=str(self.rclone),
                 log=lambda *a: None,
             )
@@ -245,7 +247,7 @@ class UploadTests(unittest.TestCase):
         # Ca hai job phai tro vao cung mot folder ID.
         for command in copies:
             index = command.index("--drive-root-folder-id")
-            self.assertEqual(command[index + 1], DEFAULT_FOLDER_ID)
+            self.assertEqual(command[index + 1], TEST_FOLDER_ID)
 
     def test_verify_reads_remote_listing(self) -> None:
         self.make(self.output_dir, "Sell in T01_2025.xlsx")
@@ -258,6 +260,7 @@ class UploadTests(unittest.TestCase):
             report = upload(
                 project_root=self.root,
                 output_dir=self.output_dir,
+                folder_id=TEST_FOLDER_ID,
                 rclone_path=str(self.rclone),
                 log=lambda *a: None,
             )
@@ -275,6 +278,7 @@ class UploadTests(unittest.TestCase):
             report = upload(
                 project_root=self.root,
                 output_dir=self.output_dir,
+                folder_id=TEST_FOLDER_ID,
                 rclone_path=str(self.rclone),
                 verify=False,
                 log=lambda *a: None,
@@ -287,6 +291,7 @@ class UploadTests(unittest.TestCase):
             report = upload(
                 project_root=self.root,
                 output_dir=self.output_dir,
+                folder_id=TEST_FOLDER_ID,
                 rclone_path=str(self.rclone),
                 log=lambda *a: None,
             )

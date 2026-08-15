@@ -8,17 +8,15 @@ Hỗ trợ 2 chế độ:
 from __future__ import annotations
 
 import argparse
-import base64
 import json
 import logging
 import os
-import sys
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from typing import Any, List
+from typing import Any, Mapping, Sequence
 
 logging.basicConfig(
     level=logging.INFO,
@@ -26,6 +24,26 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 logger = logging.getLogger("SharePointSync")
+
+CLOUD_ENV_NAMES = (
+    "AZURE_TENANT_ID",
+    "AZURE_CLIENT_ID",
+    "AZURE_CLIENT_SECRET",
+    "SHAREPOINT_SITE_ID",
+    "SHAREPOINT_DRIVE_ID",
+)
+SOURCE_WORKBOOK_SUFFIXES = {".xlsm", ".xlsx"}
+
+
+def _env_flag(env: Mapping[str, str], name: str) -> bool:
+    """Đọc cờ môi trường theo cách fail-closed, nhưng vẫn hiểu CI=false/0."""
+    value = str(env.get(name, "")).strip().lower()
+    return value not in {"", "0", "false", "no", "off"}
+
+
+def _cloud_credentials(env: Mapping[str, str]) -> dict[str, str]:
+    """Lấy cấu hình cloud mà không ghi giá trị bí mật ra log."""
+    return {name: str(env.get(name, "")) for name in CLOUD_ENV_NAMES}
 
 
 def http_request_with_retry(
@@ -86,22 +104,44 @@ def get_graph_access_token(tenant_id: str, client_id: str, client_secret: str) -
 
 def download_sharepoint_folder(
     token: str, site_id: str, drive_id: str, folder_path: str, local_dest: Path
-) -> List[Path]:
+) -> list[Path]:
     """Tải toàn bộ file từ một thư mục SharePoint về máy chủ."""
     local_dest.mkdir(parents=True, exist_ok=True)
     encoded_path = urllib.parse.quote(folder_path.strip("/"))
-    list_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/root:/{encoded_path}:/children"
+    next_url: str | None = (
+        f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}"
+        f"/root:/{encoded_path}:/children"
+    )
+    items: list[dict[str, Any]] = []
+    visited_pages: set[str] = set()
+    while next_url:
+        if next_url in visited_pages:
+            raise RuntimeError("Microsoft Graph trả về vòng lặp phân trang không hợp lệ")
+        visited_pages.add(next_url)
 
-    req = urllib.request.Request(list_url, method="GET")
-    req.add_header("Authorization", f"Bearer {token}")
+        req = urllib.request.Request(next_url, method="GET")
+        req.add_header("Authorization", f"Bearer {token}")
+        body, _ = http_request_with_retry(req)
+        page = json.loads(body.decode("utf-8"))
+        page_items = page.get("value", [])
+        if not isinstance(page_items, list):
+            raise RuntimeError("Microsoft Graph trả về trường 'value' không hợp lệ")
+        items.extend(item for item in page_items if isinstance(item, dict))
+        candidate = page.get("@odata.nextLink")
+        next_url = str(candidate) if candidate else None
 
-    body, status = http_request_with_retry(req)
-    items = json.loads(body.decode("utf-8")).get("value", [])
     downloaded = []
+    downloaded_names: set[str] = set()
 
     for item in items:
         if "file" in item:
-            file_name = item["name"]
+            file_name = str(item.get("name") or "")
+            if not file_name or file_name in {".", ".."} or "/" in file_name or "\\" in file_name:
+                raise RuntimeError("SharePoint trả về tên file không an toàn")
+            folded_name = file_name.casefold()
+            if folded_name in downloaded_names:
+                raise RuntimeError(f"SharePoint trả về tên file trùng lặp: {file_name}")
+            downloaded_names.add(folded_name)
             download_url = item.get("@microsoft.graph.downloadUrl")
             if not download_url:
                 continue
@@ -133,41 +173,35 @@ def upload_file_to_sharepoint(
         logger.info(f"  -> Đã tải lên SharePoint thành công: {local_file.name}")
 
 
-def main() -> None:
+def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None) -> int:
+    """Chạy đồng bộ và trả mã thoát; CI luôn yêu cầu cloud auth đầy đủ."""
     parser = argparse.ArgumentParser(description="Đồng bộ SharePoint <-> Local / GitHub Actions")
     parser.add_argument("--action", choices=["download", "upload"], required=True)
     parser.add_argument("--folder", required=True, help="Tên thư mục trên SharePoint")
     parser.add_argument("--local-dir", required=True, help="Thư mục cục bộ")
     parser.add_argument("--require-cloud-auth", action="store_true", help="Bắt buộc xác thực Cloud (fail nếu thiếu secret)")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     local_path = Path(args.local_dir).resolve()
+    active_env = os.environ if env is None else env
+    credentials = _cloud_credentials(active_env)
+    configured = [name for name, value in credentials.items() if value.strip()]
+    cloud_required = args.require_cloud_auth or _env_flag(active_env, "CI")
 
-    tenant_id = os.environ.get("AZURE_TENANT_ID")
-    client_id = os.environ.get("AZURE_CLIENT_ID")
-    client_secret = os.environ.get("AZURE_CLIENT_SECRET")
-    site_id = os.environ.get("SHAREPOINT_SITE_ID")
-    drive_id = os.environ.get("SHAREPOINT_DRIVE_ID")
-
-    is_cloud_env = any([tenant_id, client_id, client_secret, site_id, drive_id]) or args.require_cloud_auth
-
-    if not is_cloud_env:
+    if not configured and not cloud_required:
         logger.info("[LOCAL MODE] Không có cấu hình Azure Secret. Sử dụng dữ liệu cục bộ.")
-        return
+        return 0
 
-    if not all([tenant_id, client_id, client_secret, site_id, drive_id]):
-        missing = [k for k, v in [
-            ("AZURE_TENANT_ID", tenant_id),
-            ("AZURE_CLIENT_ID", client_id),
-            ("AZURE_CLIENT_SECRET", client_secret),
-            ("SHAREPOINT_SITE_ID", site_id),
-            ("SHAREPOINT_DRIVE_ID", drive_id),
-        ] if not v]
-        err_msg = f"[CLOUD MODE] Thiếu cấu hình Secrets: {', '.join(missing)}"
-        logger.error(err_msg)
-        if args.require_cloud_auth or os.environ.get("CI"):
-            sys.exit(1)
-        return
+    missing = [name for name, value in credentials.items() if not value.strip()]
+    if missing:
+        logger.error("[CLOUD MODE] Thiếu cấu hình bắt buộc: %s", ", ".join(missing))
+        return 2
+
+    tenant_id = credentials["AZURE_TENANT_ID"]
+    client_id = credentials["AZURE_CLIENT_ID"]
+    client_secret = credentials["AZURE_CLIENT_SECRET"]
+    site_id = credentials["SHAREPOINT_SITE_ID"]
+    drive_id = credentials["SHAREPOINT_DRIVE_ID"]
 
     logger.info("Đang kết nối Microsoft Graph API...")
     token = get_graph_access_token(tenant_id, client_id, client_secret)
@@ -175,12 +209,36 @@ def main() -> None:
     if args.action == "download":
         logger.info(f"=== ĐANG TẢI DỮ LIỆU TỪ SHAREPOINT '{args.folder}' ===")
         files = download_sharepoint_folder(token, site_id, drive_id, args.folder, local_path)
-        logger.info(f"Hoàn tất tải {len(files)} file từ SharePoint.")
+        workbooks = [
+            path
+            for path in files
+            if path.suffix.lower() in SOURCE_WORKBOOK_SUFFIXES
+            and path.is_file()
+            and path.stat().st_size > 0
+        ]
+        if not workbooks:
+            logger.error(
+                "SharePoint không trả về workbook .xlsm/.xlsx hợp lệ từ '%s'; "
+                "dừng để tránh dùng dữ liệu cũ.",
+                args.folder,
+            )
+            return 3
+        logger.info(
+            "Hoàn tất tải %s file từ SharePoint (%s workbook nguồn).",
+            len(files),
+            len(workbooks),
+        )
     elif args.action == "upload":
         logger.info(f"=== ĐANG TẢI FILE LÊN SHAREPOINT '{args.folder}' ===")
-        for f in local_path.glob("*.xlsx"):
+        upload_files = sorted(local_path.glob("*.xlsx"))
+        if not upload_files:
+            logger.error("Không tìm thấy file .xlsx để tải lên từ: %s", local_path)
+            return 3
+        for f in upload_files:
             upload_file_to_sharepoint(token, site_id, drive_id, args.folder, f)
+
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

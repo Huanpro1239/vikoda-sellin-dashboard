@@ -14,7 +14,7 @@
 #   4. Mac dinh trong drive_sync.py
 
 # folder_id nhan ca ID tran va URL day du, dan nguyen tu thanh dia chi cung duoc.
-folder_id = 1zJHdr3L9g9VAQVYM8KR_Bl0jpV2FClv5
+folder_id = XXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 # Ten remote da tao bang `rclone config`. Phai khop chinh xac.
 remote = vikoda-drive

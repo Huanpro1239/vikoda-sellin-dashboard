@@ -14,6 +14,9 @@ import sys
 from pathlib import Path
 
 
+DASHBOARD_JS_PREFIX = "window.VIKODA_DATA = "
+
+
 def check_python_version() -> bool:
     return sys.version_info >= (3, 10)
 
@@ -55,8 +58,25 @@ def check_dashboard_data(project_root: Path) -> bool:
         return False
     try:
         data = json.loads(json_path.read_text(encoding="utf-8"))
+        js_text = js_path.read_text(encoding="utf-8").strip()
+        if not js_text.startswith(DASHBOARD_JS_PREFIX) or not js_text.endswith(";"):
+            return False
+        js_data = json.loads(js_text[len(DASHBOARD_JS_PREFIX):-1].strip())
+        if js_data != data:
+            return False
+
         meta = data.get("metadata", {})
-        return meta.get("fact_count", 0) > 0 and meta.get("quality_status") == "PASS"
+        count_checks = {
+            "fact_count": len(data.get("fact_sell_in", [])),
+            "target_count": len(data.get("fact_target", [])),
+            "customer_count": len(data.get("dim_customer", {})),
+            "product_count": len(data.get("dim_product", {})),
+        }
+        return (
+            meta.get("quality_status") == "PASS"
+            and count_checks["fact_count"] > 0
+            and all(meta.get(key) == value for key, value in count_checks.items())
+        )
     except Exception:
         return False
 

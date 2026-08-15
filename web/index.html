@@ -2,19 +2,20 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Báo Cáo Sell In Vikoda | Hệ Thống Quản Trị Doanh Số</title>
   <meta name="description" content="Dashboard điều hành bán hàng Sell In thông minh Vikoda - Phân tích đa chiều, tự động hóa dự báo & nhịp độ kinh doanh">
-  <link rel="stylesheet" href="css/style.css?v=20260815_30">
+  <link rel="stylesheet" href="css/style.css?v=2.2.0">
   
   <!-- CDN Thư viện ECharts và SheetJS (Xuất Excel) -->
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
+  <a class="skip-link" href="#main_content">Bỏ qua điều hướng</a>
   <div id="app-container">
     
     <!-- TOP HEADER BAR -->
@@ -38,17 +39,18 @@
       </div>
 
       <!-- THANH CHỨA CÁC BỘ LỌC ĐANG CHỌN (CROSS-FILTER PILLS) -->
-      <div class="filter-pills-bar" id="filter_pills_container"></div>
+      <div class="filter-pills-bar" id="filter_pills_container" aria-live="polite"></div>
 
       <div class="header-actions">
-        <button class="btn-mobile-filter" id="btn_toggle_mobile_filter">
+        <button type="button" class="btn-mobile-filter" id="btn_toggle_mobile_filter" aria-controls="app_sidebar" aria-expanded="false">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
           <span>Bộ lọc</span>
         </button>
-        <button class="btn-clear-all" id="btn_clear_filters">
+        <button type="button" class="btn-clear-all" id="btn_clear_filters" aria-label="Xóa toàn bộ bộ lọc">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           <span>Xóa lọc</span>
         </button>
+        <button type="button" class="btn-logout" id="btn_logout" aria-label="Đăng xuất khỏi dashboard">Đăng xuất</button>
       </div>
     </header>
 
@@ -56,11 +58,11 @@
     <div class="app-body">
       
       <!-- LEFT SIDEBAR -->
-      <aside class="app-sidebar">
+      <aside class="app-sidebar" id="app_sidebar">
         
         <!-- NAVIGATION 6 TRANG -->
         <nav class="nav-menu">
-          <a class="nav-item active" data-page="page_01" href="#p1">
+          <a class="nav-item active" data-page="page_01" href="#p1" aria-current="page">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
             <span>01. Tổng quan điều hành</span>
           </a>
@@ -95,43 +97,34 @@
           </div>
           
           <div class="filter-select-group" style="margin-bottom: 6px;">
-            <select id="select_month" class="filter-select" onchange="window.app.setMonthPeriod(this.value)" style="background:#0B192C; font-weight:700; color:#38BDF8;">
+            <label class="sr-only" for="select_month">Chọn tháng báo cáo</label>
+            <select id="select_month" class="filter-select" style="background:#0B192C; font-weight:700; color:#38BDF8;">
               <option value="">-- Chọn Tháng Cụ Thể --</option>
-              <option value="2026-08" selected>Tháng 08/2026 (Mới nhất)</option>
-              <option value="2026-07">Tháng 07/2026</option>
-              <option value="2026-06">Tháng 06/2026</option>
-              <option value="2026-05">Tháng 05/2026</option>
-              <option value="2026-04">Tháng 04/2026</option>
-              <option value="2026-03">Tháng 03/2026</option>
-              <option value="2026-02">Tháng 02/2026</option>
-              <option value="2026-01">Tháng 01/2026</option>
-              <option value="2025-12">Tháng 12/2025</option>
-              <option value="2025-11">Tháng 11/2025</option>
             </select>
           </div>
 
           <div class="date-inputs-row">
             <div class="date-field">
-              <label>Từ ngày</label>
-              <input type="date" id="filter_start_date" class="date-input" oninput="window.app.handleDateInput()" onchange="window.app.handleDateInput()">
+              <label for="filter_start_date">Từ ngày</label>
+              <input type="date" id="filter_start_date" class="date-input">
             </div>
             <div class="date-field">
-              <label>Đến ngày</label>
-              <input type="date" id="filter_end_date" class="date-input" oninput="window.app.handleDateInput()" onchange="window.app.handleDateInput()">
+              <label for="filter_end_date">Đến ngày</label>
+              <input type="date" id="filter_end_date" class="date-input">
             </div>
           </div>
           
           <div class="quick-date-pills">
-            <button class="quick-btn active" data-quick="mtd" onclick="window.app.setQuickPeriod('mtd')">MTD (T8)</button>
-            <button class="quick-btn" data-quick="qtd" onclick="window.app.setQuickPeriod('qtd')">QTD (Q3)</button>
-            <button class="quick-btn" data-quick="ytd" onclick="window.app.setQuickPeriod('ytd')">YTD (2026)</button>
-            <button class="quick-btn" data-quick="all" onclick="window.app.setQuickPeriod('all')">Tất cả</button>
+            <button type="button" class="quick-btn active" data-quick="mtd" aria-pressed="true">MTD</button>
+            <button type="button" class="quick-btn" data-quick="qtd" aria-pressed="false">QTD</button>
+            <button type="button" class="quick-btn" data-quick="ytd" aria-pressed="false">YTD</button>
+            <button type="button" class="quick-btn" data-quick="all" aria-pressed="false">Tất cả</button>
           </div>
         </div>
 
         <!-- BỘ LỌC CHIỀU PHÂN TÍCH (SLICERS) -->
         <div class="filter-select-group">
-          <label>Miền / Đơn vị kinh doanh</label>
+          <label for="select_mien">Miền / Đơn vị kinh doanh</label>
           <select id="select_mien" class="filter-select">
             <option value="">-- Tất cả Đơn vị --</option>
             <option value="Miền Bắc">Miền Bắc</option>
@@ -145,7 +138,7 @@
         </div>
 
         <div class="filter-select-group">
-          <label>Kênh phân phối</label>
+          <label for="select_channel">Kênh phân phối</label>
           <select id="select_channel" class="filter-select">
             <option value="">-- Tất cả Kênh --</option>
             <option value="GT">GT (Truyền thống)</option>
@@ -156,7 +149,7 @@
         </div>
 
         <div class="filter-select-group">
-          <label>Nhóm sản phẩm</label>
+          <label for="select_group">Nhóm sản phẩm</label>
           <select id="select_group" class="filter-select">
             <option value="">-- Tất cả Nhóm --</option>
             <option value="Khoáng kiềm Vikoda">Khoáng kiềm Vikoda</option>
@@ -169,18 +162,18 @@
       </aside>
 
       <!-- MAIN CONTENT TABS -->
-      <main class="app-content">
+      <main class="app-content" id="main_content" tabindex="-1">
 
         <!-- THANH TRẠNG THÁI THỜI GIAN & CHỌN NHANH KỲ BÁO CÁO -->
         <div class="period-status-banner">
           <div class="period-badge-wrap">
-            <span class="period-badge" id="period_info_badge">📅 Đang xem: Tháng 8/2026</span>
+            <span class="period-badge" id="period_info_badge" aria-live="polite">📅 Đang nạp kỳ báo cáo…</span>
           </div>
           <div class="period-quick-tabs">
-            <button class="quick-btn active" data-quick="mtd" onclick="window.app.setQuickPeriod('mtd')">MTD (Tháng 8)</button>
-            <button class="quick-btn" data-quick="qtd" onclick="window.app.setQuickPeriod('qtd')">QTD (Quý 3)</button>
-            <button class="quick-btn" data-quick="ytd" onclick="window.app.setQuickPeriod('ytd')">YTD (Năm 2026)</button>
-            <button class="quick-btn" data-quick="all" onclick="window.app.setQuickPeriod('all')">Toàn bộ (2025-2026)</button>
+            <button type="button" class="quick-btn active" data-quick="mtd" aria-pressed="true">MTD</button>
+            <button type="button" class="quick-btn" data-quick="qtd" aria-pressed="false">QTD</button>
+            <button type="button" class="quick-btn" data-quick="ytd" aria-pressed="false">YTD</button>
+            <button type="button" class="quick-btn" data-quick="all" aria-pressed="false">Toàn bộ</button>
           </div>
         </div>
 
@@ -190,16 +183,16 @@
         <div class="view-page active" id="view_page_01">
 
           <!-- EXECUTIVE AI HEALTH & EARLY WARNING BANNER -->
-          <div class="executive-alert-strip" id="exec_alert_strip" onclick="window.app.switchPage('page_06')">
-            <div class="alert-strip-left">
+          <button type="button" class="executive-alert-strip" id="exec_alert_strip">
+            <span class="alert-strip-left">
               <span class="alert-pulse-dot"></span>
               <span class="alert-strip-badge">CẢNH BÁO AI</span>
               <span class="alert-strip-text" id="exec_alert_text">Đang phân tích nhịp độ bán hàng & nguy cơ hụt Target...</span>
-            </div>
-            <div class="alert-strip-right">
+            </span>
+            <span class="alert-strip-right">
               <span class="alert-link-btn">Xem Trung tâm Dự báo & Kế hoạch ➔</span>
-            </div>
-          </div>
+            </span>
+          </button>
 
           <!-- 4 THẺ KPI CHÍNH (HERO KPIS - CHỈ HIỂN THỊ Ở TRANG 01) -->
           <div class="kpi-cards-grid">
@@ -296,9 +289,9 @@
                   <span class="chart-subtitle">Doanh thu & % Tỷ trọng đóng góp</span>
                 </div>
                 <div class="chart-tab-group">
-                  <button class="p2-tab-btn active" data-mode="all" onclick="window.charts.setP2CustomerFilter('all')">Doanh thu cao</button>
-                  <button class="p2-tab-btn" data-mode="drop" onclick="window.charts.setP2CustomerFilter('drop')" style="color:#DC2626;">⚠️ Giảm sâu (Alert)</button>
-                  <button class="p2-tab-btn" data-mode="growth" onclick="window.charts.setP2CustomerFilter('growth')" style="color:#16A34A;">🚀 Tăng trưởng</button>
+                  <button type="button" class="p2-tab-btn active" data-mode="all" aria-pressed="true">Doanh thu cao</button>
+                  <button type="button" class="p2-tab-btn" data-mode="drop" aria-pressed="false" style="color:#DC2626;">⚠️ Giảm sâu (Alert)</button>
+                  <button type="button" class="p2-tab-btn" data-mode="growth" aria-pressed="false" style="color:#16A34A;">🚀 Tăng trưởng</button>
                 </div>
               </div>
               <div class="table-responsive" style="max-height: 280px;">
@@ -426,10 +419,11 @@
             <div class="table-toolbar">
               <div class="search-box">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                <input type="text" id="table_search_input" placeholder="Tìm tên khách hàng, sản phẩm, vùng...">
+                <label class="sr-only" for="table_search_input">Tìm trong bảng chi tiết</label>
+                <input type="search" id="table_search_input" placeholder="Tìm tên khách hàng, sản phẩm, vùng...">
               </div>
               <div class="table-actions">
-                <button class="btn-primary" id="btn_export_excel">
+                <button type="button" class="btn-primary" id="btn_export_excel">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                   <span>Xuất Excel (.xlsx)</span>
                 </button>
@@ -441,15 +435,15 @@
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th data-col="custName">Khách hàng ↕</th>
-                    <th data-col="channel">Kênh ↕</th>
-                    <th data-col="vung">Vùng ↕</th>
-                    <th data-col="prodName">Sản phẩm ↕</th>
-                    <th data-col="unit">ĐVT ↕</th>
-                    <th data-col="actual" class="num">Doanh thu (Tr.đ) ↕</th>
-                    <th data-col="ly" class="num">Cùng kỳ ↕</th>
-                    <th data-col="yoy" class="num">YoY % ↕</th>
-                    <th data-col="qtyKet" class="num">SL Két/Thùng/Bình ↕</th>
+                    <th data-col="custName" tabindex="0" aria-sort="none">Khách hàng ↕</th>
+                    <th data-col="channel" tabindex="0" aria-sort="none">Kênh ↕</th>
+                    <th data-col="vung" tabindex="0" aria-sort="none">Vùng ↕</th>
+                    <th data-col="prodName" tabindex="0" aria-sort="none">Sản phẩm ↕</th>
+                    <th data-col="unit" tabindex="0" aria-sort="none">ĐVT ↕</th>
+                    <th data-col="actual" class="num" tabindex="0" aria-sort="descending">Doanh thu (Tr.đ) ↕</th>
+                    <th data-col="ly" class="num" tabindex="0" aria-sort="none">Cùng kỳ ↕</th>
+                    <th data-col="yoy" class="num" tabindex="0" aria-sort="none">YoY % ↕</th>
+                    <th data-col="qtyKet" class="num" tabindex="0" aria-sort="none">SL Két/Thùng/Bình ↕</th>
                   </tr>
                 </thead>
                 <tbody id="table_tbody"></tbody>
@@ -457,7 +451,7 @@
             </div>
 
             <div class="table-pagination">
-              <span id="table_page_info">Hiển thị...</span>
+              <span id="table_page_info" aria-live="polite">Hiển thị...</span>
               <div id="table_pagination" class="pagination-controls"></div>
             </div>
           </div>
@@ -472,13 +466,13 @@
           <!-- THANH ĐIỀU KHIỂN CẤP ĐỘ DỰ BÁO CHIẾN LƯỢC (HORIZON SELECTOR) -->
           <div class="forecast-control-bar">
             <div class="forecast-control-left">
-              <span class="forecast-control-title" id="p6_horizon_title">Dự báo & Kế hoạch: Tháng 8/2026 (MTD)</span>
-              <span class="forecast-control-sub" id="p6_horizon_sub">15 ngày đã qua / 16 ngày còn lại</span>
+              <span class="forecast-control-title" id="p6_horizon_title">Đang tính kỳ dự báo…</span>
+              <span class="forecast-control-sub" id="p6_horizon_sub">Đang nạp dữ liệu tiến độ…</span>
             </div>
             <div class="forecast-horizon-tabs">
-              <button class="fc-horizon-btn active" data-horizon="month" onclick="window.charts.setForecastHorizon('month')">📅 Dự báo Tháng (MTD)</button>
-              <button class="fc-horizon-btn" data-horizon="quarter" onclick="window.charts.setForecastHorizon('quarter')">📊 Dự báo Quý (Q3 · Q4)</button>
-              <button class="fc-horizon-btn" data-horizon="year" onclick="window.charts.setForecastHorizon('year')">🎯 Dự báo Cả Năm (AOP 2026)</button>
+              <button type="button" class="fc-horizon-btn active" data-horizon="month" aria-pressed="true">📅 Dự báo Tháng (MTD)</button>
+              <button type="button" class="fc-horizon-btn" data-horizon="quarter" aria-pressed="false">📊 Dự báo Quý</button>
+              <button type="button" class="fc-horizon-btn" data-horizon="year" aria-pressed="false">🎯 Dự báo Cả Năm</button>
             </div>
           </div>
 
@@ -548,27 +542,27 @@
 
     <!-- MOBILE BOTTOM NAVIGATION BAR -->
     <nav class="mobile-bottom-nav">
-      <button class="mobile-nav-btn active" data-page="page_01">
+      <button type="button" class="mobile-nav-btn active" data-page="page_01" aria-pressed="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
         <span>Tổng quan</span>
       </button>
-      <button class="mobile-nav-btn" data-page="page_02">
+      <button type="button" class="mobile-nav-btn" data-page="page_02" aria-pressed="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path></svg>
         <span>Kênh & KH</span>
       </button>
-      <button class="mobile-nav-btn" data-page="page_03">
+      <button type="button" class="mobile-nav-btn" data-page="page_03" aria-pressed="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line></svg>
         <span>Sản phẩm</span>
       </button>
-      <button class="mobile-nav-btn" data-page="page_04">
+      <button type="button" class="mobile-nav-btn" data-page="page_04" aria-pressed="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
         <span>Vùng miền</span>
       </button>
-      <button class="mobile-nav-btn" data-page="page_05">
+      <button type="button" class="mobile-nav-btn" data-page="page_05" aria-pressed="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
         <span>Chi tiết</span>
       </button>
-      <button class="mobile-nav-btn" data-page="page_06">
+      <button type="button" class="mobile-nav-btn" data-page="page_06" aria-pressed="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
         <span>Kế hoạch</span>
       </button>
@@ -577,7 +571,7 @@
   </div>
 
   <!-- MÀN HÌNH ĐĂNG NHẬP & BẢO VỆ MẬT KHẨU (AUTH OVERLAY) -->
-  <div id="auth-overlay">
+  <div id="auth-overlay" role="dialog" aria-modal="true" aria-labelledby="login_title" aria-describedby="login_subtitle">
     <div class="login-card">
       <div class="login-logo">
         <div class="login-logo-icon">
@@ -586,11 +580,11 @@
             <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
           </svg>
         </div>
-        <h2 class="login-title">VIKODA 1979</h2>
-        <p class="login-subtitle">Báo cáo Quản trị & Điều hành Bán hàng Sell In</p>
+        <h2 class="login-title" id="login_title">VIKODA 1979</h2>
+        <p class="login-subtitle" id="login_subtitle">Báo cáo Quản trị & Điều hành Bán hàng Sell In</p>
       </div>
 
-      <form class="login-form" id="login_form" onsubmit="return false;">
+      <form class="login-form" id="login_form">
         <div class="login-field">
           <label for="input_password">Mật khẩu truy cập</label>
           <input type="password" id="input_password" class="login-input" placeholder="Nhập mật khẩu nội bộ..." autofocus required autocomplete="current-password">
@@ -601,7 +595,7 @@
           <span>Ghi nhớ đăng nhập trên thiết bị này</span>
         </label>
 
-        <p class="login-error" id="login_error_msg">Mật khẩu không chính xác. Vui lòng thử lại!</p>
+        <p class="login-error" id="login_error_msg" role="alert" aria-live="assertive">Mật khẩu không chính xác. Vui lòng thử lại!</p>
 
         <button type="submit" class="btn-login" id="btn_submit_login">Mở Báo Cáo Điều Hành →</button>
       </form>
@@ -609,10 +603,10 @@
   </div>
 
   <!-- NẠP DỮ LIỆU & LOGIC -->
-  <script src="js/auth.js?v=20260815_prod2"></script>
-  <script src="data/dashboard_data.js?v=20260815_prod2"></script>
-  <script src="js/data-engine.js?v=20260815_prod2"></script>
-  <script src="js/charts.js?v=20260815_prod2"></script>
-  <script src="js/app.js?v=20260815_prod2"></script>
+  <script src="js/auth.js?v=2.2.0"></script>
+  <script src="data/dashboard_data.js?v=2.2.0"></script>
+  <script src="js/data-engine.js?v=2.2.0"></script>
+  <script src="js/charts.js?v=2.2.0"></script>
+  <script src="js/app.js?v=2.2.0"></script>
 </body>
 </html>

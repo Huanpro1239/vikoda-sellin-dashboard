@@ -18,8 +18,8 @@ class VikodaDataEngine {
 
     // Global Filter State
     this.filters = {
-      startDate: '2026-08-01',
-      endDate: '2026-08-15',
+      startDate: '',
+      endDate: '',
       periodMode: 'mtd', // 'mtd', 'qtd', 'ytd', 'all', 'custom'
       mien: null,
       vung: null,
@@ -55,10 +55,10 @@ class VikodaDataEngine {
       this.facts = this.raw.fact_sell_in || [];
       this.targets = this.raw.fact_target || [];
 
-      // Khởi tạo ngày mặc định: MTD Tháng 8/2026 (Kỳ mới nhất)
-      const curYear = this.metadata.current_year || 2026;
-      const maxMonth = this.metadata.through_month ? String(this.metadata.through_month).padStart(2, '0') : '08';
-      const asOf = this.metadata.as_of_date || `${curYear}-${maxMonth}-15`;
+      // Khởi tạo MTD theo ngày chốt dữ liệu, không gắn cứng một kỳ báo cáo.
+      const asOf = this.getReportingAsOfDate();
+      const curYear = asOf.slice(0, 4);
+      const maxMonth = asOf.slice(5, 7);
 
       this.filters.startDate = `${curYear}-${maxMonth}-01`;
       this.filters.endDate = asOf;
@@ -96,9 +96,9 @@ class VikodaDataEngine {
   }
 
   clearAllFilters() {
-    const curYear = this.metadata.current_year || 2026;
-    const maxMonth = this.metadata.through_month ? String(this.metadata.through_month).padStart(2, '0') : '08';
-    const asOf = this.metadata.as_of_date || `${curYear}-${maxMonth}-15`;
+    const asOf = this.getReportingAsOfDate();
+    const curYear = asOf.slice(0, 4);
+    const maxMonth = asOf.slice(5, 7);
 
     this.filters.startDate = `${curYear}-${maxMonth}-01`;
     this.filters.endDate = asOf;
@@ -119,45 +119,172 @@ class VikodaDataEngine {
   // ------------------------------------------------------------------------
   // LỌC TẬP DỮ LIỆU FACT SELL IN THEO TỪNG NGÀY GIAO DỊCH THỰC TẾ (POWER BI STANDARD)
   // ------------------------------------------------------------------------
+  normalizeProductGroup(group) {
+    const value = String(group || '').normalize('NFC').trim();
+    return value === 'Khoáng ngọt Đảnh Thạnh' ? 'Đảnh Thạnh' : value;
+  }
+
+  parseISODate(dateStr) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateStr || ''));
+    if (!match) return null;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    if (
+      date.getUTCFullYear() !== year ||
+      date.getUTCMonth() !== month - 1 ||
+      date.getUTCDate() !== day
+    ) return null;
+    return date;
+  }
+
+  formatISODate(date) {
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+  }
+
+  daysInclusive(startDate, endDate) {
+    const start = this.parseISODate(startDate);
+    const end = this.parseISODate(endDate);
+    if (!start || !end || end < start) return 0;
+    return Math.floor((end - start) / 86400000) + 1;
+  }
+
+  getReportingAsOfDate() {
+    const declaredDates = [
+      this.metadata.as_of_date,
+      this.metadata.source_latest_date,
+      this.filters.endDate,
+    ];
+    for (const value of declaredDates) {
+      if (this.parseISODate(value)) return value;
+    }
+
+    const factDates = this.facts
+      .map((row) => row[0])
+      .filter((value) => this.parseISODate(value))
+      .sort();
+    if (factDates.length) return factDates[factDates.length - 1];
+    return this.formatISODate(new Date());
+  }
+
+  getDataDateBounds() {
+    const factDates = this.facts
+      .map((row) => row[0])
+      .filter((value) => this.parseISODate(value))
+      .sort();
+    const declaredStart = this.metadata.data_start_date || this.metadata.source_start_date;
+    const declaredEnd = this.metadata.as_of_date || this.metadata.source_latest_date;
+    const minDate = this.parseISODate(declaredStart)
+      ? declaredStart
+      : (factDates[0] || this.getReportingAsOfDate());
+    const maxDate = this.parseISODate(declaredEnd)
+      ? declaredEnd
+      : (factDates[factDates.length - 1] || this.getReportingAsOfDate());
+    const availableMonths = Array.from(new Set([
+      ...factDates.filter((date) => date <= maxDate).map((date) => date.slice(0, 7)),
+      maxDate.slice(0, 7),
+    ])).sort();
+
+    return {
+      minDate,
+      maxDate,
+      minMonth: minDate.slice(0, 7),
+      maxMonth: maxDate.slice(0, 7),
+      availableMonths,
+    };
+  }
+
+  getDataDateRange() {
+    return this.getDataDateBounds();
+  }
+
+  getPeriodBounds(horizon = 'month', asOfDate = this.getReportingAsOfDate()) {
+    const asOf = this.parseISODate(asOfDate);
+    if (!asOf) throw new Error(`Ngày chốt dữ liệu không hợp lệ: ${asOfDate}`);
+
+    const year = asOf.getUTCFullYear();
+    const monthIndex = asOf.getUTCMonth();
+    let start;
+    let end;
+    if (horizon === 'year') {
+      start = new Date(Date.UTC(year, 0, 1));
+      end = new Date(Date.UTC(year, 11, 31));
+    } else if (horizon === 'quarter') {
+      const quarterStart = Math.floor(monthIndex / 3) * 3;
+      start = new Date(Date.UTC(year, quarterStart, 1));
+      end = new Date(Date.UTC(year, quarterStart + 3, 0));
+    } else {
+      start = new Date(Date.UTC(year, monthIndex, 1));
+      end = new Date(Date.UTC(year, monthIndex + 1, 0));
+    }
+
+    return {
+      year,
+      month: monthIndex + 1,
+      quarter: Math.floor(monthIndex / 3) + 1,
+      startDate: this.formatISODate(start),
+      endDate: this.formatISODate(end),
+      asOfDate: this.formatISODate(asOf),
+    };
+  }
+
+  matchesFactDimensionFilters(row, filters = this.filters) {
+    const [, custKey, prodKey, terrKey] = row;
+    const cust = this.customers[custKey] || {};
+    const prod = this.products[prodKey] || {};
+    const terr = this.territories[terrKey] || {};
+
+    if (filters.mien && cust.mien !== filters.mien && terr.mien !== filters.mien) return false;
+    if (filters.vung && cust.vung !== filters.vung && terr.vung !== filters.vung) return false;
+    if (filters.channel && cust.channel !== filters.channel) return false;
+    if (filters.customerType && cust.type !== filters.customerType) return false;
+    if (filters.systemMT && cust.system_mt !== filters.systemMT) return false;
+
+    if (filters.productGroup) {
+      if (this.normalizeProductGroup(prod.group) !== this.normalizeProductGroup(filters.productGroup)) return false;
+    }
+    if (filters.packUnit && prod.unit !== filters.packUnit) return false;
+    if (filters.isVikoda !== null && filters.isVikoda !== undefined && prod.is_vikoda !== filters.isVikoda) return false;
+    if (filters.isKDT !== null && filters.isKDT !== undefined && prod.is_kdt !== filters.isKDT) return false;
+
+    if (filters.search) {
+      const query = String(filters.search).trim().toLowerCase();
+      const custName = String(cust.name || '').toLowerCase();
+      const prodName = String(prod.name || '').toLowerCase();
+      if (query && !custName.includes(query) && !prodName.includes(query)) return false;
+    }
+    return true;
+  }
+
+  matchesTargetDimensionFilters(row, filters = this.filters) {
+    const [, terrKey, custKey] = row;
+    const cust = this.customers[custKey] || {};
+    const terr = this.territories[terrKey] || {};
+    if (filters.mien && cust.mien !== filters.mien && terr.mien !== filters.mien) return false;
+    if (filters.vung && cust.vung !== filters.vung && terr.vung !== filters.vung) return false;
+    if (filters.channel && cust.channel !== filters.channel) return false;
+    if (filters.customerType && cust.type !== filters.customerType) return false;
+    if (filters.systemMT && cust.system_mt !== filters.systemMT) return false;
+    if (filters.search) {
+      const query = String(filters.search).trim().toLowerCase();
+      if (query && !String(cust.name || '').toLowerCase().includes(query)) return false;
+    }
+    return true;
+  }
+
   getFilteredFacts(customFilters = null) {
     const f = customFilters || this.filters;
     const start = f.startDate || '0000-00-00';
     const end = f.endDate || '9999-99-99';
 
     return this.facts.filter((row) => {
-      const [d, custKey, prodKey, terrKey, rev, qty, convQty, isReturn] = row;
+      const [d] = row;
 
       // Lọc chính xác từng ngày giao dịch thực tế
       if (d < start || d > end) return false;
 
-      const cust = this.customers[custKey] || {};
-      const prod = this.products[prodKey] || {};
-      const terr = this.territories[terrKey] || {};
-
-      if (f.mien && cust.mien !== f.mien && terr.mien !== f.mien) return false;
-      if (f.vung && cust.vung !== f.vung && terr.vung !== f.vung) return false;
-      if (f.channel && cust.channel !== f.channel) return false;
-      if (f.customerType && cust.type !== f.customerType) return false;
-      if (f.systemMT && cust.system_mt !== f.systemMT) return false;
-
-      if (f.productGroup) {
-        let pg = prod.group;
-        if (pg === 'Khoáng ngọt Đảnh Thạnh') pg = 'Đảnh Thạnh';
-        const targetGroup = f.productGroup === 'Khoáng ngọt Đảnh Thạnh' ? 'Đảnh Thạnh' : f.productGroup;
-        if (pg !== targetGroup) return false;
-      }
-      if (f.packUnit && prod.unit !== f.packUnit) return false;
-      if (f.isVikoda !== null && prod.is_vikoda !== f.isVikoda) return false;
-      if (f.isKDT !== null && prod.is_kdt !== f.isKDT) return false;
-
-      if (f.search) {
-        const query = f.search.toLowerCase();
-        const custName = (cust.name || '').toLowerCase();
-        const prodName = (prod.name || '').toLowerCase();
-        if (!custName.includes(query) && !prodName.includes(query)) return false;
-      }
-
-      return true;
+      return this.matchesFactDimensionFilters(row, f);
     });
   }
 
@@ -185,8 +312,26 @@ class VikodaDataEngine {
   // ------------------------------------------------------------------------
   // TÍNH TARGET PHÂN BỔ (TARGET PRORATION DAX PATTERN)
   // ------------------------------------------------------------------------
-  getFilteredTargets() {
-    const f = this.filters;
+  getTargetProrationFactor(periodKey, startDate, endDate) {
+    const key = String(periodKey || '');
+    if (!/^\d{6}$/.test(key)) return 0;
+    const year = Number(key.slice(0, 4));
+    const month = Number(key.slice(4, 6));
+    if (month < 1 || month > 12) return 0;
+    const monthStart = `${year}-${String(month).padStart(2, '0')}-01`;
+    const monthEnd = this.formatISODate(new Date(Date.UTC(year, month, 0)));
+    const overlapStart = startDate > monthStart ? startDate : monthStart;
+    const overlapEnd = endDate < monthEnd ? endDate : monthEnd;
+    const overlapDays = this.daysInclusive(overlapStart, overlapEnd);
+    const monthDays = this.daysInclusive(monthStart, monthEnd);
+    return monthDays > 0 ? overlapDays / monthDays : 0;
+  }
+
+  getFilteredTargets(customFilters = null, options = {}) {
+    const f = customFilters || this.filters;
+    // KPI attainment luôn so với target trọn tháng. Prorate chỉ bật tường minh
+    // cho biểu đồ pacing hoặc use case có nhãn "target lũy kế theo ngày".
+    const { prorate = false } = options;
     const start = f.startDate;
     const end = f.endDate;
     if (!start || !end) return [];
@@ -194,20 +339,28 @@ class VikodaDataEngine {
     const startMonthStr = start.slice(0, 7).replace('-', '');
     const endMonthStr = end.slice(0, 7).replace('-', '');
 
-    return this.targets.filter((row) => {
-      const [periodKey, terrKey, custKey, targetTotal, targetVikoda] = row;
-      if (periodKey < startMonthStr || periodKey > endMonthStr) return false;
+    return this.targets.reduce((rows, row) => {
+      const [periodKey, , , targetTotal, targetVikoda] = row;
+      const periodText = String(periodKey);
+      if (periodText < startMonthStr || periodText > endMonthStr) return rows;
+      if (!this.matchesTargetDimensionFilters(row, f)) return rows;
 
-      const cust = this.customers[custKey] || {};
-      const terr = this.territories[terrKey] || {};
+      const normalizedGroup = this.normalizeProductGroup(f.productGroup);
+      const wantsVikoda = f.isVikoda === true || normalizedGroup === 'Khoáng kiềm Vikoda';
+      const excludesVikoda = f.isVikoda === false;
+      let selectedTarget = Number(targetTotal || 0);
+      if (wantsVikoda && excludesVikoda) selectedTarget = 0;
+      else if (wantsVikoda) selectedTarget = Number(targetVikoda || 0);
+      else if (excludesVikoda) selectedTarget = Math.max(0, selectedTarget - Number(targetVikoda || 0));
 
-      if (f.mien && cust.mien !== f.mien && terr.mien !== f.mien) return false;
-      if (f.vung && cust.vung !== f.vung && terr.vung !== f.vung) return false;
-      if (f.channel && cust.channel !== f.channel) return false;
-      if (f.systemMT && cust.system_mt !== f.systemMT) return false;
-
-      return true;
-    });
+      const factor = prorate ? this.getTargetProrationFactor(periodText, start, end) : 1;
+      if (factor <= 0) return rows;
+      const projected = row.slice();
+      projected[3] = selectedTarget * factor;
+      projected[4] = Number(targetVikoda || 0) * factor;
+      rows.push(projected);
+      return rows;
+    }, []);
   }
 
   // ------------------------------------------------------------------------
@@ -261,7 +414,7 @@ class VikodaDataEngine {
       const y = s.split('-')[0];
       periodLabel = `YTD Năm ${y} (${formatVN(s)} - ${formatVN(e)})`;
     } else if (this.filters.periodMode === 'all') {
-      periodLabel = `Toàn bộ 20 kỳ (2025 - 2026)`;
+      periodLabel = `Toàn bộ dữ liệu (${formatVN(s)} - ${formatVN(e)})`;
     }
 
     const shortfall = Math.max(0, targetMillion - actualMillion);
@@ -288,7 +441,7 @@ class VikodaDataEngine {
   // TRANG 01: BIỂU ĐỒ TỔNG QUAN ĐIỀU HÀNH
   // ------------------------------------------------------------------------
   getMonthlyTrend() {
-    const curYear = this.metadata.current_year || 2026;
+    const curYear = Number(this.getReportingAsOfDate().slice(0, 4));
     const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
     const labels = months.map((m) => `T${parseInt(m, 10)}`);
 
@@ -302,28 +455,36 @@ class VikodaDataEngine {
       targetMap[`${curYear}${m}`] = 0;
     });
 
-    this.facts.forEach((r) => {
-      const [d, custKey, prodKey, terrKey, rev] = r;
+    const currentFacts = this.getFilteredFacts({
+      ...this.filters,
+      startDate: `${curYear}-01-01`,
+      endDate: `${curYear}-12-31`,
+    });
+    const priorFacts = this.getFilteredFacts({
+      ...this.filters,
+      startDate: `${curYear - 1}-01-01`,
+      endDate: `${curYear - 1}-12-31`,
+    });
+    const yearTargets = this.getFilteredTargets({
+      ...this.filters,
+      startDate: `${curYear}-01-01`,
+      endDate: `${curYear}-12-31`,
+    });
+
+    currentFacts.forEach((r) => {
+      const [d, , , , rev] = r;
       const period = d.slice(0, 7).replace('-', '');
-      const cust = this.customers[custKey] || {};
-      const prod = this.products[prodKey] || {};
-
-      if (this.filters.mien && cust.mien !== this.filters.mien) return;
-      if (this.filters.vung && cust.vung !== this.filters.vung) return;
-      if (this.filters.channel && cust.channel !== this.filters.channel) return;
-      if (this.filters.productGroup && prod.group !== this.filters.productGroup) return;
-
       if (actualMap[period] !== undefined) actualMap[period] += (rev || 0) / 1000000;
+    });
+
+    priorFacts.forEach((r) => {
+      const [d, , , , rev] = r;
+      const period = d.slice(0, 7).replace('-', '');
       if (lyMap[period] !== undefined) lyMap[period] += (rev || 0) / 1000000;
     });
 
-    this.targets.forEach((r) => {
-      const [periodKey, terrKey, custKey, targetTotal] = r;
-      const cust = this.customers[custKey] || {};
-      if (this.filters.mien && cust.mien !== this.filters.mien) return;
-      if (this.filters.vung && cust.vung !== this.filters.vung) return;
-      if (this.filters.channel && cust.channel !== this.filters.channel) return;
-
+    yearTargets.forEach((r) => {
+      const [periodKey, , , targetTotal] = r;
       if (targetMap[periodKey] !== undefined) targetMap[periodKey] += (targetTotal || 0) / 1000000;
     });
 
@@ -532,8 +693,9 @@ class VikodaDataEngine {
   // TRANG 03: SẢN PHẨM & DANH MỤC
   // ------------------------------------------------------------------------
   getVikodaVsKDTTrend() {
-    const curYear = this.metadata.current_year || 2026;
-    const throughMonth = this.metadata.through_month || 8;
+    const asOf = this.getReportingAsOfDate();
+    const curYear = Number(asOf.slice(0, 4));
+    const throughMonth = Number(asOf.slice(5, 7));
     const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
     const labels = months.map((m) => `T${parseInt(m, 10)}`);
 
@@ -545,7 +707,12 @@ class VikodaDataEngine {
       dtMap[`${curYear}${m}`] = 0;
     });
 
-    this.facts.forEach((r) => {
+    const yearFacts = this.getFilteredFacts({
+      ...this.filters,
+      startDate: `${curYear}-01-01`,
+      endDate: `${curYear}-12-31`,
+    });
+    yearFacts.forEach((r) => {
       const [d, custKey, prodKey, terrKey, rev] = r;
       if (!d.startsWith(String(curYear))) return;
       const period = d.slice(0, 7).replace('-', '');
@@ -634,7 +801,7 @@ class VikodaDataEngine {
   // TRANG 04: VÙNG MIỀN & SẢN LƯỢNG
   // ------------------------------------------------------------------------
   getPackagingVolumeTrend() {
-    const curYear = this.metadata.current_year || 2026;
+    const curYear = Number(this.getReportingAsOfDate().slice(0, 4));
     const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
     const labels = months.map((m) => `T${parseInt(m, 10)}`);
 
@@ -648,7 +815,12 @@ class VikodaDataEngine {
       binhMap[`${curYear}${m}`] = 0;
     });
 
-    this.facts.forEach((r) => {
+    const yearFacts = this.getFilteredFacts({
+      ...this.filters,
+      startDate: `${curYear}-01-01`,
+      endDate: `${curYear}-12-31`,
+    });
+    yearFacts.forEach((r) => {
       const [d, custKey, prodKey, terrKey, rev, qty, convQty] = r;
       const period = d.slice(0, 7).replace('-', '');
       const prod = this.products[prodKey] || {};
@@ -799,271 +971,255 @@ class VikodaDataEngine {
   // ------------------------------------------------------------------------
   // TRANG 06: HỆ THỐNG DỰ BÁO ĐIỀU HÀNH CEO THEO THÁNG / QUÝ / NĂM
   // ------------------------------------------------------------------------
-  getExecutiveForecastByHorizon(horizon = 'month') {
-    const facts = this.facts || [];
-    const targets = this.targets || [];
+  normalCdf(value) {
+    const x = Math.abs(value);
+    const t = 1 / (1 + 0.2316419 * x);
+    const density = 0.3989422804014327 * Math.exp(-0.5 * x * x);
+    const tail = density * t * (
+      0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429)))
+    );
+    const cdf = 1 - tail;
+    return value >= 0 ? cdf : 1 - cdf;
+  }
 
-    if (horizon === 'month') {
-      // THÁNG HIỆN TẠI (Tháng 8/2026)
-      const mFacts = facts.filter((r) => r[0].startsWith('2026-08'));
-      const mTgts = targets.filter((r) => r[0] === '202608');
-      const actual = mFacts.reduce((s, r) => s + (r[4] || 0), 0) / 1000000;
-      const target = mTgts.reduce((s, r) => s + (r[3] || 0), 0) / 1000000;
-      const passedDays = 15;
-      const totalDays = 31;
-      const remDays = totalDays - passedDays;
-      const curVelocity = actual / passedDays;
-      const forecastRem = remDays * curVelocity * 1.18;
-      const forecast = actual + forecastRem;
-      const gap = forecast - target;
-      const attainment = target > 0 ? (forecast / target) * 100 : 0;
-      const shortfall = Math.max(0, target - actual);
-      const reqVelocity = remDays > 0 ? shortfall / remDays : 0;
-      const burden = curVelocity > 0 ? reqVelocity / curVelocity : 1.0;
+  getForecastContext(horizon = 'month') {
+    const safeHorizon = ['month', 'quarter', 'year'].includes(horizon) ? horizon : 'month';
+    const bounds = this.getPeriodBounds(safeHorizon);
+    const factFilters = {
+      ...this.filters,
+      startDate: bounds.startDate,
+      endDate: bounds.asOfDate,
+    };
+    const targetFilters = {
+      ...this.filters,
+      startDate: bounds.startDate,
+      endDate: bounds.endDate,
+    };
+    const facts = this.getFilteredFacts(factFilters);
+    const targets = this.getFilteredTargets(targetFilters);
+    const actual = facts.reduce((sum, row) => sum + Number(row[4] || 0), 0) / 1000000;
+    const target = targets.reduce((sum, row) => sum + Number(row[3] || 0), 0) / 1000000;
+    const passedDays = this.daysInclusive(bounds.startDate, bounds.asOfDate);
+    const totalDays = this.daysInclusive(bounds.startDate, bounds.endDate);
+    const remainingDays = Math.max(0, totalDays - passedDays);
 
-      const se = 0.075 * forecast;
-      return {
-        horizon: 'month',
-        title: 'Tháng 8/2026 (MTD)',
-        subtitle: '15 ngày đã qua / 16 ngày còn lại',
-        actual: Math.round(actual),
-        target: Math.round(target),
-        forecast: Math.round(forecast),
-        monthEndForecast: Math.round(forecast),
-        gap: Math.round(gap),
-        attainment: Number(attainment.toFixed(1)),
-        forecastAttainment: Number(attainment.toFixed(1)),
-        pessimistic: Math.round(Math.max(actual, forecast - 1.645 * se)),
-        optimistic: Math.round(forecast + 1.645 * se),
-        probability: 91,
-        probabilityOfHit: 91,
-        curVelocity: Number(curVelocity.toFixed(1)),
-        reqVelocity: Number(reqVelocity.toFixed(1)),
-        remainingDays: remDays,
-        burden: Number(burden.toFixed(2)),
-        statusText: gap >= 0 ? `Dự kiến vượt mục tiêu +${Math.round(gap).toLocaleString()} Tr.đ` : `Dự kiến hụt -${Math.abs(Math.round(gap)).toLocaleString()} Tr.đ`,
-        statusColor: gap >= 0 ? '#10B981' : '#DC2626',
-      };
-    } else if (horizon === 'quarter') {
-      // QUÝ 3/2026 (T7, T8, T9)
-      const julFacts = facts.filter((r) => r[0].startsWith('2026-07'));
-      const augFacts = facts.filter((r) => r[0].startsWith('2026-08'));
-      const julAct = julFacts.reduce((s, r) => s + (r[4] || 0), 0) / 1000000;
-      const augAct = augFacts.reduce((s, r) => s + (r[4] || 0), 0) / 1000000;
-      const augCurV = augAct / 15;
-      const augFc = augAct + 16 * augCurV * 1.18;
+    const dailyRevenue = Array.from({ length: passedDays }, () => 0);
+    const startDate = this.parseISODate(bounds.startDate);
+    facts.forEach((row) => {
+      const date = this.parseISODate(row[0]);
+      if (!date || !startDate) return;
+      const index = Math.floor((date - startDate) / 86400000);
+      if (index >= 0 && index < dailyRevenue.length) {
+        dailyRevenue[index] += Number(row[4] || 0) / 1000000;
+      }
+    });
 
-      const q3Tgts = targets.filter((r) => ['202607', '202608', '202609'].includes(r[0]));
-      const target = q3Tgts.reduce((s, r) => s + (r[3] || 0), 0) / 1000000;
-      const sepTgt = targets.filter((r) => r[0] === '202609').reduce((s, r) => s + (r[3] || 0), 0) / 1000000;
-      const sepFc = sepTgt * 0.95;
+    const curVelocity = passedDays > 0 ? actual / passedDays : 0;
+    const variance = passedDays > 1
+      ? dailyRevenue.reduce((sum, value) => sum + ((value - curVelocity) ** 2), 0) / (passedDays - 1)
+      : 0;
+    const dailyStdDev = Math.sqrt(Math.max(0, variance));
+    const forecast = actual + remainingDays * curVelocity;
+    const forecastStdError = dailyStdDev * Math.sqrt(remainingDays);
+    const confidenceDelta = 1.645 * forecastStdError;
+    const pessimistic = Math.max(0, forecast - confidenceDelta);
+    const optimistic = Math.max(pessimistic, forecast + confidenceDelta);
+    const gap = forecast - target;
+    const attainment = target > 0 ? (forecast / target) * 100 : 0;
+    const shortfall = Math.max(0, target - actual);
+    const reqVelocity = remainingDays > 0 ? shortfall / remainingDays : 0;
+    const burden = curVelocity > 0
+      ? reqVelocity / curVelocity
+      : (shortfall > 0 ? Number.POSITIVE_INFINITY : 0);
 
-      const actual = julAct + augAct;
-      const forecast = julAct + augFc + sepFc;
-      const gap = forecast - target;
-      const attainment = target > 0 ? (forecast / target) * 100 : 0;
-      const remDays = 16 + 30;
-      const shortfall = Math.max(0, target - actual);
-      const curVelocity = actual / (31 + 15);
-      const reqVelocity = shortfall / remDays;
-      const burden = curVelocity > 0 ? reqVelocity / curVelocity : 1.0;
-
-      const se = 0.06 * forecast;
-      return {
-        horizon: 'quarter',
-        title: 'Quý 3/2026 (T7 · T8 · T9)',
-        subtitle: '46 ngày đã qua / 46 ngày còn lại',
-        actual: Math.round(actual),
-        target: Math.round(target),
-        forecast: Math.round(forecast),
-        monthEndForecast: Math.round(forecast),
-        gap: Math.round(gap),
-        attainment: Number(attainment.toFixed(1)),
-        forecastAttainment: Number(attainment.toFixed(1)),
-        pessimistic: Math.round(forecast - 1.645 * se),
-        optimistic: Math.round(forecast + 1.645 * se),
-        probability: 88,
-        probabilityOfHit: 88,
-        curVelocity: Number(curVelocity.toFixed(1)),
-        reqVelocity: Number(reqVelocity.toFixed(1)),
-        remainingDays: remDays,
-        burden: Number(burden.toFixed(2)),
-        statusText: gap >= 0 ? `Dự kiến vượt mục tiêu Quý 3 +${Math.round(gap).toLocaleString()} Tr.đ` : `Dự kiến hụt -${Math.abs(Math.round(gap)).toLocaleString()} Tr.đ`,
-        statusColor: gap >= 0 ? '#10B981' : '#DC2626',
-      };
+    let probabilityOfHit;
+    if (target <= 0 || actual >= target) {
+      probabilityOfHit = 100;
+    } else if (remainingDays === 0) {
+      probabilityOfHit = 0.1;
+    } else if (forecastStdError > 0) {
+      const z = (target - forecast) / forecastStdError;
+      probabilityOfHit = Math.min(99.9, Math.max(0.1, (1 - this.normalCdf(z)) * 100));
     } else {
-      // CẢ NĂM 2026 (FULL YEAR / AOP 2026)
-      const y2026Facts = facts.filter((r) => r[0].startsWith('2026-'));
-      const actual = y2026Facts.reduce((s, r) => s + (r[4] || 0), 0) / 1000000;
-      const target = targets.filter((r) => r[0].startsWith('2026')).reduce((s, r) => s + (r[3] || 0), 0) / 1000000;
-
-      const t1_t7_act = facts.filter((r) => r[0].startsWith('2026-') && r[0] < '2026-08-01').reduce((s, r) => s + (r[4] || 0), 0) / 1000000;
-      const augAct = facts.filter((r) => r[0].startsWith('2026-08')).reduce((s, r) => s + (r[4] || 0), 0) / 1000000;
-      const augFc = augAct + 16 * (augAct / 15) * 1.18;
-      const futureTgts = targets.filter((r) => ['202609', '202610', '202611', '202612'].includes(r[0])).reduce((s, r) => s + (r[3] || 0), 0) / 1000000;
-      const futureFc = futureTgts * 0.95;
-
-      const forecast = t1_t7_act + augFc + futureFc;
-      const gap = forecast - target;
-      const attainment = target > 0 ? (forecast / target) * 100 : 0;
-      const passedDays = 227;
-      const remDays = 365 - passedDays;
-      const shortfall = Math.max(0, target - actual);
-      const curVelocity = actual / passedDays;
-      const reqVelocity = shortfall / remDays;
-      const burden = curVelocity > 0 ? reqVelocity / curVelocity : 1.0;
-
-      const se = 0.05 * forecast;
-      return {
-        horizon: 'year',
-        title: 'Cả Năm 2026 (Kế hoạch AOP)',
-        subtitle: 'Lũy kế 7.5 tháng thực tế + 4.5 tháng dự báo',
-        actual: Math.round(actual),
-        target: Math.round(target),
-        forecast: Math.round(forecast),
-        monthEndForecast: Math.round(forecast),
-        gap: Math.round(gap),
-        attainment: Number(attainment.toFixed(1)),
-        forecastAttainment: Number(attainment.toFixed(1)),
-        pessimistic: Math.round(forecast - 1.645 * se),
-        optimistic: Math.round(forecast + 1.645 * se),
-        probability: 64,
-        probabilityOfHit: 64,
-        curVelocity: Number(curVelocity.toFixed(1)),
-        reqVelocity: Number(reqVelocity.toFixed(1)),
-        remainingDays: remDays,
-        burden: Number(burden.toFixed(2)),
-        statusText: gap < 0 ? `CẢNH BÁO: Khoảng hụt AOP cả năm: -${Math.abs(Math.round(gap)).toLocaleString()} Tr.đ` : `Dự kiến đạt +${Math.round(gap).toLocaleString()} Tr.đ`,
-        statusColor: gap < 0 ? '#DC2626' : '#10B981',
-      };
+      probabilityOfHit = forecast >= target ? 99.9 : 0.1;
     }
+
+    let title;
+    if (safeHorizon === 'year') {
+      title = `Cả Năm ${bounds.year} (Kế hoạch AOP)`;
+    } else if (safeHorizon === 'quarter') {
+      title = `Quý ${bounds.quarter}/${bounds.year}`;
+    } else {
+      title = `Tháng ${bounds.month}/${bounds.year} (MTD)`;
+    }
+    const statusScope = safeHorizon === 'year'
+      ? `AOP ${bounds.year}`
+      : (safeHorizon === 'quarter' ? `Quý ${bounds.quarter}` : `Tháng ${bounds.month}`);
+
+    return {
+      horizon: safeHorizon,
+      title,
+      subtitle: `${passedDays} ngày đã qua / ${remainingDays} ngày còn lại · chốt ${bounds.asOfDate.split('-').reverse().join('/')}`,
+      actual,
+      target,
+      forecast,
+      gap,
+      attainment,
+      pessimistic,
+      optimistic,
+      probabilityOfHit,
+      curVelocity,
+      reqVelocity,
+      remainingDays,
+      passedDays,
+      totalDays,
+      burden,
+      dailyStdDev,
+      forecastStdError,
+      facts,
+      targets,
+      bounds,
+      statusText: target <= 0
+        ? `Chưa có Target cho ${statusScope}`
+        : (gap >= 0
+          ? `Dự kiến vượt mục tiêu ${statusScope} +${Math.round(gap).toLocaleString()} Tr.đ`
+          : `Dự kiến hụt mục tiêu ${statusScope} -${Math.abs(Math.round(gap)).toLocaleString()} Tr.đ`),
+      statusColor: target > 0 && gap < 0 ? '#DC2626' : '#10B981',
+    };
+  }
+
+  getExecutiveForecastByHorizon(horizon = 'month') {
+    const context = this.getForecastContext(horizon);
+    const roundedBurden = Number.isFinite(context.burden)
+      ? Number(context.burden.toFixed(2))
+      : context.burden;
+    return {
+      horizon: context.horizon,
+      title: context.title,
+      subtitle: context.subtitle,
+      actual: Math.round(context.actual),
+      target: Math.round(context.target),
+      forecast: Math.round(context.forecast),
+      monthEndForecast: Math.round(context.forecast),
+      gap: Math.round(context.gap),
+      attainment: Number(context.attainment.toFixed(1)),
+      forecastAttainment: Number(context.attainment.toFixed(1)),
+      pessimistic: Math.round(context.pessimistic),
+      optimistic: Math.round(context.optimistic),
+      probability: Number(context.probabilityOfHit.toFixed(1)),
+      probabilityOfHit: Number(context.probabilityOfHit.toFixed(1)),
+      curVelocity: Number(context.curVelocity.toFixed(1)),
+      reqVelocity: Number(context.reqVelocity.toFixed(1)),
+      remainingDays: context.remainingDays,
+      burden: roundedBurden,
+      statusText: context.statusText,
+      statusColor: context.statusColor,
+      asOfDate: context.bounds.asOfDate,
+      periodStart: context.bounds.startDate,
+      periodEnd: context.bounds.endDate,
+    };
+  }
+
+  getMonthlyForecastPoint(year, month, asOfDate, fallbackVelocity) {
+    const monthText = String(month).padStart(2, '0');
+    const startDate = `${year}-${monthText}-01`;
+    const endDate = this.formatISODate(new Date(Date.UTC(year, month, 0)));
+    const monthDays = this.daysInclusive(startDate, endDate);
+    const isFuture = startDate > asOfDate;
+    const isPast = endDate < asOfDate;
+    const observedEnd = isFuture ? null : (isPast ? endDate : asOfDate);
+    const facts = observedEnd
+      ? this.getFilteredFacts({ ...this.filters, startDate, endDate: observedEnd })
+      : [];
+    const actual = facts.reduce((sum, row) => sum + Number(row[4] || 0), 0) / 1000000;
+    const target = this.getFilteredTargets({ ...this.filters, startDate, endDate })
+      .reduce((sum, row) => sum + Number(row[3] || 0), 0) / 1000000;
+
+    let forecast;
+    if (isPast) {
+      forecast = actual;
+    } else if (isFuture) {
+      forecast = fallbackVelocity * monthDays;
+    } else {
+      const passedDays = this.daysInclusive(startDate, asOfDate);
+      forecast = actual + Math.max(0, monthDays - passedDays) * fallbackVelocity;
+    }
+
+    return {
+      label: `Tháng ${month}${isFuture ? ' (Dự báo)' : (!isPast ? ' (Hiện tại)' : '')}`,
+      actual: isFuture ? null : Math.round(actual),
+      target: Math.round(target),
+      forecast: Math.round(forecast),
+    };
   }
 
   getForecastHorizonChartData(horizon = 'month') {
     if (horizon === 'month') {
       return this.getForecastPacingChartData();
-    } else if (horizon === 'quarter') {
-      const facts = this.facts || [];
-      const targets = this.targets || [];
-      const labels = ['Tháng 7', 'Tháng 8 (Hiện tại)', 'Tháng 9 (Dự báo)'];
-      const julAct = Math.round(facts.filter((r) => r[0].startsWith('2026-07')).reduce((s, r) => s + (r[4] || 0), 0) / 1000000);
-      const augAct = Math.round(facts.filter((r) => r[0].startsWith('2026-08')).reduce((s, r) => s + (r[4] || 0), 0) / 1000000);
-      const augFc = Math.round(augAct + 16 * (augAct / 15) * 1.18);
-
-      const julTgt = Math.round(targets.filter((r) => r[0] === '202607').reduce((s, r) => s + (r[3] || 0), 0) / 1000000);
-      const augTgt = Math.round(targets.filter((r) => r[0] === '202608').reduce((s, r) => s + (r[3] || 0), 0) / 1000000);
-      const sepTgt = Math.round(targets.filter((r) => r[0] === '202609').reduce((s, r) => s + (r[3] || 0), 0) / 1000000);
-      const sepFc = Math.round(sepTgt * 0.95);
-
-      return {
-        type: 'bar_trend',
-        labels,
-        actualSeries: [julAct, augAct, null],
-        targetSeries: [julTgt, augTgt, sepTgt],
-        forecastSeries: [julAct, augFc, sepFc],
-      };
-    } else {
-      const facts = this.facts || [];
-      const targets = this.targets || [];
-      const labels = [];
-      const actualSeries = [];
-      const targetSeries = [];
-      const forecastSeries = [];
-
-      for (let m = 1; m <= 12; m++) {
-        const mStr = `2026-${String(m).padStart(2, '0')}`;
-        const mCode = `2026${String(m).padStart(2, '0')}`;
-        labels.push(`T${m}`);
-
-        const tgt = Math.round(targets.filter((r) => r[0] === mCode).reduce((s, r) => s + (r[3] || 0), 0) / 1000000);
-        targetSeries.push(tgt);
-
-        if (m < 8) {
-          const act = Math.round(facts.filter((r) => r[0].startsWith(mStr)).reduce((s, r) => s + (r[4] || 0), 0) / 1000000);
-          actualSeries.push(act);
-          forecastSeries.push(act);
-        } else if (m === 8) {
-          const act = Math.round(facts.filter((r) => r[0].startsWith(mStr)).reduce((s, r) => s + (r[4] || 0), 0) / 1000000);
-          const fc = Math.round(act + 16 * (act / 15) * 1.18);
-          actualSeries.push(act);
-          forecastSeries.push(fc);
-        } else {
-          actualSeries.push(null);
-          forecastSeries.push(Math.round(tgt * 0.95));
-        }
-      }
-
-      return {
-        type: 'bar_trend',
-        labels,
-        actualSeries,
-        targetSeries,
-        forecastSeries,
-      };
     }
+
+    const safeHorizon = horizon === 'quarter' ? 'quarter' : 'year';
+    const context = this.getForecastContext(safeHorizon);
+    const firstMonth = safeHorizon === 'quarter'
+      ? Number(context.bounds.startDate.slice(5, 7))
+      : 1;
+    const monthCount = safeHorizon === 'quarter' ? 3 : 12;
+    const points = Array.from({ length: monthCount }, (_, index) => (
+      this.getMonthlyForecastPoint(
+        context.bounds.year,
+        firstMonth + index,
+        context.bounds.asOfDate,
+        context.curVelocity,
+      )
+    ));
+
+    return {
+      type: 'bar_trend',
+      labels: points.map((point) => point.label),
+      actualSeries: points.map((point) => point.actual),
+      targetSeries: points.map((point) => point.target),
+      forecastSeries: points.map((point) => point.forecast),
+    };
   }
 
   getCEODecisionMemo(horizon = 'month') {
     const fc = this.getExecutiveForecastByHorizon(horizon);
-    if (horizon === 'year') {
-      return [
-        {
-          tag: '🎯 Chiến lược Cả Năm (AOP)',
-          severity: 'red',
-          title: `Kế hoạch hành động bù đắp khoảng hụt ${Math.abs(fc.gap).toLocaleString()} Tr.đ so với AOP 2026`,
-          desc: `Mục tiêu cả năm 589 Tỷ VNĐ hiện dự báo cán đích ~528 Tỷ (89.6%). Nguyên nhân do Q1 và Q2 chậm nhịp.`,
-          decision: `CEO chỉ đạo khối Bán hàng kích hoạt chiến dịch "Bứt phá Mùa Lễ Hội & Tết 2027" trong Q4, nâng mục tiêu T10-T12 thêm 15% để cán đích năm.`,
-        },
-        {
-          tag: '🚚 Điều phối Quota & Tồn kho',
-          severity: 'amber',
-          title: `Giao chỉ tiêu vận tốc ngày 2,050 Tr.đ/ngày cho toàn hệ thống từ tháng 9 đến tháng 12`,
-          desc: `Để bù đắp khoảng hụt, tốc độ bán cần duy trì ở mức cao hơn 30% so với trung bình các tháng đầu năm.`,
-          decision: `Họp giao ban toàn bộ RSM Miền Bắc, Miền Trung, Miền Nam chốt cam kết sản lượng Két - Thùng - Bình 19L theo từng tuần.`,
-        },
-        {
-          tag: '💎 Bảo toàn Biên Lợi Nhuận',
-          severity: 'blue',
-          title: `Tập trung tỷ trọng nhóm Khoáng Kiềm Vikoda tự nhiên pH 9.0 (Hero SKU)`,
-          desc: `Dòng sản phẩm kiềm có biên lợi nhuận gộp cao nhất, cần tối ưu cơ cấu SKU để tối đa hóa EBITDA cả năm.`,
-          decision: `Dành 60% ngân sách Trade Marketing cho các gói combo Đảnh Thạnh + Vikoda chai thủy tinh và PET 500ml.`,
-        },
-      ];
-    } else if (horizon === 'quarter') {
-      return [
-        {
-          tag: '📊 Tiến độ Quý 3/2026',
-          severity: 'green',
-          title: `Quý 3 đang trên đà về đích xuất sắc (Dự báo đạt ${fc.attainment}% Target)`,
-          desc: `Doanh số Tháng 7 bứt phá (53.2 Tỷ) và Tháng 8 tiếp tục duy trì đà tăng trưởng mạnh mẽ tại Miền Trung 2 và Kênh KA.`,
-          decision: `Duy trì nguồn cung ứng ổn định tại nhà máy Đảnh Thạnh, không để xảy ra tình trạng thiếu vỏ bình 19L hoặc đứt hàng siêu thị.`,
-        },
-        {
-          tag: '⚠️ Tăng tốc Tháng 9',
-          severity: 'amber',
-          title: `Chốt số tháng 9 để tạo bước đệm hoàn thành toàn bộ Quý 3`,
-          desc: `Cần đạt tối thiểu 52.5 Tỷ trong tháng 9 để đảm bảo thặng dư chỉ tiêu Quý 3 trên 5 Tỷ VNĐ.`,
-          decision: `Triển khai chương trình Pre-order Trung Thu và chiết khấu bậc thang cho 50 NPP dẫn đầu doanh số.`,
-        },
-      ];
-    } else {
-      return [
-        {
-          tag: '⚡ Nước rút Tháng 8/2026',
-          severity: 'green',
-          title: `Dự báo Tháng 8 cán mốc ${fc.forecast.toLocaleString()} Tr.đ (+${Math.round(fc.gap).toLocaleString()} Tr.đ vượt Target)`,
-          desc: `Vận tốc bán 1,809 Tr.đ/ngày trong 15 ngày đầu tháng là tiền đề vững chắc để bứt phá tuần cuối.`,
-          decision: `Chỉ đạo RSM Miền Bắc và Miền Nam tăng tốc chạy chương trình khuyến mại để thu hẹp khoảng cách với Miền Trung.`,
-        },
-        {
-          tag: '🚨 Khắc phục NPP Sụt giảm',
-          severity: 'red',
-          title: `Rà soát khẩn cấp 14 NPP sụt giảm doanh số >35% so với cùng kỳ`,
-          desc: `Các đại lý lớn như Huỳnh Đoàn, Văn Lang, Bách Hóa Xanh cần được hỗ trợ kịp thời để không bị mất thị phần.`,
-          decision: `Giám đốc Kênh GT và MT làm việc trực tiếp với ban mua hàng đại lý để tháo gỡ vướng mắc luân chuyển hàng.`,
-        },
-      ];
-    }
+    const isOnTrack = fc.target > 0 && fc.gap >= 0;
+    const severity = fc.target <= 0 ? 'blue' : (isOnTrack ? 'green' : (fc.attainment >= 85 ? 'amber' : 'red'));
+    const scopeTag = horizon === 'year'
+      ? `🎯 AOP ${fc.asOfDate.slice(0, 4)}`
+      : (horizon === 'quarter'
+        ? `📊 Quý ${Math.floor((Number(fc.asOfDate.slice(5, 7)) - 1) / 3) + 1}/${fc.asOfDate.slice(0, 4)}`
+        : `⚡ Tháng ${Number(fc.asOfDate.slice(5, 7))}/${fc.asOfDate.slice(0, 4)}`);
+    const gapText = fc.gap >= 0
+      ? `vượt ${fc.gap.toLocaleString()} Tr.đ`
+      : `hụt ${Math.abs(fc.gap).toLocaleString()} Tr.đ`;
+    const paceGap = fc.reqVelocity - fc.curVelocity;
+
+    return [
+      {
+        tag: scopeTag,
+        severity,
+        title: fc.target > 0
+          ? `Dự báo ${fc.forecast.toLocaleString()} Tr.đ, ${gapText} so với Target`
+          : `Dự báo ${fc.forecast.toLocaleString()} Tr.đ; chưa có Target để đối chiếu`,
+        desc: `Lũy kế ${fc.actual.toLocaleString()} Tr.đ; dự báo đạt ${fc.attainment}% Target. Xác suất đạt theo biến động doanh thu ngày: ${fc.probabilityOfHit}%.`,
+        decision: isOnTrack
+          ? `Duy trì nhịp bán hiện tại ${fc.curVelocity.toLocaleString()} Tr.đ/ngày và theo dõi chênh lệch thực tế so với dải dự báo mỗi ngày.`
+          : `Phân bổ phần thiếu hụt theo vùng và khách hàng; cập nhật cam kết ngày theo vận tốc yêu cầu ${fc.reqVelocity.toLocaleString()} Tr.đ/ngày.`,
+      },
+      {
+        tag: '🚚 Nhịp độ về đích',
+        severity: paceGap > 0 ? 'amber' : 'green',
+        title: fc.remainingDays > 0
+          ? `Còn ${fc.remainingDays} ngày; vận tốc yêu cầu ${fc.reqVelocity.toLocaleString()} Tr.đ/ngày`
+          : 'Kỳ báo cáo đã kết thúc',
+        desc: `Vận tốc thực tế ${fc.curVelocity.toLocaleString()} Tr.đ/ngày; chênh lệch so với mức cần thiết ${paceGap >= 0 ? '+' : ''}${paceGap.toFixed(1)} Tr.đ/ngày.`,
+        decision: paceGap > 0
+          ? 'Ưu tiên nguồn lực cho các vùng có hệ số tải cao và kiểm tra tiến độ theo ngày.'
+          : 'Giữ ổn định nguồn cung và xác nhận chất lượng đơn hàng để bảo toàn nhịp đạt kế hoạch.',
+      },
+    ];
   }
 
   getStatisticalForecastMetrics() {
@@ -1071,23 +1227,17 @@ class VikodaDataEngine {
   }
 
   getForecastPacingChartData() {
-    const facts = this.getFilteredFacts();
-    const targets = this.getFilteredTargets();
-
-    const currentActual = facts.reduce((sum, r) => sum + (r[4] || 0), 0) / 1000000;
-    const currentTarget = targets.reduce((sum, r) => sum + (r[3] || 0), 0) / 1000000;
-
-    const e = this.filters.endDate || '2026-08-15';
-    const eDate = new Date(e);
-    const y = eDate.getFullYear();
-    const m = eDate.getMonth() + 1;
-    const totalDays = new Date(y, m, 0).getDate();
-    const currentDay = Math.max(1, Math.min(totalDays, eDate.getDate()));
+    const context = this.getForecastContext('month');
+    const facts = context.facts;
+    const currentActual = context.actual;
+    const currentTarget = context.target;
+    const totalDays = context.totalDays;
+    const currentDay = context.passedDays;
 
     const dailyMap = {};
     for (let d = 1; d <= totalDays; d++) dailyMap[d] = 0;
 
-    const mPrefix = `${y}-${String(m).padStart(2, '0')}`;
+    const mPrefix = context.bounds.startDate.slice(0, 7);
     facts.forEach((r) => {
       if (r[0].startsWith(mPrefix)) {
         const dayNum = parseInt(r[0].split('-')[2], 10);
@@ -1104,8 +1254,7 @@ class VikodaDataEngine {
 
     let cumAct = 0;
     const dailyTargetStep = currentTarget / totalDays;
-    const currentVelocity = currentDay > 0 ? currentActual / currentDay : 0;
-    const accel = 1.18;
+    const currentVelocity = context.curVelocity;
 
     for (let d = 1; d <= totalDays; d++) {
       labels.push(`N${d}`);
@@ -1120,10 +1269,10 @@ class VikodaDataEngine {
       } else {
         actualCumulative.push(null);
         const dayOffset = d - currentDay;
-        const projected = currentActual + dayOffset * currentVelocity * accel;
-        const se = 0.075 * projected * Math.sqrt(dayOffset / (totalDays - currentDay + 1));
+        const projected = currentActual + dayOffset * currentVelocity;
+        const se = context.dailyStdDev * Math.sqrt(dayOffset);
         forecastBaseline.push(Math.round(projected));
-        forecastLower.push(Math.round(Math.max(currentActual, projected - 1.645 * se)));
+        forecastLower.push(Math.round(Math.max(0, projected - 1.645 * se)));
         forecastUpper.push(Math.round(projected + 1.645 * se));
       }
     }
@@ -1141,14 +1290,11 @@ class VikodaDataEngine {
   }
 
   getRegionBurdenAnalysis() {
-    const facts = this.getFilteredFacts();
-    const targets = this.getFilteredTargets();
-
-    const e = this.filters.endDate || '2026-08-15';
-    const eDate = new Date(e);
-    const totalDays = new Date(eDate.getFullYear(), eDate.getMonth() + 1, 0).getDate();
-    const passedDays = Math.max(1, Math.min(totalDays, eDate.getDate()));
-    const remainingDays = Math.max(1, totalDays - passedDays);
+    const context = this.getForecastContext('month');
+    const facts = context.facts;
+    const targets = context.targets;
+    const passedDays = Math.max(1, context.passedDays);
+    const remainingDays = context.remainingDays;
 
     const regions = ['Miền Bắc', 'Miền Trung 1', 'Miền Trung 2', 'Miền Nam', 'KA', 'MT', 'B2C'];
     const actMap = {};
@@ -1173,9 +1319,11 @@ class VikodaDataEngine {
       const tgt = tgtMap[m] || 0;
       const curV = act / passedDays;
       const shortfall = Math.max(0, tgt - act);
-      const reqV = shortfall / remainingDays;
-      const burden = curV > 0 ? reqV / curV : (shortfall > 0 ? 5.0 : 0);
-      const fc = act + remainingDays * curV * 1.15;
+      const reqV = remainingDays > 0 ? shortfall / remainingDays : 0;
+      const burden = curV > 0
+        ? reqV / curV
+        : (shortfall > 0 ? Number.POSITIVE_INFINITY : 0);
+      const fc = act + remainingDays * curV;
       const fcAttainment = tgt > 0 ? (fc / tgt) * 100 : 0;
 
       let riskLevel = 'green';
@@ -1195,7 +1343,7 @@ class VikodaDataEngine {
         shortfall: Math.round(shortfall),
         currentVelocity: Number(curV.toFixed(1)),
         requiredVelocity: Number(reqV.toFixed(1)),
-        burden: Number(burden.toFixed(2)),
+        burden: Number.isFinite(burden) ? Number(burden.toFixed(2)) : burden,
         forecastAttainment: Number(fcAttainment.toFixed(1)),
         riskLevel,
         riskLabel,
@@ -1343,4 +1491,11 @@ class VikodaDataEngine {
   }
 }
 
-window.dataEngine = new VikodaDataEngine();
+if (typeof window !== 'undefined') {
+  window.VikodaDataEngine = VikodaDataEngine;
+  window.dataEngine = new VikodaDataEngine();
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { VikodaDataEngine };
+}

@@ -1,86 +1,104 @@
-# BÁO CÁO AUDIT & ĐÁNH GIÁ HỆ THỐNG VIKODA SELL-IN DASHBOARD (HOÀN TẤT)
+# BÁO CÁO AUDIT HỆ THỐNG VIKODA SELL-IN DASHBOARD
 
 **Repository:** `https://github.com/Huanpro1239/vikoda-sellin-dashboard`  
-**Ngày hoàn tất Audit & Refactor:** 15/08/2026  
-**Chuyên viên thực hiện:** Senior Software Architect / Python Data Engineer / DevOps Engineer  
+**Ngày cập nhật:** 15/08/2026
+**Phạm vi:** Kiến trúc dữ liệu, kiểm thử, CI/CD, bảo mật và repo hygiene
 
 ---
 
-## 1. TỔNG QUAN HỆ THỐNG
+> **Kết luận:** Chưa production-ready cho public hosting. Repo/lịch sử và static
+> web payload từng chứa dữ liệu nghiệp vụ chi tiết; prompt mật khẩu phía client
+> không phải access control. Hardening CI giảm nguy cơ tái diễn nhưng không xóa
+> dữ liệu đã commit hoặc đã publish. Xem `SECURITY.md` trước mọi lần deploy.
 
-Hệ thống **Vikoda Sell-In Dashboard** là nền tảng quản trị và phân tích dữ liệu bán hàng Sell-In đa chiều dành cho Ban Giám Đốc và phòng Kinh doanh Vikoda.
+## 1. Tổng quan
 
-* **Kiến trúc dữ liệu:** File-based ETL (Python 3.12 + OpenPyXL + Pandas) $\rightarrow$ Staging Data (JSON) $\rightarrow$ In-Memory Multidimensional OLAP Engine (Vanilla JS) trên nền Web tĩnh (GitHub Pages / Vercel).
-* **Nguồn dữ liệu:** Báo cáo Sell In từ ERP theo tháng (Excel `.xlsm`/`.xlsx`), Danh mục Khách hàng (DMKH), Danh mục Sản phẩm, và Bảng mục tiêu bán hàng (Target).
-* **Chu kỳ vận hành:** Tự động hóa 2 chiều qua Microsoft Graph API / Power Automate & CI/CD GitHub Actions.
+- **Pipeline:** ERP Excel → Python ETL → staging/quality report → Excel/web artifact.
+- **Nguồn:** Sell-In ERP, danh mục khách hàng/sản phẩm, target bán hàng.
+- **Cloud:** Microsoft Graph/SharePoint và GitHub Actions.
+- **Web:** Static HTML/CSS/JavaScript. Mô hình này không thể bảo vệ file dữ liệu
+  bằng JavaScript chạy trong trình duyệt.
 
----
+## 2. Trạng thái sau hardening
 
-## 2. BẢNG SO SÁNH ĐIỂM SỐ (BEFORE vs AFTER REFACTOR)
+| Hạng mục | Trạng thái | Bằng chứng / việc còn lại |
+| :--- | :---: | :--- |
+| Architecture | Cải thiện | Có validation và atomic build; vẫn phải tách data lifecycle khỏi source lifecycle. |
+| Data correctness | Có kiểm thử | Reconciliation/quality report có sẵn; phải chạy lại trên nguồn được phê duyệt cho từng kỳ. |
+| Reliability | Cải thiện | Graph retry 429/5xx; cloud sync fail khi thiếu credential hoặc không có workbook nguồn hợp lệ. |
+| Security | **BLOCKED P0** | Dữ liệu từng nằm trong repo/static hosting phải xem là đã lộ cho tới khi containment và history cleanup hoàn tất. |
+| Maintainability | Cải thiện | Dependency lõi được pin; dependency Word/MCP tách riêng. Một số launcher/tài liệu cũ vẫn cần rà tiếp. |
+| Testing | Bắt buộc trước merge | Pull request chạy read-only CI; số test lấy từ run hiện hành, không hardcode trong tài liệu. |
+| CI/CD | Hardened, gated | Không còn bot commit data về `main`; deploy cần `ENABLE_PAGES_DEPLOY=true` và event được duyệt. |
+| Governance | Cải thiện | Có `SECURITY.md`, proprietary notice và Dependabot. Branch/environment protection cần xác nhận trên GitHub. |
+| Kết luận | **CHƯA PRODUCTION-READY CHO PUBLIC DATA** | Chỉ gỡ blocker sau khi xử lý public access, lịch sử dữ liệu và auth thật. |
 
-| Hạng mục | Trọng số | Điểm Trước | Điểm Sau | Đánh giá cải tiến chi tiết |
-| :--- | :---: | :---: | :---: | :--- |
-| **1. Architecture** | /15 | 11/15 | **15/15** | Đã tách độc lập module Validation; quy trình Atomic Build bảo vệ dataset 100%; không còn nguy cơ hỏng dữ liệu khi build dở dang. |
-| **2. Data correctness** | /20 | 16/20 | **20/20** | Đối soát tự động $Source - Excluded = Output$; sai lệch doanh thu và sản lượng = 0; bảo toàn 100% số liệu gốc. |
-| **3. Reliability** | /15 | 9/15 | **14/15** | Xóa bỏ toàn bộ `\|\| true` nuốt lỗi; thêm cơ chế Exponential Backoff Retry (3 lần) khi gọi Microsoft Graph API; thêm Concurrency chống race condition. |
-| **4. Security** | /15 | 11/15 | **14/15** | Bổ sung `.gitignore` chặn toàn bộ file `.env*`, `credentials*`, `secrets*`; bổ sung `.env.example`; phân định rõ ràng UI Access Gate vs Data Boundary. |
-| **5. Maintainability** | /10 | 8/10 | **10/10** | Loại bỏ hoàn toàn đường dẫn cứng cục bộ; tham số hóa `project_root` và biến môi trường; cấu trúc thư mục chuẩn mực. |
-| **6. Testing** | /10 | 7/10 | **10/10** | Mở rộng Test Suite từ 174 lên **182 unit tests (100% PASS)** bao gồm Test Validation, Test KPIs (MTD, YoY, Pacing, Attainment) và Test Freshness. |
-| **7. CI/CD** | /10 | 6/10 | **9/10** | Tối ưu hóa workflow `.github/workflows/deploy_dashboard.yml`: timeout 15 phút, concurrency control, kiểm tra chất lượng & smoke test trước khi deploy. |
-| **8. Documentation** | /5 | 4/5 | **5/5** | Cập nhật tài liệu kỹ thuật, hướng dẫn vận hành, hướng dẫn Health Check và cơ chế tự động hóa SharePoint chi tiết. |
-| **TỔNG ĐIỂM TOÀN DIỆN** | **/100** | **72/100** | **96/100** | **ĐẠT TIÊU CHUẨN PRODUCTION-READY CAO CẤP ($\ge 93/100$)** |
+## 3. Vấn đề theo mức ưu tiên
 
----
+### P0 — Critical
 
-## 3. KẾT QUẢ XỬ LÝ CÁC VẤN ĐỀ P0 / P1 / P2
+1. **Public data boundary — chưa hoàn tất:** `.gitignore` mới chỉ ngăn file mới;
+   không xóa file đã tracked. Cần hạn chế public access, kiểm kê/thu hồi, di
+   chuyển dữ liệu và lập kế hoạch rewrite history riêng có backup.
+2. **Client-side auth — chưa hoàn tất:** Prompt/hash phía client không chặn tải
+   file trực tiếp. Cần server-side authentication hoặc identity-aware proxy
+   trước khi xuất bản dữ liệu nội bộ.
+3. **CI stale-data fallback — đã giảm thiểu:** Cloud sync giờ fail closed nếu CI
+   thiếu toàn bộ/một phần secret hoặc SharePoint không trả về workbook
+   `.xlsm`/`.xlsx` hợp lệ, không rỗng.
 
-### 🔴 P0 — Critical (Đã xử lý 100%)
-1. **Silent Failure trong CI/CD**: Đã xóa bỏ toàn bộ `|| true` ở các bước quan trọng trong `.github/workflows/deploy_dashboard.yml`. Mọi lỗi tải file hoặc xử lý ETL đều được bắt và log chi tiết.
-2. **Reconciliation (Đối soát số liệu tự động)**: Đã tạo module `code/common/validation.py` tự động đối chiếu `Source (79,107 dòng) = Output (79,107 dòng)`, Doanh thu 544.03 Tỷ VNĐ và xuất báo cáo `Data/Work/data_quality_report.json`.
-3. **Atomic Build**: Đã nâng cấp `export_web_data.py` theo mô hình ghi ra file `.tmp` $\rightarrow$ kiểm tra JSON hợp lệ $\rightarrow$ `os.replace` nguyên tử, ngăn chặn hoàn toàn việc deploy dữ liệu hỏng.
+### P1 — Important
 
-### 🟡 P1 — Important (Đã xử lý 100%)
-1. **Concurrency & Timeout trong CI/CD**: Đã cấu hình `concurrency: group 'vikoda-dashboard-pipeline'` và `timeout-minutes: 15`.
-2. **Exponential Backoff Retry cho SharePoint**: `sharepoint_graph_sync.py` tự động retry tối đa 3 lần với delay tăng dần khi gặp lỗi mạng hoặc HTTP 429/5xx; dừng ngay nếu gặp lỗi 401/403.
-3. **Phân định LOCAL MODE vs CLOUD MODE**: `sharepoint_graph_sync.py` tự nhận diện môi trường, chạy êm trên máy local không báo lỗi thiếu secret.
-4. **Bảo mật**: Bổ sung `.env.example`, cập nhật `.gitignore` loại trừ triệt để file chứa bí mật.
-5. **Frontend Resilience**: Thêm Error Boundary trong `web/js/app.js` hiển thị thông báo lỗi trang nhã khi có sự cố mạng.
+1. **CI tách quyền:** Pull request dùng `contents: read`, không có production
+   secrets; job deploy chỉ có `contents: read`, `pages: write`, `id-token: write`.
+2. **Không push artifact:** Đã bỏ bước `git add/commit/push` cho `Data/`, workbook
+   và `web/data/`; checkout cũng không lưu credential ghi Git.
+3. **Deploy secure-by-default:** Push vào `main` chỉ test. Deploy chỉ chạy khi
+   repository variable `ENABLE_PAGES_DEPLOY=true` và workflow dispatch/lịch được
+   duyệt. Chỉ bật biến sau khi artifact đã qua data-classification review và
+   được phê duyệt publish.
+4. **Dependency:** Pin dependency lõi trong `requirements.txt`; Word/MCP nằm
+   trong `requirements-optional.txt`; Dependabot theo dõi pip/GitHub Actions.
+5. **Việc còn lại:** Quét/strip macro, external link và metadata Office; bật
+   secret scanning/private vulnerability reporting; xác nhận branch/environment
+   protection trên GitHub.
 
-### 🟢 P2 — Improvement (Đã xử lý 100%)
-1. **Health Check Script**: Đã tạo `code/health_check.py` kiểm tra toàn diện 6 thành phần hệ thống chỉ trong < 1 giây (`SYSTEM HEALTHY`).
-2. **Mở rộng Unit Test**: Bộ test đạt **182/182 tests PASS (100%)**.
-3. **Tối ưu hóa UI & Debounce**: Áp dụng debounce cho ô tìm kiếm bảng dữ liệu để trải nghiệm tra cứu 3,800+ khách hàng luôn mượt mà.
+### P2 — Improvement
 
----
+1. `code/health_check.py` kiểm tra sáu thành phần hệ thống.
+2. Có regression test riêng cho CI thiếu credential, partial credential,
+   zero-download/no-workbook, local no-op và upload rỗng.
+3. Số liệu kiểm thử và dữ liệu kinh doanh không được chép cố định vào tài liệu
+   public; dùng log CI và quality artifact nội bộ của đúng run.
 
-## 4. ĐỐI SOÁT SỐ LIỆU DOANH THU & NGHIỆP VỤ BÁN HÀNG
+## 4. Điều kiện đối soát và phát hành
 
-| Chỉ số Sell-In | Trước Refactor | Sau Refactor | Chênh lệch (Variance) |
-| :--- | :---: | :---: | :---: |
-| **Tổng số dòng Sell-In** | 79,107 dòng | 79,107 dòng | **0 dòng (Khớp 100%)** |
-| **Số khách hàng Danh mục** | 3,859 KH | 3,859 KH | **0 KH (Khớp 100%)** |
-| **Doanh thu MTD T8/2026** | 32,254.3 Tr.đ | 32,254.3 Tr.đ | **0 VNĐ (Khớp 100%)** |
-| **Target MTD T8/2026** | 55,327.4 Tr.đ | 55,327.4 Tr.đ | **0 VNĐ (Khớp 100%)** |
-| **Tỷ lệ Đạt MTD T8/2026** | 58.3% | 58.3% | **0.0% (Khớp 100%)** |
-| **Tăng trưởng YoY MTD** | +17.3% | +17.3% | **0.0% (Khớp 100%)** |
-| **Sản lượng quy đổi MTD** | 417,368 két/thùng | 417,368 két/thùng | **0 két (Khớp 100%)** |
-| **Trạng thái Data Quality** | Chưa có | **PASS** | **Đã xuất báo cáo chuẩn** |
+Không lưu con số doanh thu, target, khách hàng hoặc sản lượng sản xuất trong tài
+liệu public. Kết quả chi tiết thuộc artifact nội bộ của từng run và phải được lưu
+trong SharePoint/approved storage. Điều kiện phát hành:
 
----
+- `Source - Excluded = Output` khớp theo số dòng và giá trị tiền;
+- quality report có trạng thái `PASS`;
+- nguồn đúng kỳ, tải được ít nhất một file và không dùng fallback từ run trước;
+- artifact đã qua phân loại dữ liệu, kiểm tra macro/external link và phê duyệt;
+- nơi publish có access control phù hợp với mức phân loại dữ liệu.
 
-## 5. HƯỚNG DẪN VẬN HÀNH & KIỂM TRA ĐỊNH KỲ
+## 5. Lệnh kiểm tra
 
-### 1. Chạy Kiểm Tra Sức Khỏe Hệ Thống (Health Check)
-```bash
-python code/health_check.py
+```powershell
+py -3.12 -m pip install -r requirements.txt
+py -3.12 code/run_all_tests.py --quiet
+py -3.12 code/health_check.py
 ```
 
-### 2. Chạy Toàn Bộ Bộ Kiểm Thử (Unit Tests)
-```bash
-python code/run_all_tests.py
+Dependency tùy chọn cho Word/local MCP server:
+
+```powershell
+py -3.12 -m pip install -r requirements-optional.txt
 ```
 
-### 3. Chạy Toàn Bộ Chuỗi ETL & Xuất Web Dataset Cục Bộ
-```bash
-python code/Skill/skill-bao-cao/scripts/run_cloud_pipeline.py --project-root .
+Chạy ETL local chỉ với dữ liệu đã được cấp quyền:
+
+```powershell
+py -3.12 code/Skill/skill-bao-cao/scripts/run_cloud_pipeline.py --project-root .
 ```

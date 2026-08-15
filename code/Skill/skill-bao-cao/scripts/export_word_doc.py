@@ -104,9 +104,9 @@ def create_document(output_path: Path):
     meta_rows = [
         ("Nguồn dữ liệu đầu vào", "SharePoint Online / Thư mục 'Data ERP' (File .xlsm thô từ ERP VKD & Vikoda)"),
         ("Cơ chế kích hoạt tự động", "Power Automate Cloud Flow (Phát hiện file mới qua Webhook)"),
-        ("Máy chủ tính toán ETL", "GitHub Actions Cloud Server (Chạy ngầm Python 3.11 trong 30-45 giây)"),
+        ("Máy chủ tính toán ETL", "GitHub Actions Cloud Server (Python 3.12; CI kiểm thử trước khi phát hành)"),
         ("Giao diện người dùng (Web)", "Web Dashboard tương tác đa chiều (ECharts, Mobile-First, Tự động phân trang)"),
-        ("Địa chỉ truy cập & Bảo mật", "https://huanpro1239.github.io/vikoda-sellin-dashboard/ (Mật khẩu: vikoda1979)"),
+        ("Địa chỉ truy cập & Bảo mật", "URL nội bộ do quản trị viên cấp; bắt buộc xác thực phía server/Entra ID trước dữ liệu mật"),
     ]
 
     for idx, (label, val) in enumerate(meta_rows):
@@ -170,7 +170,7 @@ def create_document(output_path: Path):
         ("BƯỚC 1", "Kế toán / Sales Admin\n(Nguồn dữ liệu)", "Xuất file báo cáo đơn hàng bán trong kỳ từ phần mềm ERP (.xlsm) và thả vào thư mục 'Data ERP' trên SharePoint công ty."),
         ("BƯỚC 2", "Power Automate Cloud\n(Kích hoạt thời gian thực)", "Phát hiện có file .xlsm mới tải lên hoặc chỉnh sửa trong thư mục SharePoint. Ngay lập tức gửi HTTP Webhook POST sang GitHub Actions."),
         ("BƯỚC 3", "GitHub Actions Cloud\n(ETL Python tự động)", "Khởi động máy chủ ảo: Chạy chuỗi 'Tách data', đọc dữ liệu thô, làm sạch, quy đổi két/thùng/bình, đối chiếu Target, và nén dữ liệu cho Web Dashboard."),
-        ("BƯỚC 4", "Web Dashboard 24/7\n(Xuất bản & Điều hành)", "Tự động xuất bản phiên bản mới lên GitHub Pages. Ban Giám Đốc và Quản lý vùng mở link web xem báo cáo ngay trên điện thoại hoặc máy tính."),
+        ("BƯỚC 4", "Web Dashboard nội bộ\n(Phê duyệt & Điều hành)", "Chỉ phát hành artifact đã đạt quality gate lên hosting doanh nghiệp có xác thực thật. Ban Giám Đốc và Quản lý vùng dùng URL nội bộ do IT cấp."),
     ]
 
     for idx, (b, comp, act) in enumerate(step_data):
@@ -258,12 +258,12 @@ def create_document(output_path: Path):
 
     p_web = doc.add_paragraph(
         "Giao diện Web Dashboard được thiết kế theo tiêu chuẩn Executive Dashboard chuyên nghiệp, "
-        "hỗ trợ 100% các thiết bị Điện thoại (iPhone/Android) và Máy tính bảng/Laptop:"
+        "thiết kế responsive cho các trình duyệt hiện đại trên điện thoại, máy tính bảng và laptop:"
     )
     p_web.paragraph_format.space_after = Pt(6)
 
     web_points = [
-        ("Màn hình bảo mật (Security Gate):", "Bảo vệ báo cáo bằng mã hóa SHA-256 (Mật khẩu mặc định: vikoda1979), có tùy chọn 'Ghi nhớ đăng nhập trên thiết bị này'."),
+        ("Ranh giới truy cập:", "Prompt/hash JavaScript chỉ hỗ trợ trải nghiệm cục bộ, không phải access control. Dữ liệu nội bộ phải nằm sau xác thực phía server hoặc identity-aware proxy."),
         ("Thanh điều hướng di động (Bottom Navigation Bar):", "6 nút bấm nhanh ở đáy màn hình điện thoại giúp chuyển đổi giữa 6 trang chỉ bằng một tay."),
         ("Ngăn kéo bộ lọc (Filter Drawer):", "Nút 'Bộ lọc' thông minh cho phép chỉnh khoảng ngày tháng và lọc Miền/Kênh mà không chiếm diện tích màn hình điện thoại."),
         ("Lọc chéo đa chiều (Cross-Filtering):", "Nhấp vào bất kỳ cột biểu đồ hoặc thanh kênh nào, toàn bộ số liệu và các trang khác sẽ tự động lọc theo."),
@@ -314,11 +314,11 @@ def create_document(output_path: Path):
     table_comp.rows[0].cells[2].width = Inches(2.5)
 
     comp_data = [
-        ("Thời gian xử lý báo cáo", "Mất 1 - 2 ngày kế toán xử lý Excel thủ công", "Tự động 100% trong vòng 30 - 45 giây"),
+        ("Thời gian xử lý báo cáo", "Mất 1 - 2 ngày kế toán xử lý Excel thủ công", "Tự động theo quy mô dữ liệu; có log, timeout và báo lỗi rõ ràng"),
         ("Tần suất cập nhật số liệu", "Mỗi tháng chỉ xem được 1 lần khi đóng sổ", "Cập nhật liên tục bất cứ khi nào có file mới"),
-        ("Thiết bị truy cập", "Phải mở máy tính cá nhân cài Power BI/Excel", "Mở trên điện thoại di động, máy tính bảng, PC 24/7"),
-        ("Chi phí bản quyền phần mềm", "Tốn phí mua Power BI Pro ($10/người/tháng)", "0đ chi phí (GitHub Pages & Power Automate sẵn có)"),
-        ("Độ chính xác dữ liệu", "Dễ nhầm lẫn khi copy-paste thủ công", "Chuẩn hóa thuật toán Python, kiểm thử tự động 174 test"),
+        ("Thiết bị truy cập", "Phải mở máy tính cá nhân cài Power BI/Excel", "Trình duyệt hiện đại trên điện thoại, máy tính bảng và PC qua URL nội bộ"),
+        ("Chi phí vận hành", "Phụ thuộc license và thao tác thủ công", "Theo license Microsoft/GitHub và hosting doanh nghiệp; cần được IT xác nhận"),
+        ("Độ chính xác dữ liệu", "Dễ nhầm lẫn khi copy-paste thủ công", "Chuẩn hóa Python, đối soát quality gate và bộ kiểm thử Python/JavaScript trong CI"),
     ]
 
     for idx, (crit, old, new) in enumerate(comp_data):
