@@ -28,15 +28,16 @@ def run_pipeline(project_root: Path) -> None:
     scripts_sellin = project_root / "code/Skill/sell-in-monthly/scripts"
     scripts_baocao = project_root / "code/Skill/skill-bao-cao/scripts"
     
-    # Tự động tìm thư mục nguồn ERP (Data_Goc, Data ERP, DataERP, Nguon)
+    # Tự động tìm thư mục nguồn ERP (Data_ERP, DataERP, Data ERP, Data_Goc, Nguon)
     source_candidates = [
-        project_root / "Data/Data_Goc",
-        project_root / "Data/Data ERP",
+        project_root / "Data/Data_ERP",
         project_root / "Data/DataERP",
+        project_root / "Data/Data ERP",
+        project_root / "Data/Data_Goc",
         project_root / "Data/Data Goc",
         project_root / "Data/Nguon",
     ]
-    source_dir = project_root / "Data/Data ERP"
+    source_dir = project_root / "Data/Data_ERP"
     for cand in source_candidates:
         if cand.exists() and any(f.suffix.lower() in [".xlsm", ".xlsx"] for f in cand.iterdir() if f.is_file()):
             source_dir = cand
