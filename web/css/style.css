@@ -87,16 +87,17 @@ html, body {
   height: 100vh;
 }
 
-/* Header */
+/* Header - Ultra-Premium Executive Style */
 .app-header {
-  height: var(--header-height);
-  background-color: var(--primary-navy-dark);
+  height: 68px;
+  background: linear-gradient(90deg, #09172A 0%, #0F2744 50%, #0B1E36 100%);
   color: var(--text-light);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
-  border-bottom: 1px solid var(--border-sidebar);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.18);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
   z-index: 50;
   flex-shrink: 0;
 }
@@ -110,46 +111,121 @@ html, body {
 .brand-logo {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-weight: 800;
-  font-size: 18px;
-  letter-spacing: -0.02em;
+  gap: 12px;
+  text-decoration: none;
+}
+
+.logo-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #0284C7 0%, #2563EB 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.4);
   color: #FFFFFF;
 }
 
-.brand-logo svg {
-  color: var(--accent-sky);
+.brand-text-group {
+  display: flex;
+  flex-direction: column;
 }
 
-.brand-tag {
-  background: rgba(56, 189, 248, 0.15);
-  color: var(--accent-sky);
-  padding: 3px 10px;
-  border-radius: var(--radius-full);
-  font-size: 11px;
+.brand-title {
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 0.06em;
+  color: #FFFFFF;
+  line-height: 1.1;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.brand-subtitle {
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.05em;
-  border: 1px solid rgba(56, 189, 248, 0.3);
+  letter-spacing: 0.12em;
+  color: #38BDF8;
+  text-transform: uppercase;
+  margin-top: 2px;
 }
 
-.header-meta {
+.status-pill {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 13px;
-  color: #94A3B8;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #7DD3FC;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.live-dot {
+  width: 7px;
+  height: 7px;
+  background-color: #10B981;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #10B981;
+  animation: pulseLive 2s infinite;
+}
+
+@keyframes pulseLive {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .meta-badge {
   display: flex;
   align-items: center;
-  gap: 6px;
-  background: rgba(255, 255, 255, 0.08);
-  padding: 5px 12px;
-  border-radius: var(--radius-sm);
-  color: #E2E8F0;
+  gap: 8px;
+  background: linear-gradient(135deg, rgba(30, 58, 95, 0.7) 0%, rgba(16, 42, 67, 0.9) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  padding: 6px 14px;
+  border-radius: 20px;
+  color: #F8FAFC;
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.meta-badge svg {
+  color: #38BDF8;
+}
+
+.btn-clear-all {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(220, 38, 38, 0.12);
+  color: #FCA5A5;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-clear-all:hover {
+  background: rgba(220, 38, 38, 0.25);
+  color: #FFFFFF;
+  border-color: #EF4444;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+  transform: translateY(-1px);
 }
 
 .filter-pills-bar {
@@ -188,23 +264,6 @@ html, body {
 
 .filter-pill .remove-pill:hover {
   opacity: 1;
-  color: #FFFFFF;
-}
-
-.btn-clear-all {
-  background: rgba(239, 68, 68, 0.15);
-  color: #FCA5A5;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  padding: 3px 10px;
-  border-radius: var(--radius-full);
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.btn-clear-all:hover {
-  background: rgba(239, 68, 68, 0.3);
   color: #FFFFFF;
 }
 

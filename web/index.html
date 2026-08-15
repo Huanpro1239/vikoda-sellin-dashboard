@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Vikoda | Báo Cáo Quản Trị Sell-In & Dự Báo Kinh Doanh</title>
   <meta name="description" content="Dashboard điều hành bán hàng Sell In thông minh Vikoda - Phân tích đa chiều, tự động hóa dự báo & nhịp độ kinh doanh">
-  <link rel="stylesheet" href="css/style.css?v=20260815_3">
+  <link rel="stylesheet" href="css/style.css?v=20260815_4">
   
   <!-- CDN Thư viện ECharts và SheetJS (Xuất Excel) -->
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -18,12 +18,20 @@
     <header class="app-header">
       <div class="brand-section">
         <div class="brand-logo">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
-          </svg>
-          <span>VIKODA 1979</span>
+          <div class="logo-icon-wrap">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+            </svg>
+          </div>
+          <div class="brand-text-group">
+            <span class="brand-title">VIKODA 1979</span>
+            <span class="brand-subtitle">NATURAL ALKALINE MINERAL</span>
+          </div>
         </div>
-        <span class="brand-tag">SELL-IN EXECUTIVE PRO</span>
+        <div class="status-pill">
+          <span class="live-dot"></span>
+          <span>EXECUTIVE PRO</span>
+        </div>
       </div>
 
       <!-- THANH CHỨA CÁC BỘ LỌC ĐANG CHỌN (CROSS-FILTER PILLS) -->
@@ -34,8 +42,14 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
           <span>Bộ lọc</span>
         </button>
-        <button class="btn-clear-all" id="btn_clear_filters">Xóa lọc ✕</button>
-        <div class="meta-badge" id="as_of_badge">📅 11/08/2026</div>
+        <button class="btn-clear-all" id="btn_clear_filters">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          <span>Xóa lọc</span>
+        </button>
+        <div class="meta-badge" id="as_of_badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          <span>11/08/2026</span>
+        </div>
       </div>
     </header>
 
