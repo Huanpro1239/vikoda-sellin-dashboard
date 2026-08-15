@@ -8,7 +8,7 @@
   <meta http-equiv="Expires" content="0">
   <title>Báo Cáo Sell In Vikoda | Hệ Thống Quản Trị Doanh Số</title>
   <meta name="description" content="Dashboard điều hành bán hàng Sell In thông minh Vikoda - Phân tích đa chiều, tự động hóa dự báo & nhịp độ kinh doanh">
-  <link rel="stylesheet" href="css/style.css?v=20260815_11">
+  <link rel="stylesheet" href="css/style.css?v=20260815_12">
   
   <!-- CDN Thư viện ECharts và SheetJS (Xuất Excel) -->
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -91,8 +91,25 @@
         <!-- BỘ LỌC KHOẢNG THỜI GIAN (WHITE CARD HIGH-CONTRAST) -->
         <div class="slicer-card">
           <div class="slicer-header">
-            <span class="slicer-title">Khoảng thời gian</span>
+            <span class="slicer-title">Kỳ Báo Cáo / Thời Gian</span>
           </div>
+          
+          <div class="filter-select-group" style="margin-bottom: 6px;">
+            <select id="select_month" class="filter-select" style="background:#0B192C; font-weight:700; color:#38BDF8;">
+              <option value="">-- Chọn Tháng Cụ Thể --</option>
+              <option value="2026-08">Tháng 08/2026 (Mới nhất)</option>
+              <option value="2026-07">Tháng 07/2026</option>
+              <option value="2026-06">Tháng 06/2026</option>
+              <option value="2026-05">Tháng 05/2026</option>
+              <option value="2026-04">Tháng 04/2026</option>
+              <option value="2026-03">Tháng 03/2026</option>
+              <option value="2026-02">Tháng 02/2026</option>
+              <option value="2026-01">Tháng 01/2026</option>
+              <option value="2025-12">Tháng 12/2025</option>
+              <option value="2025-11">Tháng 11/2025</option>
+            </select>
+          </div>
+
           <div class="date-inputs-row">
             <div class="date-field">
               <label>Từ ngày</label>
@@ -103,10 +120,11 @@
               <input type="date" id="filter_end_date" class="date-input">
             </div>
           </div>
+          
           <div class="quick-date-pills">
-            <button class="quick-btn" data-quick="mtd">MTD</button>
-            <button class="quick-btn" data-quick="qtd">QTD</button>
-            <button class="quick-btn active" data-quick="ytd">YTD</button>
+            <button class="quick-btn" data-quick="mtd">MTD (T8)</button>
+            <button class="quick-btn" data-quick="qtd">QTD (Q3)</button>
+            <button class="quick-btn active" data-quick="ytd">YTD (2026)</button>
             <button class="quick-btn" data-quick="all">Tất cả</button>
           </div>
         </div>
@@ -155,10 +173,10 @@
             <span class="period-badge" id="period_info_badge">📅 Đang xem: YTD Năm 2026</span>
           </div>
           <div class="period-quick-tabs">
-            <button class="quick-btn" data-quick="mtd">MTD</button>
-            <button class="quick-btn" data-quick="qtd">QTD</button>
-            <button class="quick-btn active" data-quick="ytd">YTD</button>
-            <button class="quick-btn" data-quick="all">Tất cả</button>
+            <button class="quick-btn" data-quick="mtd">MTD (Tháng 8)</button>
+            <button class="quick-btn" data-quick="qtd">QTD (Quý 3)</button>
+            <button class="quick-btn active" data-quick="ytd">YTD (Năm 2026)</button>
+            <button class="quick-btn" data-quick="all">Toàn bộ (2025-2026)</button>
           </div>
         </div>
 
@@ -544,10 +562,10 @@
   </div>
 
   <!-- NẠP DỮ LIỆU & LOGIC -->
-  <script src="js/auth.js?v=20260815_11"></script>
-  <script src="data/dashboard_data.js?v=20260815_11"></script>
-  <script src="js/data-engine.js?v=20260815_11"></script>
-  <script src="js/charts.js?v=20260815_11"></script>
-  <script src="js/app.js?v=20260815_11"></script>
+  <script src="js/auth.js?v=20260815_12"></script>
+  <script src="data/dashboard_data.js?v=20260815_12"></script>
+  <script src="js/data-engine.js?v=20260815_12"></script>
+  <script src="js/charts.js?v=20260815_12"></script>
+  <script src="js/app.js?v=20260815_12"></script>
 </body>
 </html>

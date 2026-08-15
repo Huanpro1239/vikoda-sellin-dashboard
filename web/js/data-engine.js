@@ -16,7 +16,7 @@ class VikodaDataEngine {
     // Global Filter State
     this.filters = {
       startDate: '2026-01-01',
-      endDate: '2026-08-11',
+      endDate: '2026-08-31',
       periodMode: 'ytd', // 'mtd', 'qtd', 'ytd', 'all', 'custom'
       mien: null,
       vung: null,
@@ -50,9 +50,9 @@ class VikodaDataEngine {
 
     // Khởi tạo ngày mặc định: YTD 2026
     const curYear = this.metadata.current_year || 2026;
-    const maxD = this.metadata.as_of_date || `${curYear}-08-11`;
+    const maxMonth = this.metadata.through_month ? String(this.metadata.through_month).padStart(2, '0') : '08';
     this.filters.startDate = `${curYear}-01-01`;
-    this.filters.endDate = maxD;
+    this.filters.endDate = `${curYear}-${maxMonth}-31`;
     this.filters.periodMode = 'ytd';
   }
 
@@ -83,8 +83,9 @@ class VikodaDataEngine {
 
   clearAllFilters() {
     const curYear = this.metadata.current_year || 2026;
+    const maxMonth = this.metadata.through_month ? String(this.metadata.through_month).padStart(2, '0') : '08';
     this.filters.startDate = `${curYear}-01-01`;
-    this.filters.endDate = this.metadata.as_of_date || `${curYear}-08-11`;
+    this.filters.endDate = `${curYear}-${maxMonth}-31`;
     this.filters.periodMode = 'ytd';
     this.filters.mien = null;
     this.filters.vung = null;
@@ -100,18 +101,18 @@ class VikodaDataEngine {
   }
 
   // ------------------------------------------------------------------------
-  // LỌC TẬP DỮ LIỆU FACT SELL IN
+  // LỌC TẬP DỮ LIỆU FACT SELL IN (CHUẨN HÓA THEO KỲ THÁNG YYYY-MM)
   // ------------------------------------------------------------------------
   getFilteredFacts(customFilters = null) {
     const f = customFilters || this.filters;
-    const start = f.startDate;
-    const end = f.endDate;
+    const startPeriod = f.startDate ? f.startDate.slice(0, 7) : '0000-00';
+    const endPeriod = f.endDate ? f.endDate.slice(0, 7) : '9999-99';
 
     return this.facts.filter((row) => {
       const [d, custKey, prodKey, terrKey, rev, qty, convQty, isReturn] = row;
+      const rowPeriod = d.slice(0, 7);
 
-      if (start && d < start) return false;
-      if (end && d > end) return false;
+      if (rowPeriod < startPeriod || rowPeriod > endPeriod) return false;
 
       const cust = this.customers[custKey] || {};
       const prod = this.products[prodKey] || {};
@@ -156,7 +157,7 @@ class VikodaDataEngine {
     const [y, m, d] = dateStr.split('-').map(Number);
     const newY = y + offsetYears;
     const pad = (n) => String(n).padStart(2, '0');
-    return `${newY}-${pad(m)}-${pad(d)}`;
+    return `${newY}-${pad(m)}-${pad(d || 1)}`;
   }
 
   // ------------------------------------------------------------------------
@@ -212,36 +213,28 @@ class VikodaDataEngine {
     const lyConvertedQty = lyFacts.reduce((sum, r) => sum + (r[6] || r[5] || 0), 0);
     const volumeYoY = lyConvertedQty > 0 ? ((totalConvertedQty - lyConvertedQty) / lyConvertedQty) * 100 : 0;
 
-    // Tính Pacing & Dự báo Run-rate
-    const sDate = new Date(this.filters.startDate);
-    const eDate = new Date(this.filters.endDate);
-    const timeDiffDays = Math.max(1, Math.round((eDate - sDate) / (1000 * 60 * 60 * 24)) + 1);
+    const startP = this.filters.startDate.slice(0, 7);
+    const endP = this.filters.endDate.slice(0, 7);
+    const isSingleMonth = startP === endP;
 
-    const dayOfMonth = eDate.getDate();
-    const lastDayOfMonth = new Date(eDate.getFullYear(), eDate.getMonth() + 1, 0).getDate();
-    const timeElapsedPercent = (dayOfMonth / lastDayOfMonth) * 100;
-    const pacing = timeElapsedPercent > 0 ? (attainment / timeElapsedPercent) * 100 : 0;
-
-    const dailyActual = timeDiffDays > 0 ? actualMillion / timeDiffDays : 0;
-    const daysInMonth = lastDayOfMonth;
-    const runRateForecast = dailyActual * daysInMonth;
-    const forecastAttainment = targetMillion > 0 ? (runRateForecast / targetMillion) * 100 : 0;
+    // Xác định nhãn khoảng thời gian đang lọc
+    let periodLabel = `${startP} đến ${endP}`;
+    if (isSingleMonth) {
+      const [y, m] = startP.split('-');
+      periodLabel = `Tháng ${parseInt(m, 10)}/${y}`;
+    } else if (this.filters.periodMode === 'qtd') {
+      const [y, m] = endP.split('-');
+      const q = Math.floor((parseInt(m, 10) - 1) / 3) + 1;
+      periodLabel = `Quý ${q}/${y} (${startP} - ${endP})`;
+    } else if (this.filters.periodMode === 'ytd') {
+      const y = startP.split('-')[0];
+      periodLabel = `YTD Năm ${y} (${startP} - ${endP})`;
+    } else if (this.filters.periodMode === 'all') {
+      periodLabel = `Toàn bộ 20 kỳ (2025 - 2026)`;
+    }
 
     const shortfall = Math.max(0, targetMillion - actualMillion);
     const dropSize = distinctCustomers > 0 ? actualMillion / distinctCustomers : 0;
-
-    // Xác định nhãn khoảng thời gian đang lọc
-    let periodLabel = `${this.formatDateVN(this.filters.startDate)} - ${this.formatDateVN(this.filters.endDate)}`;
-    if (this.filters.periodMode === 'mtd') {
-      periodLabel = `MTD Tháng ${eDate.getMonth() + 1}/${eDate.getFullYear()} (${periodLabel})`;
-    } else if (this.filters.periodMode === 'qtd') {
-      const q = Math.floor(eDate.getMonth() / 3) + 1;
-      periodLabel = `QTD Quý ${q}/${eDate.getFullYear()} (${periodLabel})`;
-    } else if (this.filters.periodMode === 'ytd') {
-      periodLabel = `YTD Năm ${eDate.getFullYear()} (${periodLabel})`;
-    } else if (this.filters.periodMode === 'all') {
-      periodLabel = `Toàn bộ 20 kỳ 2025 - 2026 (${periodLabel})`;
-    }
 
     return {
       actualMillion,
@@ -254,21 +247,11 @@ class VikodaDataEngine {
       distinctLYCustomers,
       totalConvertedQty,
       volumeYoY,
-      pacing,
-      runRateForecast,
-      forecastAttainment,
       shortfall,
       dropSize,
-      timeDiffDays,
       periodLabel,
+      isSingleMonth,
     };
-  }
-
-  formatDateVN(str) {
-    if (!str) return '';
-    const parts = str.split('-');
-    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
-    return str;
   }
 
   // ------------------------------------------------------------------------
@@ -289,7 +272,7 @@ class VikodaDataEngine {
       targetMap[`${curYear}${m}`] = 0;
     });
 
-    // Lọc theo các bộ lọc khác (Miền, Kênh, Nhóm SP...) nhưng quét qua toàn bộ các tháng
+    // Quét qua facts theo các filter chiều (Miền, Kênh, SP)
     this.facts.forEach((r) => {
       const [d, custKey, prodKey, terrKey, rev] = r;
       const period = d.slice(0, 7).replace('-', '');
@@ -790,15 +773,10 @@ class VikodaDataEngine {
       tgtMap[m] = (tgtMap[m] || 0) + (r[3] || 0) / 1000000;
     });
 
-    const endDate = new Date(this.filters.endDate || this.metadata.as_of_date);
-    const day = endDate.getDate();
-    const lastDay = new Date(endDate.getFullYear(), endDate.getMonth() + 1, 0).getDate();
-
     return mienList.map((m) => {
       const act = actMap[m] || 0;
       const tgt = tgtMap[m] || 0;
-      const runRate = day > 0 ? (act / day) * lastDay : 0;
-      const forecastPercent = tgt > 0 ? (runRate / tgt) * 100 : 0;
+      const forecastPercent = tgt > 0 ? (act / tgt) * 100 : 0;
       return { name: m, value: Number(forecastPercent.toFixed(1)) };
     });
   }
@@ -822,19 +800,14 @@ class VikodaDataEngine {
       tgtMap[v] = (tgtMap[v] || 0) + (r[3] || 0) / 1000000;
     });
 
-    const endDate = new Date(this.filters.endDate || this.metadata.as_of_date);
-    const daysLeft = Math.max(1, new Date(endDate.getFullYear(), endDate.getMonth() + 1, 0).getDate() - endDate.getDate());
-
     return Object.keys(tgtMap)
       .map((vung) => {
         const act = actMap[vung] || 0;
         const tgt = tgtMap[vung] || 0;
         const gap = Math.max(0, tgt - act);
-        const reqDaily = gap / daysLeft;
         return {
           vung,
           shortfall: Math.round(gap),
-          dailyRequired: Number(reqDaily.toFixed(1)),
         };
       })
       .sort((a, b) => b.shortfall - a.shortfall)

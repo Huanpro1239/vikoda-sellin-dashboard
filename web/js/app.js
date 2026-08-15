@@ -125,6 +125,7 @@ class VikodaApp {
   initDateSlicer() {
     const startInput = document.getElementById('filter_start_date');
     const endInput = document.getElementById('filter_end_date');
+    const monthSelect = document.getElementById('select_month');
 
     if (startInput && endInput) {
       startInput.value = window.dataEngine.filters.startDate || '';
@@ -134,17 +135,29 @@ class VikodaApp {
         const s = startInput.value;
         const e = endInput.value;
         if (s && e) {
-          // Bỏ active của các nút quick
           document.querySelectorAll('.quick-btn').forEach((b) => b.classList.remove('active'));
+          if (monthSelect) monthSelect.value = '';
           window.dataEngine.setDateRange(s, e, 'custom');
         }
       };
 
-      // Bắt cả sự kiện 'input' và 'change' để phản hồi ngay khi chọn trên lịch
       startInput.addEventListener('input', handleDateChange);
       startInput.addEventListener('change', handleDateChange);
       endInput.addEventListener('input', handleDateChange);
       endInput.addEventListener('change', handleDateChange);
+    }
+
+    if (monthSelect) {
+      monthSelect.addEventListener('change', (e) => {
+        const val = e.target.value;
+        if (!val) return;
+        document.querySelectorAll('.quick-btn').forEach((b) => b.classList.remove('active'));
+        const start = `${val}-01`;
+        const end = `${val}-31`;
+        if (startInput) startInput.value = start;
+        if (endInput) endInput.value = end;
+        window.dataEngine.setDateRange(start, end, 'mtd');
+      });
     }
 
     // Nút chọn nhanh MTD / QTD / YTD / Tất cả
@@ -152,29 +165,31 @@ class VikodaApp {
       btn.addEventListener('click', () => {
         const type = btn.getAttribute('data-quick');
         const curYear = window.dataEngine.metadata.current_year || 2026;
-        const asOf = window.dataEngine.metadata.as_of_date || `${curYear}-08-11`;
+        const maxMonth = window.dataEngine.metadata.through_month ? String(window.dataEngine.metadata.through_month).padStart(2, '0') : '08';
 
-        document.querySelectorAll('.quick-btn').forEach((b) => b.classList.remove('active'));
-        btn.classList.add('active');
+        document.querySelectorAll('.quick-btn').forEach((b) => b.classList.toggle('active', b.getAttribute('data-quick') === type));
 
         let start = `${curYear}-01-01`;
-        let end = asOf;
+        let end = `${curYear}-${maxMonth}-31`;
 
         if (type === 'mtd') {
-          const m = asOf.slice(5, 7);
-          start = `${curYear}-${m}-01`;
-          end = asOf;
+          start = `${curYear}-${maxMonth}-01`;
+          end = `${curYear}-${maxMonth}-31`;
+          if (monthSelect) monthSelect.value = `${curYear}-${maxMonth}`;
         } else if (type === 'qtd') {
-          const m = parseInt(asOf.slice(5, 7), 10);
+          const m = parseInt(maxMonth, 10);
           const qStartMonth = String(Math.floor((m - 1) / 3) * 3 + 1).padStart(2, '0');
           start = `${curYear}-${qStartMonth}-01`;
-          end = asOf;
+          end = `${curYear}-${maxMonth}-31`;
+          if (monthSelect) monthSelect.value = '';
         } else if (type === 'ytd') {
           start = `${curYear}-01-01`;
-          end = asOf;
+          end = `${curYear}-${maxMonth}-31`;
+          if (monthSelect) monthSelect.value = '';
         } else if (type === 'all') {
           start = '2025-01-01';
-          end = asOf;
+          end = `${curYear}-${maxMonth}-31`;
+          if (monthSelect) monthSelect.value = '';
         }
 
         if (startInput) startInput.value = start;
@@ -218,7 +233,6 @@ class VikodaApp {
       clearBtn.addEventListener('click', () => {
         window.dataEngine.clearAllFilters();
 
-        // Đồng bộ lại UI Slicer
         const startInput = document.getElementById('filter_start_date');
         const endInput = document.getElementById('filter_end_date');
         if (startInput) startInput.value = window.dataEngine.filters.startDate;
@@ -228,9 +242,11 @@ class VikodaApp {
           b.classList.toggle('active', b.getAttribute('data-quick') === 'ytd');
         });
 
+        const monthSelect = document.getElementById('select_month');
         const mienSelect = document.getElementById('select_mien');
         const channelSelect = document.getElementById('select_channel');
         const groupSelect = document.getElementById('select_group');
+        if (monthSelect) monthSelect.value = '';
         if (mienSelect) mienSelect.value = '';
         if (channelSelect) channelSelect.value = '';
         if (groupSelect) groupSelect.value = '';
@@ -265,7 +281,6 @@ class VikodaApp {
         const k = btn.getAttribute('data-key');
         window.dataEngine.setFilter(k, null);
 
-        // Sync dropdowns
         if (k === 'mien') {
           const s = document.getElementById('select_mien');
           if (s) s.value = '';
@@ -304,12 +319,15 @@ class VikodaApp {
 
     // Target Attainment
     const elAttain = document.getElementById('kpi_attainment');
-    if (elAttain) elAttain.innerText = `${kpis.attainment.toFixed(1)}%`;
+    if (elAttain) {
+      elAttain.innerText = `${kpis.attainment.toFixed(1)}%`;
+      this.pulseElement(elAttain);
+    }
 
     // Attainment Sub (Target Value & Gap)
     const elAttainSub = document.getElementById('kpi_attainment_sub');
     if (elAttainSub) {
-      const gapText = kpis.shortfall > 0 ? ` (Hụt: ${Math.round(kpis.shortfall).toLocaleString()} Tr)` : ' (Đạt kế hoạch)';
+      const gapText = kpis.shortfall > 0 ? ` (Hụt: ${Math.round(kpis.shortfall).toLocaleString()} Tr)` : ' (Đạt KH)';
       elAttainSub.innerText = `Target: ${Math.round(kpis.targetMillion).toLocaleString()} Tr.đ${gapText}`;
     }
 
@@ -318,6 +336,7 @@ class VikodaApp {
     if (elYoY) {
       elYoY.innerText = `${kpis.yoy >= 0 ? '+' : ''}${kpis.yoy.toFixed(1)}%`;
       elYoY.className = `kpi-value ${kpis.yoy >= 0 ? 'positive' : 'negative'}`;
+      this.pulseElement(elYoY);
     }
 
     // YoY Sub
@@ -342,7 +361,7 @@ class VikodaApp {
     // Cập nhật nhãn trạng thái khoảng thời gian
     const elPeriodInfo = document.getElementById('period_info_badge');
     if (elPeriodInfo) {
-      elPeriodInfo.innerText = `📅 ${kpis.periodLabel}`;
+      elPeriodInfo.innerText = `📅 Đang xem: ${kpis.periodLabel}`;
     }
   }
 
@@ -461,7 +480,6 @@ class VikodaApp {
       }
     }
 
-    // Cập nhật nút phân trang
     this.renderPaginationControls(totalPages);
   }
 
