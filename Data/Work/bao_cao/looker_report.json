@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-08-15T17:03:22",
-  "output_dir": "D:\\Vikoda\\Bao cao Sell in\\Data\\File bao cao\\Sell In Thang",
-  "csv_file": "D:\\Vikoda\\Bao cao Sell in\\Data\\File bao cao\\Sell in tong hop.csv",
+  "generated_at": "2026-08-15T10:00:39",
+  "output_dir": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/File bao cao/Sell In Thang",
+  "csv_file": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/File bao cao/Sell in tong hop.csv",
   "columns": [
     "KyBaoCao",
     "Vung",
