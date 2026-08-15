@@ -607,6 +607,74 @@ html, body {
   box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
 }
 
+/* Executive Alert Banner */
+.executive-alert-strip {
+  background: linear-gradient(90deg, #1E1B4B 0%, #0F172A 100%);
+  border: 1px solid #4338CA;
+  border-left: 4px solid #F43F5E;
+  border-radius: 12px;
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(244, 63, 94, 0.15);
+  transition: all var(--transition-fast);
+}
+
+.executive-alert-strip:hover {
+  transform: translateY(-1px);
+  border-color: #6366F1;
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.25);
+}
+
+.alert-strip-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.alert-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #F43F5E;
+  box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.7);
+  animation: pulseDot 2s infinite;
+}
+
+@keyframes pulseDot {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(244, 63, 94, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); }
+}
+
+.alert-strip-badge {
+  background: rgba(244, 63, 94, 0.2);
+  color: #FDA4AF;
+  border: 1px solid rgba(244, 63, 94, 0.4);
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.04em;
+}
+
+.alert-strip-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: #F8FAFC;
+}
+
+.alert-link-btn {
+  font-size: 11px;
+  font-weight: 700;
+  color: #38BDF8;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 /* --------------------------------------------------------------------------
    KPI Cards Grid
    -------------------------------------------------------------------------- */
@@ -832,6 +900,38 @@ html, body {
 
 .btn-primary:hover {
   background: var(--primary-blue-hover);
+}
+
+.chart-tab-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #F1F5F9;
+  padding: 2px 4px;
+  border-radius: 8px;
+  border: 1px solid #E2E8F0;
+}
+
+.p2-tab-btn {
+  background: transparent;
+  border: none;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  color: #475569;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.p2-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.p2-tab-btn.active {
+  background: #FFFFFF;
+  color: #0F172A !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .table-responsive {

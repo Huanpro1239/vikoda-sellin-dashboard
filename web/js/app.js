@@ -377,6 +377,21 @@ class VikodaApp {
   updateKPIs() {
     const kpis = window.dataEngine.getSummaryKPIs();
 
+    // Executive AI Alert Strip Text on Page 1
+    const elExecAlert = document.getElementById('exec_alert_text');
+    if (elExecAlert) {
+      const pred = window.dataEngine.getStatisticalForecastMetrics();
+      const warnings = window.dataEngine.getComprehensiveEarlyWarnings();
+      const criticalCount = warnings.filter((w) => w.severity === 'red').length;
+      const warnCount = warnings.filter((w) => w.severity === 'amber').length;
+
+      let alertSummary = `🎯 Dự báo cuối kỳ: ${pred.monthEndForecast.toLocaleString()} Tr.đ (${pred.forecastAttainment}% Target · Xác suất ${pred.probabilityOfHit}%)`;
+      if (criticalCount > 0) {
+        alertSummary = `🚨 ${criticalCount} khu vực áp lực tải cao · ${warnCount} NPP giảm sâu · ${alertSummary}`;
+      }
+      elExecAlert.innerText = alertSummary;
+    }
+
     // Actual MTD / Selected Period
     const elActual = document.getElementById('kpi_actual');
     if (elActual) {

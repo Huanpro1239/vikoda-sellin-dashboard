@@ -433,7 +433,7 @@ class VikodaDataEngine {
       .slice(0, 10);
   }
 
-  getTopCustomers(limit = 15) {
+  getTopCustomers(limit = 15, mode = 'all') {
     const facts = this.getFilteredFacts();
     const lyFacts = this.getLYFilteredFacts();
 
@@ -451,26 +451,34 @@ class VikodaDataEngine {
     });
 
     const totalRev = Object.values(actMap).reduce((a, b) => a + b, 0);
+    const allKeys = new Set([...Object.keys(actMap), ...Object.keys(lyMap)]);
 
-    return Object.entries(actMap)
-      .map(([key, actual]) => {
-        const cust = this.customers[key] || {};
-        const ly = lyMap[key] || 0;
-        const yoy = ly > 0 ? ((actual - ly) / ly) * 100 : 0;
-        const share = totalRev > 0 ? (actual / totalRev) * 100 : 0;
-        return {
-          key,
-          name: cust.name || key,
-          channel: cust.channel || 'GT',
-          mien: cust.mien || '',
-          actual: Math.round(actual),
-          ly: Math.round(ly),
-          yoy: Number(yoy.toFixed(1)),
-          share: Number(share.toFixed(1)),
-        };
-      })
-      .sort((a, b) => b.actual - a.actual)
-      .slice(0, limit);
+    const list = Array.from(allKeys).map((key) => {
+      const cust = this.customers[key] || {};
+      const actual = actMap[key] || 0;
+      const ly = lyMap[key] || 0;
+      const diff = actual - ly;
+      const yoy = ly > 0 ? ((actual - ly) / ly) * 100 : (actual > 0 ? 100 : 0);
+      const share = totalRev > 0 ? (actual / totalRev) * 100 : 0;
+      return {
+        key,
+        name: cust.name || key,
+        channel: cust.channel || 'GT',
+        mien: cust.mien || '',
+        actual: Math.round(actual),
+        ly: Math.round(ly),
+        diff: Math.round(diff),
+        yoy: Number(yoy.toFixed(1)),
+        share: Number(share.toFixed(1)),
+      };
+    });
+
+    if (mode === 'drop') {
+      return list.filter((c) => c.ly >= 100).sort((a, b) => a.diff - b.diff).slice(0, limit);
+    } else if (mode === 'growth') {
+      return list.filter((c) => c.actual > 0).sort((a, b) => b.diff - a.diff).slice(0, limit);
+    }
+    return list.filter((c) => c.actual > 0).sort((a, b) => b.actual - a.actual).slice(0, limit);
   }
 
   getCustomerMovement() {

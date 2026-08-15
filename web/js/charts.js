@@ -523,10 +523,19 @@ class VikodaCharts {
     chart.setOption(option);
   }
 
+  setP2CustomerFilter(mode) {
+    this.p2CustMode = mode;
+    document.querySelectorAll('.p2-tab-btn').forEach((btn) => {
+      btn.classList.toggle('active', btn.getAttribute('data-mode') === mode);
+    });
+    this.renderP2CustomerTable();
+  }
+
   renderP2CustomerTable() {
     const tbody = document.getElementById('p2_customer_tbody');
     if (!tbody) return;
-    const data = this.engine.getTopCustomers(12);
+    const mode = this.p2CustMode || 'all';
+    const data = this.engine.getTopCustomers(12, mode);
 
     tbody.innerHTML = data.map((c, i) => `
       <tr>
@@ -536,7 +545,9 @@ class VikodaCharts {
         <td>${c.mien}</td>
         <td class="num"><strong>${c.actual.toLocaleString()}</strong></td>
         <td class="num">${c.ly.toLocaleString()}</td>
-        <td class="num" style="color: ${c.yoy >= 0 ? '#16A34A' : '#DC2626'}; font-weight: 700;">${c.yoy >= 0 ? '+' : ''}${c.yoy}%</td>
+        <td class="num" style="color: ${c.diff >= 0 ? '#16A34A' : '#DC2626'}; font-weight: 700;">
+          ${c.diff >= 0 ? '+' : ''}${c.diff.toLocaleString()} (${c.yoy >= 0 ? '+' : ''}${c.yoy}%)
+        </td>
         <td class="num">${c.share}%</td>
       </tr>
     `).join('');

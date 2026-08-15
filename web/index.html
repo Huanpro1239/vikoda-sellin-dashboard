@@ -8,7 +8,7 @@
   <meta http-equiv="Expires" content="0">
   <title>Báo Cáo Sell In Vikoda | Hệ Thống Quản Trị Doanh Số</title>
   <meta name="description" content="Dashboard điều hành bán hàng Sell In thông minh Vikoda - Phân tích đa chiều, tự động hóa dự báo & nhịp độ kinh doanh">
-  <link rel="stylesheet" href="css/style.css?v=20260815_22">
+  <link rel="stylesheet" href="css/style.css?v=20260815_23">
   
   <!-- CDN Thư viện ECharts và SheetJS (Xuất Excel) -->
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -189,6 +189,18 @@
              ================================================================ -->
         <div class="view-page active" id="view_page_01">
 
+          <!-- EXECUTIVE AI HEALTH & EARLY WARNING BANNER -->
+          <div class="executive-alert-strip" id="exec_alert_strip" onclick="window.app.switchPage('page_06')">
+            <div class="alert-strip-left">
+              <span class="alert-pulse-dot"></span>
+              <span class="alert-strip-badge">CẢNH BÁO AI</span>
+              <span class="alert-strip-text" id="exec_alert_text">Đang phân tích nhịp độ bán hàng & nguy cơ hụt Target...</span>
+            </div>
+            <div class="alert-strip-right">
+              <span class="alert-link-btn">Xem Trung tâm Dự báo & Kế hoạch ➔</span>
+            </div>
+          </div>
+
           <!-- 4 THẺ KPI CHÍNH (HERO KPIS - CHỈ HIỂN THỊ Ở TRANG 01) -->
           <div class="kpi-cards-grid">
             <div class="kpi-card blue">
@@ -278,9 +290,16 @@
 
           <div class="charts-grid-2-1">
             <div class="chart-card">
-              <div class="chart-card-header">
-                <span class="chart-title">3 · TOP KHÁCH HÀNG / NHÀ PHÂN PHỐI LỚN NHẤT</span>
-                <span class="chart-subtitle">Doanh thu & % Tỷ trọng đóng góp</span>
+              <div class="chart-card-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;">
+                <div>
+                  <span class="chart-title">3 · TOP KHÁCH HÀNG / NHÀ PHÂN PHỐI LỚN NHẤT</span>
+                  <span class="chart-subtitle">Doanh thu & % Tỷ trọng đóng góp</span>
+                </div>
+                <div class="chart-tab-group">
+                  <button class="p2-tab-btn active" data-mode="all" onclick="window.charts.setP2CustomerFilter('all')">Doanh thu cao</button>
+                  <button class="p2-tab-btn" data-mode="drop" onclick="window.charts.setP2CustomerFilter('drop')" style="color:#DC2626;">⚠️ Giảm sâu (Alert)</button>
+                  <button class="p2-tab-btn" data-mode="growth" onclick="window.charts.setP2CustomerFilter('growth')" style="color:#16A34A;">🚀 Tăng trưởng</button>
+                </div>
               </div>
               <div class="table-responsive" style="max-height: 280px;">
                 <table class="data-table">
@@ -292,7 +311,7 @@
                       <th>Miền</th>
                       <th class="num">Doanh thu (Tr.đ)</th>
                       <th class="num">Cùng kỳ</th>
-                      <th class="num">YoY %</th>
+                      <th class="num">Biến động (YoY)</th>
                       <th class="num">Đóng góp %</th>
                     </tr>
                   </thead>
@@ -577,10 +596,10 @@
   </div>
 
   <!-- NẠP DỮ LIỆU & LOGIC -->
-  <script src="js/auth.js?v=20260815_22"></script>
-  <script src="data/dashboard_data.js?v=20260815_22"></script>
-  <script src="js/data-engine.js?v=20260815_22"></script>
-  <script src="js/charts.js?v=20260815_22"></script>
-  <script src="js/app.js?v=20260815_22"></script>
+  <script src="js/auth.js?v=20260815_23"></script>
+  <script src="data/dashboard_data.js?v=20260815_23"></script>
+  <script src="js/data-engine.js?v=20260815_23"></script>
+  <script src="js/charts.js?v=20260815_23"></script>
+  <script src="js/app.js?v=20260815_23"></script>
 </body>
 </html>
