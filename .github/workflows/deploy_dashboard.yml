@@ -1,39 +1,52 @@
-name: Tự động Cập nhật & Triển khai Web Dashboard Vikoda
+name: Vikoda Sell-In Dashboard CI/CD Pipeline
 
 on:
-  schedule:
-    - cron: '0 0 * * *'
-  repository_dispatch:
-    types: [sharepoint_update]
-  workflow_dispatch:
   push:
     branches:
       - main
-      - master
+    paths:
+      - 'web/**'
+      - 'Data/**'
+      - 'code/**'
+      - '.github/workflows/deploy_dashboard.yml'
+  workflow_dispatch:
+  schedule:
+    # Chạy định kỳ vào 06:00 và 18:00 mỗi ngày (UTC+7 là 23:00 và 11:00 UTC)
+    - cron: '0 23,11 * * *'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: 'vikoda-dashboard-pipeline'
+  cancel-in-progress: false
 
 jobs:
   build-and-deploy:
+    name: Build, Validate & Deploy Vikoda Dashboard
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pages: write
-      id-token: write
+    timeout-minutes: 15
 
     steps:
-      - name: 📥 Tải mã nguồn dự án
+      - name: 1. Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
-      - name: 🐍 Cài đặt môi trường Python 3.11
+      - name: 2. Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
+          cache: 'pip'
 
-      - name: 📦 Cài đặt các thư viện Python
+      - name: 3. Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: ⚙️ Tự động chạy Tách data & Xuất dữ liệu Web
+      - name: 4. Sync Raw Data from SharePoint (Microsoft Graph API)
         env:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
@@ -41,31 +54,40 @@ jobs:
           SHAREPOINT_SITE_ID: ${{ secrets.SHAREPOINT_SITE_ID }}
           SHAREPOINT_DRIVE_ID: ${{ secrets.SHAREPOINT_DRIVE_ID }}
         run: |
-          # 1. Tự động tải file mới từ thư mục SharePoint 'Data ERP' (nếu có cấu hình Azure Secret)
-          python code/Skill/skill-bao-cao/scripts/sharepoint_graph_sync.py --action download --folder "Data ERP" --local-dir "Data/Data ERP" || true
-          
-          # 2. Chạy chuỗi Tách Data ERP & Phân bổ số liệu & Xuất Dashboard
+          python code/Skill/skill-bao-cao/scripts/sharepoint_graph_sync.py --action download --folder "Data ERP" --local-dir "Data/Data_ERP"
+
+      - name: 5. Execute Core Data Pipeline (ETL, Validation & Atomic Build)
+        run: |
           python code/Skill/skill-bao-cao/scripts/run_cloud_pipeline.py --project-root .
-          
-          # 3. Tự động đẩy các file Sell In tháng đã tách lên thư mục SharePoint 'Data_Goc'
-          python code/Skill/skill-bao-cao/scripts/sharepoint_graph_sync.py --action upload --folder "Data_Goc" --local-dir "Data/Data_Goc" || true
-          
-          # 4. Ghi nhận dữ liệu mới vào kho GitHub
-          git config --global user.name "Vikoda Automation Bot"
-          git config --global user.email "bot@vikoda.com.vn"
-          git add web/data/ Data/File\ bao\ cao/ Data/Work/ || true
-          if ! git diff --staged --quiet; then
-            git commit -m "🤖 Tự động Tách data & Cập nhật Web Dashboard [skip ci]" || true
-            git push || true
+
+      - name: 6. System Health Check
+        run: |
+          python code/health_check.py
+
+      - name: 7. Run Full Test Suite (182+ Tests)
+        run: |
+          python code/run_all_tests.py
+
+      - name: 8. Commit & Push Updated Data to Repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add web/data/ Data/Work/data_quality_report.json Data/File\ bao\ cao/ Data/Data_Goc/
+          if git diff --staged --quiet; then
+            echo "Khong co du lieu moi can commit."
+          else
+            git commit -m "chore(data): auto-update Sell-In datasets and quality report [skip ci]"
+            git push
           fi
 
-      - name: 🌐 Cấu hình GitHub Pages
+      - name: 9. Setup GitHub Pages
         uses: actions/configure-pages@v5
 
-      - name: 📦 Đóng gói Web Dashboard
+      - name: 10. Upload Web Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: 'web/'
+          path: './web'
 
-      - name: 🚀 Xuất bản trang Web lên GitHub Pages
+      - name: 11. Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4

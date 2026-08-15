@@ -122,12 +122,27 @@ def export_web_dataset(
             round(float(t["TargetVikodaVND"] or 0), 2),
         ])
 
+    quality_report_path = sell_in_path.parent.parent.parent / "data_quality_report.json"
+    quality_status = "PASS"
+    source_row_count = len(facts_compact)
+    if quality_report_path.exists():
+        try:
+            qrep = json.loads(quality_report_path.read_text(encoding="utf-8"))
+            quality_status = qrep.get("status", "PASS")
+            source_row_count = qrep.get("summary", {}).get("source_records", source_row_count)
+        except Exception:
+            pass
+
     payload = {
         "metadata": {
             "as_of_date": as_of_date,
+            "source_latest_date": as_of_date,
             "current_year": current_year,
             "through_month": through_month,
             "generated_at": datetime.now().astimezone().isoformat(),
+            "pipeline_version": "2.1.0",
+            "quality_status": quality_status,
+            "source_row_count": source_row_count,
             "fact_count": len(facts_compact),
             "target_count": len(targets_compact),
             "customer_count": len(cust_map),
@@ -143,15 +158,24 @@ def export_web_dataset(
     output_dir.mkdir(parents=True, exist_ok=True)
     json_path = output_dir / "dashboard_data.json"
     js_path = output_dir / "dashboard_data.js"
+    json_tmp = output_dir / "dashboard_data.json.tmp"
+    js_tmp = output_dir / "dashboard_data.js.tmp"
 
     json_str = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
-    json_path.write_text(json_str, encoding="utf-8")
-
-    # Tạo file JS gán biến toàn cục để mở trực tiếp file:/// không bị lỗi CORS của trình duyệt
     js_content = f"window.VIKODA_DATA = {json_str};\n"
-    js_path.write_text(js_content, encoding="utf-8")
 
-    print(f"Da xuat du lieu Web Dashboard: {json_path} ({len(json_str)/1024:.1f} KB)")
+    # Atomic write: Ghi ra file tạm và kiểm chứng trước khi thay thế file production
+    json_tmp.write_text(json_str, encoding="utf-8")
+    js_tmp.write_text(js_content, encoding="utf-8")
+
+    # Kiểm tra tính hợp lệ của JSON tạm
+    json.loads(json_tmp.read_text(encoding="utf-8"))
+
+    # Thay thế nguyên tử (Atomic replace)
+    os.replace(json_tmp, json_path)
+    os.replace(js_tmp, js_path)
+
+    print(f"Da xuat du lieu Web Dashboard (Atomic Build): {json_path} ({len(json_str)/1024:.1f} KB)")
     return payload
 
 

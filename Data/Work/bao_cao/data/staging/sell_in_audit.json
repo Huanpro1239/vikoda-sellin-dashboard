@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-08-15T10:17:24.320591+00:00",
-  "source_dir": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/File bao cao/Sell In Thang",
-  "data_file": "/home/runner/work/vikoda-sellin-dashboard/vikoda-sellin-dashboard/Data/Work/bao_cao/data/staging/sell_in_data.json",
+  "generated_at": "2026-08-15T17:28:50.002930+07:00",
+  "source_dir": "D:\\Vikoda\\Bao cao Sell in\\Data\\File bao cao\\Sell In Thang",
+  "data_file": "D:\\Vikoda\\Bao cao Sell in\\Data\\Work\\bao_cao\\data\\staging\\sell_in_data.json",
   "as_of_date": "2026-08-15",
   "expected_periods": [
     "202501",

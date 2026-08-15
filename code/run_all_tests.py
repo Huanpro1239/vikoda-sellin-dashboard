@@ -25,6 +25,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SKILL_RUNNERS = (
     ("sell-in-monthly", "code/Skill/sell-in-monthly/scripts/run_tests.py"),
     ("skill-bao-cao", "code/Skill/skill-bao-cao/scripts/run_tests.py"),
+    ("production-hardening", "code/tests/run_tests.py"),
 )
 COUNT_PATTERN = re.compile(r"^Ran (\d+) tests?", re.MULTILINE)
 

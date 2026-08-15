@@ -1,0 +1,106 @@
+"""Script Kiểm tra Sức khỏe Toàn diện Hệ thống (System Health Check).
+
+Chạy độc lập để kiểm tra:
+1. Môi trường Python & Thư viện phụ thuộc
+2. Dữ liệu đầu vào & Staging data
+3. Kết quả ETL & File báo cáo Excel
+4. Tính toàn vẹn của Web Dashboard
+"""
+
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+
+def check_python_version() -> bool:
+    return sys.version_info >= (3, 10)
+
+
+def check_dependencies() -> bool:
+    try:
+        import pandas  # noqa: F401
+        import openpyxl  # noqa: F401
+        import xlsxwriter  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+def check_input_data(project_root: Path) -> bool:
+    staging_dir = project_root / "Data/Work/bao_cao/data/staging"
+    sell_in_file = staging_dir / "sell_in_data.json"
+    target_file = project_root / "Data/Work/bao_cao/target/staging/target_records.json"
+    dmkh_file = project_root / "Data/Work/bao_cao/dmkh/staging/dmkh_data.json"
+    return all(f.exists() and f.stat().st_size > 0 for f in [sell_in_file, target_file, dmkh_file])
+
+
+def check_etl_output(project_root: Path) -> bool:
+    master_xlsx = project_root / "Data/File bao cao/Bao_Cao_Sell_in.xlsx"
+    quality_report = project_root / "Data/Work/data_quality_report.json"
+    if not master_xlsx.exists() or not quality_report.exists():
+        return False
+    try:
+        rep = json.loads(quality_report.read_text(encoding="utf-8"))
+        return rep.get("status") == "PASS"
+    except Exception:
+        return False
+
+
+def check_dashboard_data(project_root: Path) -> bool:
+    json_path = project_root / "web/data/dashboard_data.json"
+    js_path = project_root / "web/data/dashboard_data.js"
+    if not json_path.exists() or not js_path.exists():
+        return False
+    try:
+        data = json.loads(json_path.read_text(encoding="utf-8"))
+        meta = data.get("metadata", {})
+        return meta.get("fact_count", 0) > 0 and meta.get("quality_status") == "PASS"
+    except Exception:
+        return False
+
+
+def check_web_files(project_root: Path) -> bool:
+    web_dir = project_root / "web"
+    required = [
+        web_dir / "index.html",
+        web_dir / "css/style.css",
+        web_dir / "js/app.js",
+        web_dir / "js/charts.js",
+        web_dir / "js/data-engine.js",
+        web_dir / "js/auth.js",
+    ]
+    return all(f.exists() and f.stat().st_size > 0 for f in required)
+
+
+def run_health_check(project_root: Path) -> int:
+    results = {
+        "Python": check_python_version(),
+        "Dependencies": check_dependencies(),
+        "Input data": check_input_data(project_root),
+        "ETL output": check_etl_output(project_root),
+        "Dashboard data": check_dashboard_data(project_root),
+        "Web files": check_web_files(project_root),
+    }
+
+    print("\nVIKODA SELL-IN HEALTH CHECK\n")
+    all_pass = True
+    for item, status in results.items():
+        status_str = "PASS" if status else "FAIL"
+        print(f"{item:<18} {status_str}")
+        if not status:
+            all_pass = False
+
+    print()
+    if all_pass:
+        print("SYSTEM HEALTHY\n")
+        return 0
+    else:
+        print("SYSTEM UNHEALTHY - Review failed items above.\n")
+        return 1
+
+
+if __name__ == "__main__":
+    root = Path(__file__).resolve().parent.parent if (Path(__file__).parent.name == "code") else Path(__file__).resolve().parent
+    sys.exit(run_health_check(root))

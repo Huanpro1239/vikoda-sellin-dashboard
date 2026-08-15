@@ -13,10 +13,22 @@ class VikodaApp {
     this.tableSortAsc = false;
   }
 
+  debounce(func, wait = 200) {
+    let timeout;
+    return (...args) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+  }
+
   async init() {
     try {
       this.initAuth();
-      await window.dataEngine.load();
+      const loadSuccess = await window.dataEngine.load();
+      if (!loadSuccess) {
+        this.showErrorState('Không thể nạp dữ liệu dashboard. Vui lòng kiểm tra lại pipeline hoặc làm mới trang.');
+        return;
+      }
 
       // Đăng ký nhận sự kiện khi bộ lọc thay đổi -> Tự động re-render tức thì
       window.dataEngine.subscribe(() => {
@@ -33,6 +45,21 @@ class VikodaApp {
       this.render();
     } catch (err) {
       console.error('Lỗi khởi tạo Dashboard:', err);
+      this.showErrorState(`Đã xảy ra lỗi khởi tạo giao diện: ${err.message}`);
+    }
+  }
+
+  showErrorState(msg) {
+    const main = document.querySelector('.app-main');
+    if (main) {
+      main.innerHTML = `
+        <div style="margin: 40px auto; max-width: 600px; padding: 28px; background: #fff1f2; border: 1px solid #fda4af; border-radius: 12px; text-align: center; color: #9f1239; box-shadow: 0 10px 25px rgba(0,0,0,0.05); font-family: 'Segoe UI', system-ui, sans-serif;">
+          <div style="font-size: 40px; margin-bottom: 12px;">⚠️</div>
+          <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">Thông Báo Hệ Thống Dữ Liệu</h3>
+          <p style="font-size: 13px; line-height: 1.6; color: #4b5563; margin-bottom: 20px;">${msg}</p>
+          <button onclick="window.location.reload()" style="padding: 9px 20px; background: #e11d48; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: opacity 0.2s;">Tải Lại Trang</button>
+        </div>
+      `;
     }
   }
 
@@ -504,10 +531,11 @@ class VikodaApp {
   initTableControls() {
     const searchInput = document.getElementById('table_search_input');
     if (searchInput) {
-      searchInput.addEventListener('input', (e) => {
+      const debouncedSearch = this.debounce(() => {
         this.tablePage = 1;
         this.renderTablePage();
-      });
+      }, 200);
+      searchInput.addEventListener('input', debouncedSearch);
     }
 
     const exportBtn = document.getElementById('btn_export_excel');
