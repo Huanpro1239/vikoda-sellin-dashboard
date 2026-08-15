@@ -495,6 +495,20 @@ try {
     if ($lookerCsvReady) {
         Write-Host "Looker dataset: $lookerCsvFile"
     }
+
+    # 1. Tu dong dong bo cac file Sell In thang vao thu muc SharePoint OneDrive Data_Goc
+    $sharepointDataGoc = "D:\onedrive\Vikoda\Planning - Vikoda_Sales_Data\Data_Goc"
+    if (Test-Path -LiteralPath $sharepointDataGoc) {
+        Write-Host "Syncing monthly files to SharePoint Data_Goc ($sharepointDataGoc)..." -ForegroundColor Cyan
+        Copy-Item -Path "$outputDir\*.xlsx" -Destination $sharepointDataGoc -Force
+    }
+
+    # 2. Tu dong xuat du lieu Web Dashboard
+    $exportScript = Join-Path $ProjectRoot "code\Skill\skill-bao-cao\scripts\export_web_data.py"
+    if (Test-Path -LiteralPath $exportScript) {
+        Write-Host "Updating Web Dashboard dataset..." -ForegroundColor Cyan
+        Invoke-SellInPython -ArgumentList @($exportScript, '--project-root', $ProjectRoot)
+    }
 } finally {
     if (
         $createdLocalNodeModules -and
