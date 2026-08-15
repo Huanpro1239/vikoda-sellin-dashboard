@@ -46,7 +46,7 @@
 
   /* Dimensions */
   --header-height: 64px;
-  --sidebar-width: 260px;
+  --sidebar-width: 280px;
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
@@ -308,9 +308,12 @@ html, body {
 .slicer-card {
   background: #FFFFFF;
   border-radius: var(--radius-md);
-  padding: 12px;
+  padding: 12px 14px;
   border: 1px solid #93C5FD;
   box-shadow: var(--shadow-sm);
+  box-sizing: border-box;
+  width: 100%;
+  overflow: hidden;
 }
 
 .slicer-header {
@@ -334,44 +337,61 @@ html, body {
   grid-template-columns: 1fr 1fr;
   gap: 6px;
   margin-bottom: 8px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .date-field {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .date-field label {
   font-size: 9px;
-  color: var(--text-muted);
-  font-weight: 600;
+  color: #64748B;
+  font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .date-input {
   width: 100%;
-  padding: 5px 6px;
-  border: 1px solid var(--border-card);
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 5px 4px;
+  border: 1px solid #CBD5E1;
   border-radius: var(--radius-sm);
   font-size: 11px;
   font-weight: 600;
-  color: var(--text-main);
+  color: #0F172A;
   background: #FFFFFF;
   font-family: inherit;
   outline: none;
   transition: border-color var(--transition-fast);
 }
 
+.date-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  transform: scale(0.8);
+}
+
 .date-input:focus {
-  border-color: var(--accent-cyan);
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 
 .quick-date-pills {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 4px;
   margin-top: 6px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .quick-btn {
@@ -379,11 +399,14 @@ html, body {
   border: 1px solid #CBD5E1;
   color: #334155;
   font-size: 10px;
-  font-weight: 600;
-  padding: 2px 7px;
+  font-weight: 700;
+  padding: 4px 2px;
+  text-align: center;
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all var(--transition-fast);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .quick-btn:hover, .quick-btn.active {
