@@ -1016,6 +1016,82 @@ html, body {
 }
 
 /* --------------------------------------------------------------------------
+   Page 06: Forecast Horizon Slicer & Control Bar
+   -------------------------------------------------------------------------- */
+.forecast-control-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #FFFFFF;
+  border-radius: 12px;
+  padding: 12px 20px;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  margin-bottom: 4px;
+}
+
+.forecast-control-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.forecast-control-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.01em;
+}
+
+.forecast-control-sub {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748B;
+}
+
+.forecast-horizon-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fc-horizon-btn {
+  background: #F1F5F9;
+  border: 1px solid #CBD5E1;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 7px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.fc-horizon-btn:hover {
+  background: #E2E8F0;
+  color: #0F172A;
+}
+
+.fc-horizon-btn.active {
+  background: #2563EB;
+  color: #FFFFFF;
+  border-color: #1D4ED8;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+}
+
+@media (max-width: 900px) {
+  .forecast-control-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .forecast-horizon-tabs {
+    width: 100%;
+    overflow-x: auto;
+  }
+}
+
+/* --------------------------------------------------------------------------
    Page 06: Predictive Metrics & Smart Early Warning Center
    -------------------------------------------------------------------------- */
 .predictive-metrics-grid {

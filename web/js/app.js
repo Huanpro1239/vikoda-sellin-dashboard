@@ -346,7 +346,13 @@ class VikodaApp {
   }
 
   updateP6PredictiveMetrics() {
-    const m = window.dataEngine.getStatisticalForecastMetrics();
+    const horizon = (window.charts && window.charts.forecastHorizon) || 'month';
+    const m = window.dataEngine.getExecutiveForecastByHorizon(horizon);
+
+    const elTitle = document.getElementById('p6_horizon_title');
+    const elSub = document.getElementById('p6_horizon_sub');
+    if (elTitle) elTitle.innerText = `Dự báo & Kế hoạch: ${m.title}`;
+    if (elSub) elSub.innerText = m.subtitle;
 
     const elFc = document.getElementById('p6_forecast_val');
     const elFcSub = document.getElementById('p6_forecast_sub');
@@ -355,22 +361,22 @@ class VikodaApp {
     const elVelo = document.getElementById('p6_velocity_val');
     const elVeloSub = document.getElementById('p6_velocity_sub');
 
-    if (elFc) elFc.innerText = `${m.monthEndForecast.toLocaleString()} Tr.đ`;
-    if (elFcSub) elFcSub.innerText = `Dự báo đạt ${m.forecastAttainment}% Target (CI 90%: ${m.pessimisticForecast.toLocaleString()} - ${m.optimisticForecast.toLocaleString()} Tr.đ)`;
+    if (elFc) elFc.innerText = `${m.forecast.toLocaleString()} Tr.đ`;
+    if (elFcSub) elFcSub.innerText = `Dự báo đạt ${m.attainment}% Target (Target: ${m.target.toLocaleString()} Tr · CI 90%: ${m.pessimistic.toLocaleString()} - ${m.optimistic.toLocaleString()} Tr)`;
 
     if (elProb) {
-      elProb.innerText = `${m.probabilityOfHit}%`;
-      elProb.style.color = m.probabilityOfHit >= 80 ? '#10B981' : (m.probabilityOfHit >= 50 ? '#D97706' : '#DC2626');
+      elProb.innerText = `${m.attainment}%`;
+      elProb.style.color = m.attainment >= 100 ? '#10B981' : (m.attainment >= 85 ? '#D97706' : '#DC2626');
     }
     if (elProbSub) {
-      const gap = m.currentTarget - m.monthEndForecast;
-      elProbSub.innerText = gap > 0 ? `Thiếu hụt dự kiến: -${gap.toLocaleString()} Tr.đ` : `Dự kiến vượt: +${Math.abs(gap).toLocaleString()} Tr.đ`;
+      elProbSub.innerText = m.statusText;
+      elProbSub.style.color = m.statusColor;
     }
 
-    if (elVelo) elVelo.innerText = `${m.currentVelocity.toLocaleString()} Tr.đ/ngày`;
+    if (elVelo) elVelo.innerText = `${m.curVelocity.toLocaleString()} Tr.đ/ngày`;
     if (elVeloSub) {
-      elVeloSub.innerText = `Cần ${m.requiredVelocity.toLocaleString()} Tr.đ/ngày (${m.remainingDays} ngày còn lại · Tải: ${m.velocityBurden}x)`;
-      elVeloSub.style.color = m.velocityBurden > 1.3 ? '#DC2626' : (m.velocityBurden > 1.0 ? '#D97706' : '#10B981');
+      elVeloSub.innerText = `Cần ${m.reqVelocity.toLocaleString()} Tr.đ/ngày (${m.remainingDays} ngày còn lại · Tải: ${m.burden}x)`;
+      elVeloSub.style.color = m.burden > 1.3 ? '#DC2626' : (m.burden > 1.0 ? '#D97706' : '#10B981');
     }
   }
 

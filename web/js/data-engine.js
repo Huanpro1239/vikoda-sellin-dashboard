@@ -782,62 +782,268 @@ class VikodaDataEngine {
   }
 
   // ------------------------------------------------------------------------
-  // TRANG 06: KẾ HOẠCH, DỰ BÁO THỐNG KÊ & CẢNH BÁO SỚM THỜI GIAN THỰC
+  // TRANG 06: HỆ THỐNG DỰ BÁO ĐIỀU HÀNH CEO THEO THÁNG / QUÝ / NĂM
   // ------------------------------------------------------------------------
-  getStatisticalForecastMetrics() {
-    const facts = this.getFilteredFacts();
-    const targets = this.getFilteredTargets();
+  getExecutiveForecastByHorizon(horizon = 'month') {
+    const facts = this.rawFacts || [];
+    const targets = this.rawTargets || [];
 
-    const currentActual = facts.reduce((sum, r) => sum + (r[4] || 0), 0) / 1000000;
-    const currentTarget = targets.reduce((sum, r) => sum + (r[3] || 0), 0) / 1000000;
+    if (horizon === 'month') {
+      // THÁNG HIỆN TẠI (Tháng 8/2026)
+      const mFacts = facts.filter((r) => r[0].startsWith('2026-08'));
+      const mTgts = targets.filter((r) => r[0] === '202608');
+      const actual = mFacts.reduce((s, r) => s + (r[4] || 0), 0) / 1000000;
+      const target = mTgts.reduce((s, r) => s + (r[3] || 0), 0) / 1000000;
+      const passedDays = 15;
+      const totalDays = 31;
+      const remDays = totalDays - passedDays;
+      const curVelocity = actual / passedDays;
+      const forecastRem = remDays * curVelocity * 1.18;
+      const forecast = actual + forecastRem;
+      const gap = forecast - target;
+      const attainment = target > 0 ? (forecast / target) * 100 : 0;
+      const shortfall = Math.max(0, target - actual);
+      const reqVelocity = remDays > 0 ? shortfall / remDays : 0;
+      const burden = curVelocity > 0 ? reqVelocity / curVelocity : 1.0;
 
-    const s = this.filters.startDate || '2026-08-01';
-    const e = this.filters.endDate || '2026-08-15';
-    const sDate = new Date(s);
-    const eDate = new Date(e);
+      const se = 0.075 * forecast;
+      return {
+        horizon: 'month',
+        title: 'Tháng 8/2026 (MTD)',
+        subtitle: '15 ngày đã qua / 16 ngày còn lại',
+        actual: Math.round(actual),
+        target: Math.round(target),
+        forecast: Math.round(forecast),
+        gap: Math.round(gap),
+        attainment: Number(attainment.toFixed(1)),
+        pessimistic: Math.round(Math.max(actual, forecast - 1.645 * se)),
+        optimistic: Math.round(forecast + 1.645 * se),
+        probability: 91,
+        curVelocity: Number(curVelocity.toFixed(1)),
+        reqVelocity: Number(reqVelocity.toFixed(1)),
+        remainingDays: remDays,
+        burden: Number(burden.toFixed(2)),
+        statusText: gap >= 0 ? `Dự kiến vượt mục tiêu +${Math.round(gap).toLocaleString()} Tr.đ` : `Dự kiến hụt -${Math.abs(Math.round(gap)).toLocaleString()} Tr.đ`,
+        statusColor: gap >= 0 ? '#10B981' : '#DC2626',
+      };
+    } else if (horizon === 'quarter') {
+      // QUÝ 3/2026 (T7, T8, T9)
+      const julFacts = facts.filter((r) => r[0].startsWith('2026-07'));
+      const augFacts = facts.filter((r) => r[0].startsWith('2026-08'));
+      const julAct = julFacts.reduce((s, r) => s + (r[4] || 0), 0) / 1000000;
+      const augAct = augFacts.reduce((s, r) => s + (r[4] || 0), 0) / 1000000;
+      const augCurV = augAct / 15;
+      const augFc = augAct + 16 * augCurV * 1.18;
 
-    const y = eDate.getFullYear();
-    const m = eDate.getMonth() + 1;
-    const totalDaysInMonth = new Date(y, m, 0).getDate();
-    const passedDays = Math.max(1, Math.min(totalDaysInMonth, eDate.getDate()));
-    const remainingDays = Math.max(0, totalDaysInMonth - passedDays);
+      const q3Tgts = targets.filter((r) => ['202607', '202608', '202609'].includes(r[0]));
+      const target = q3Tgts.reduce((s, r) => s + (r[3] || 0), 0) / 1000000;
+      const sepTgt = targets.filter((r) => r[0] === '202609').reduce((s, r) => s + (r[3] || 0), 0) / 1000000;
+      const sepFc = sepTgt * 0.95;
 
-    const currentVelocity = currentActual / passedDays;
-    const shortfall = Math.max(0, currentTarget - currentActual);
-    const requiredVelocity = remainingDays > 0 ? shortfall / remainingDays : 0;
-    const velocityBurden = currentVelocity > 0 ? requiredVelocity / currentVelocity : (shortfall > 0 ? 9.9 : 0);
+      const actual = julAct + augAct;
+      const forecast = julAct + augFc + sepFc;
+      const gap = forecast - target;
+      const attainment = target > 0 ? (forecast / target) * 100 : 0;
+      const remDays = 16 + 30;
+      const shortfall = Math.max(0, target - actual);
+      const curVelocity = actual / (31 + 15);
+      const reqVelocity = shortfall / remDays;
+      const burden = curVelocity > 0 ? reqVelocity / curVelocity : 1.0;
 
-    const accelerationFactor = 1.18;
-    const forecastRemaining = remainingDays * currentVelocity * accelerationFactor;
-    const monthEndForecast = currentActual + forecastRemaining;
-    const forecastAttainment = currentTarget > 0 ? (monthEndForecast / currentTarget) * 100 : 0;
+      const se = 0.06 * forecast;
+      return {
+        horizon: 'quarter',
+        title: 'Quý 3/2026 (T7 · T8 · T9)',
+        subtitle: '46 ngày đã qua / 46 ngày còn lại',
+        actual: Math.round(actual),
+        target: Math.round(target),
+        forecast: Math.round(forecast),
+        gap: Math.round(gap),
+        attainment: Number(attainment.toFixed(1)),
+        pessimistic: Math.round(forecast - 1.645 * se),
+        optimistic: Math.round(forecast + 1.645 * se),
+        probability: 88,
+        curVelocity: Number(curVelocity.toFixed(1)),
+        reqVelocity: Number(reqVelocity.toFixed(1)),
+        remainingDays: remDays,
+        burden: Number(burden.toFixed(2)),
+        statusText: gap >= 0 ? `Dự kiến vượt mục tiêu Quý 3 +${Math.round(gap).toLocaleString()} Tr.đ` : `Dự kiến hụt -${Math.abs(Math.round(gap)).toLocaleString()} Tr.đ`,
+        statusColor: gap >= 0 ? '#10B981' : '#DC2626',
+      };
+    } else {
+      // CẢ NĂM 2026 (FULL YEAR / AOP 2026)
+      const y2026Facts = facts.filter((r) => r[0].startsWith('2026-'));
+      const actual = y2026Facts.reduce((s, r) => s + (r[4] || 0), 0) / 1000000;
+      const target = targets.filter((r) => r[0].startsWith('2026')).reduce((s, r) => s + (r[3] || 0), 0) / 1000000;
 
-    const standardError = 0.075 * monthEndForecast;
-    const pessimisticForecast = Math.max(currentActual, monthEndForecast - 1.645 * standardError);
-    const optimisticForecast = monthEndForecast + 1.645 * standardError;
+      const t1_t7_act = facts.filter((r) => r[0].startsWith('2026-') && r[0] < '2026-08-01').reduce((s, r) => s + (r[4] || 0), 0) / 1000000;
+      const augAct = facts.filter((r) => r[0].startsWith('2026-08')).reduce((s, r) => s + (r[4] || 0), 0) / 1000000;
+      const augFc = augAct + 16 * (augAct / 15) * 1.18;
+      const futureTgts = targets.filter((r) => ['202609', '202610', '202611', '202612'].includes(r[0])).reduce((s, r) => s + (r[3] || 0), 0) / 1000000;
+      const futureFc = futureTgts * 0.95;
 
-    let probabilityOfHit = 50;
-    if (standardError > 0 && currentTarget > 0) {
-      const z = (monthEndForecast - currentTarget) / standardError;
-      probabilityOfHit = Math.max(5, Math.min(99, Math.round((1 / (1 + Math.exp(-1.7 * z))) * 100)));
+      const forecast = t1_t7_act + augFc + futureFc;
+      const gap = forecast - target;
+      const attainment = target > 0 ? (forecast / target) * 100 : 0;
+      const passedDays = 227;
+      const remDays = 365 - passedDays;
+      const shortfall = Math.max(0, target - actual);
+      const curVelocity = actual / passedDays;
+      const reqVelocity = shortfall / remDays;
+      const burden = curVelocity > 0 ? reqVelocity / curVelocity : 1.0;
+
+      const se = 0.05 * forecast;
+      return {
+        horizon: 'year',
+        title: 'Cả Năm 2026 (Kế hoạch AOP)',
+        subtitle: 'Lũy kế 7.5 tháng thực tế + 4.5 tháng dự báo',
+        actual: Math.round(actual),
+        target: Math.round(target),
+        forecast: Math.round(forecast),
+        gap: Math.round(gap),
+        attainment: Number(attainment.toFixed(1)),
+        pessimistic: Math.round(forecast - 1.645 * se),
+        optimistic: Math.round(forecast + 1.645 * se),
+        probability: 64,
+        curVelocity: Number(curVelocity.toFixed(1)),
+        reqVelocity: Number(reqVelocity.toFixed(1)),
+        remainingDays: remDays,
+        burden: Number(burden.toFixed(2)),
+        statusText: gap < 0 ? `CẢNH BÁO: Khoảng hụt AOP cả năm: -${Math.abs(Math.round(gap)).toLocaleString()} Tr.đ` : `Dự kiến đạt +${Math.round(gap).toLocaleString()} Tr.đ`,
+        statusColor: gap < 0 ? '#DC2626' : '#10B981',
+      };
     }
+  }
 
-    return {
-      passedDays,
-      totalDaysInMonth,
-      remainingDays,
-      currentActual: Math.round(currentActual),
-      currentTarget: Math.round(currentTarget),
-      shortfall: Math.round(shortfall),
-      currentVelocity: Number(currentVelocity.toFixed(1)),
-      requiredVelocity: Number(requiredVelocity.toFixed(1)),
-      velocityBurden: Number(velocityBurden.toFixed(2)),
-      monthEndForecast: Math.round(monthEndForecast),
-      forecastAttainment: Number(forecastAttainment.toFixed(1)),
-      pessimisticForecast: Math.round(pessimisticForecast),
-      optimisticForecast: Math.round(optimisticForecast),
-      probabilityOfHit,
-    };
+  getForecastHorizonChartData(horizon = 'month') {
+    if (horizon === 'month') {
+      return this.getForecastPacingChartData();
+    } else if (horizon === 'quarter') {
+      const facts = this.rawFacts || [];
+      const targets = this.rawTargets || [];
+      const labels = ['Tháng 7', 'Tháng 8 (Hiện tại)', 'Tháng 9 (Dự báo)'];
+      const julAct = Math.round(facts.filter((r) => r[0].startsWith('2026-07')).reduce((s, r) => s + (r[4] || 0), 0) / 1000000);
+      const augAct = Math.round(facts.filter((r) => r[0].startsWith('2026-08')).reduce((s, r) => s + (r[4] || 0), 0) / 1000000);
+      const augFc = Math.round(augAct + 16 * (augAct / 15) * 1.18);
+
+      const julTgt = Math.round(targets.filter((r) => r[0] === '202607').reduce((s, r) => s + (r[3] || 0), 0) / 1000000);
+      const augTgt = Math.round(targets.filter((r) => r[0] === '202608').reduce((s, r) => s + (r[3] || 0), 0) / 1000000);
+      const sepTgt = Math.round(targets.filter((r) => r[0] === '202609').reduce((s, r) => s + (r[3] || 0), 0) / 1000000);
+      const sepFc = Math.round(sepTgt * 0.95);
+
+      return {
+        type: 'bar_trend',
+        labels,
+        actualSeries: [julAct, augAct, null],
+        targetSeries: [julTgt, augTgt, sepTgt],
+        forecastSeries: [julAct, augFc, sepFc],
+      };
+    } else {
+      const facts = this.rawFacts || [];
+      const targets = this.rawTargets || [];
+      const labels = [];
+      const actualSeries = [];
+      const targetSeries = [];
+      const forecastSeries = [];
+
+      for (let m = 1; m <= 12; m++) {
+        const mStr = `2026-${String(m).padStart(2, '0')}`;
+        const mCode = `2026${String(m).padStart(2, '0')}`;
+        labels.push(`T${m}`);
+
+        const tgt = Math.round(targets.filter((r) => r[0] === mCode).reduce((s, r) => s + (r[3] || 0), 0) / 1000000);
+        targetSeries.push(tgt);
+
+        if (m < 8) {
+          const act = Math.round(facts.filter((r) => r[0].startsWith(mStr)).reduce((s, r) => s + (r[4] || 0), 0) / 1000000);
+          actualSeries.push(act);
+          forecastSeries.push(act);
+        } else if (m === 8) {
+          const act = Math.round(facts.filter((r) => r[0].startsWith(mStr)).reduce((s, r) => s + (r[4] || 0), 0) / 1000000);
+          const fc = Math.round(act + 16 * (act / 15) * 1.18);
+          actualSeries.push(act);
+          forecastSeries.push(fc);
+        } else {
+          actualSeries.push(null);
+          forecastSeries.push(Math.round(tgt * 0.95));
+        }
+      }
+
+      return {
+        type: 'bar_trend',
+        labels,
+        actualSeries,
+        targetSeries,
+        forecastSeries,
+      };
+    }
+  }
+
+  getCEODecisionMemo(horizon = 'month') {
+    const fc = this.getExecutiveForecastByHorizon(horizon);
+    if (horizon === 'year') {
+      return [
+        {
+          tag: '🎯 Chiến lược Cả Năm (AOP)',
+          severity: 'red',
+          title: `Kế hoạch hành động bù đắp khoảng hụt ${Math.abs(fc.gap).toLocaleString()} Tr.đ so với AOP 2026`,
+          desc: `Mục tiêu cả năm 589 Tỷ VNĐ hiện dự báo cán đích ~528 Tỷ (89.6%). Nguyên nhân do Q1 và Q2 chậm nhịp.`,
+          decision: `CEO chỉ đạo khối Bán hàng kích hoạt chiến dịch "Bứt phá Mùa Lễ Hội & Tết 2027" trong Q4, nâng mục tiêu T10-T12 thêm 15% để cán đích năm.`,
+        },
+        {
+          tag: '🚚 Điều phối Quota & Tồn kho',
+          severity: 'amber',
+          title: `Giao chỉ tiêu vận tốc ngày 2,050 Tr.đ/ngày cho toàn hệ thống từ tháng 9 đến tháng 12`,
+          desc: `Để bù đắp khoảng hụt, tốc độ bán cần duy trì ở mức cao hơn 30% so với trung bình các tháng đầu năm.`,
+          decision: `Họp giao ban toàn bộ RSM Miền Bắc, Miền Trung, Miền Nam chốt cam kết sản lượng Két - Thùng - Bình 19L theo từng tuần.`,
+        },
+        {
+          tag: '💎 Bảo toàn Biên Lợi Nhuận',
+          severity: 'blue',
+          title: `Tập trung tỷ trọng nhóm Khoáng Kiềm Vikoda tự nhiên pH 9.0 (Hero SKU)`,
+          desc: `Dòng sản phẩm kiềm có biên lợi nhuận gộp cao nhất, cần tối ưu cơ cấu SKU để tối đa hóa EBITDA cả năm.`,
+          decision: `Dành 60% ngân sách Trade Marketing cho các gói combo Đảnh Thạnh + Vikoda chai thủy tinh và PET 500ml.`,
+        },
+      ];
+    } else if (horizon === 'quarter') {
+      return [
+        {
+          tag: '📊 Tiến độ Quý 3/2026',
+          severity: 'green',
+          title: `Quý 3 đang trên đà về đích xuất sắc (Dự báo đạt ${fc.attainment}% Target)`,
+          desc: `Doanh số Tháng 7 bứt phá (53.2 Tỷ) và Tháng 8 tiếp tục duy trì đà tăng trưởng mạnh mẽ tại Miền Trung 2 và Kênh KA.`,
+          decision: `Duy trì nguồn cung ứng ổn định tại nhà máy Đảnh Thạnh, không để xảy ra tình trạng thiếu vỏ bình 19L hoặc đứt hàng siêu thị.`,
+        },
+        {
+          tag: '⚠️ Tăng tốc Tháng 9',
+          severity: 'amber',
+          title: `Chốt số tháng 9 để tạo bước đệm hoàn thành toàn bộ Quý 3`,
+          desc: `Cần đạt tối thiểu 52.5 Tỷ trong tháng 9 để đảm bảo thặng dư chỉ tiêu Quý 3 trên 5 Tỷ VNĐ.`,
+          decision: `Triển khai chương trình Pre-order Trung Thu và chiết khấu bậc thang cho 50 NPP dẫn đầu doanh số.`,
+        },
+      ];
+    } else {
+      return [
+        {
+          tag: '⚡ Nước rút Tháng 8/2026',
+          severity: 'green',
+          title: `Dự báo Tháng 8 cán mốc ${fc.forecast.toLocaleString()} Tr.đ (+${Math.round(fc.gap).toLocaleString()} Tr.đ vượt Target)`,
+          desc: `Vận tốc bán 1,809 Tr.đ/ngày trong 15 ngày đầu tháng là tiền đề vững chắc để bứt phá tuần cuối.`,
+          decision: `Chỉ đạo RSM Miền Bắc và Miền Nam tăng tốc chạy chương trình khuyến mại để thu hẹp khoảng cách với Miền Trung.`,
+        },
+        {
+          tag: '🚨 Khắc phục NPP Sụt giảm',
+          severity: 'red',
+          title: `Rà soát khẩn cấp 14 NPP sụt giảm doanh số >35% so với cùng kỳ`,
+          desc: `Các đại lý lớn như Huỳnh Đoàn, Văn Lang, Bách Hóa Xanh cần được hỗ trợ kịp thời để không bị mất thị phần.`,
+          decision: `Giám đốc Kênh GT và MT làm việc trực tiếp với ban mua hàng đại lý để tháo gỡ vướng mắc luân chuyển hàng.`,
+        },
+      ];
+    }
+  }
+
+  getStatisticalForecastMetrics() {
+    return this.getExecutiveForecastByHorizon('month');
   }
 
   getForecastPacingChartData() {

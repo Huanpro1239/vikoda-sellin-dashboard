@@ -8,7 +8,7 @@
   <meta http-equiv="Expires" content="0">
   <title>Báo Cáo Sell In Vikoda | Hệ Thống Quản Trị Doanh Số</title>
   <meta name="description" content="Dashboard điều hành bán hàng Sell In thông minh Vikoda - Phân tích đa chiều, tự động hóa dự báo & nhịp độ kinh doanh">
-  <link rel="stylesheet" href="css/style.css?v=20260815_23">
+  <link rel="stylesheet" href="css/style.css?v=20260815_24">
   
   <!-- CDN Thư viện ECharts và SheetJS (Xuất Excel) -->
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -465,15 +465,28 @@
         </div>
 
         <!-- ================================================================
-             PAGE 06: KẾ HOẠCH, DỰ BÁO THỐNG KÊ & CẢNH BÁO SỚM THỜI GIAN THỰC
+             PAGE 06: HỆ THỐNG DỰ BÁO ĐIỀU HÀNH CEO THEO THÁNG / QUÝ / NĂM
              ================================================================ -->
         <div class="view-page" id="view_page_06">
           
-          <!-- 3 THẺ CHỈ SỐ DỰ BÁO THỐNG KÊ (PREDICTIVE HERO METRICS) -->
+          <!-- THANH ĐIỀU KHIỂN CẤP ĐỘ DỰ BÁO CHIẾN LƯỢC (HORIZON SELECTOR) -->
+          <div class="forecast-control-bar">
+            <div class="forecast-control-left">
+              <span class="forecast-control-title" id="p6_horizon_title">Dự báo & Kế hoạch: Tháng 8/2026 (MTD)</span>
+              <span class="forecast-control-sub" id="p6_horizon_sub">15 ngày đã qua / 16 ngày còn lại</span>
+            </div>
+            <div class="forecast-horizon-tabs">
+              <button class="fc-horizon-btn active" data-horizon="month" onclick="window.charts.setForecastHorizon('month')">📅 Dự báo Tháng (MTD)</button>
+              <button class="fc-horizon-btn" data-horizon="quarter" onclick="window.charts.setForecastHorizon('quarter')">📊 Dự báo Quý (Q3 · Q4)</button>
+              <button class="fc-horizon-btn" data-horizon="year" onclick="window.charts.setForecastHorizon('year')">🎯 Dự báo Cả Năm (AOP 2026)</button>
+            </div>
+          </div>
+
+          <!-- 3 THẺ CHỈ SỐ KỊCH BẢN QUYẾT ĐỊNH (EXECUTIVE 3-SCENARIO METRICS) -->
           <div class="predictive-metrics-grid">
             <div class="pred-card">
               <div class="pred-card-header">
-                <span class="pred-label">Dự báo Doanh số Cuối tháng</span>
+                <span class="pred-label">Dự báo Doanh số Cuối kỳ (Baseline)</span>
                 <span class="pred-chip blue">FMCG Velocity Model</span>
               </div>
               <div class="pred-value" id="p6_forecast_val">0 Tr.đ</div>
@@ -482,8 +495,8 @@
 
             <div class="pred-card">
               <div class="pred-card-header">
-                <span class="pred-label">Xác suất Cán đích Target</span>
-                <span class="pred-chip green">Z-Score Prob</span>
+                <span class="pred-label">% Đạt Mục Tiêu & Khoảng Chênh Lệch</span>
+                <span class="pred-chip green">Gap to Target</span>
               </div>
               <div class="pred-value" id="p6_prob_val">0%</div>
               <div class="pred-sub" id="p6_prob_sub">Khoảng chênh lệch dự kiến</div>
@@ -492,19 +505,19 @@
             <div class="pred-card">
               <div class="pred-card-header">
                 <span class="pred-label">Vận tốc Thực tế vs Yêu cầu</span>
-                <span class="pred-chip amber">Run-rate / Ngày</span>
+                <span class="pred-chip amber">Quota / Ngày</span>
               </div>
               <div class="pred-value" id="p6_velocity_val">0 Tr.đ/ngày</div>
               <div class="pred-sub" id="p6_velocity_sub">Áp lực vận tốc bán hàng cần đạt</div>
             </div>
           </div>
 
-          <!-- BIỂU ĐỒ HÀNG 1: DỰ BÁO PACING LŨY KẾ & VẬN TỐC THEO 7 ĐƠN VỊ -->
+          <!-- BIỂU ĐỒ HÀNG 1: DỰ BÁO KỊCH BẢN & VẬN TỐC THEO 7 ĐƠN VỊ -->
           <div class="charts-grid-2">
             <div class="chart-card">
               <div class="chart-card-header">
-                <span class="chart-title">1 · DỰ BÁO NHỊP ĐỘ LŨY KẾ THÁNG (DAILY PACING & FORECAST)</span>
-                <span class="chart-subtitle">Lũy kế thực tế vs Kế hoạch vs Đường dự báo thống kê</span>
+                <span class="chart-title">1 · TIẾN ĐỘ THỰC TẾ · KẾ HOẠCH & DỰ BÁO KỊCH BẢN</span>
+                <span class="chart-subtitle">So sánh Actual vs Target vs Dự báo theo cấp độ chọn</span>
               </div>
               <div id="chart_p6_trend" class="chart-container"></div>
             </div>
@@ -518,11 +531,11 @@
             </div>
           </div>
 
-          <!-- HÀNG 2: TRUNG TÂM CẢNH BÁO SỚM & KHUYẾN NGHỊ ĐIỀU HÀNH -->
+          <!-- HÀNG 2: BẢNG KHUYẾN NGHỊ ĐIỀU HÀNH DÀNH CHO CEO (PRESCRIPTIVE CEO MEMO) -->
           <div class="chart-card">
             <div class="chart-card-header">
-              <span class="chart-title">3 · TRUNG TÂM CẢNH BÁO SỚM & KHUYẾN NGHỊ ĐIỀU HÀNH THỜI GIAN THỰC</span>
-              <span class="chart-subtitle">Tự động phát hiện nguy cơ vỡ target, sụt giảm NPP/Đại lý & lệch cơ cấu SKU</span>
+              <span class="chart-title">3 · BẢNG KHUYẾN NGHỊ QUYẾT ĐỊNH ĐIỀU HÀNH DÀNH CHO CEO</span>
+              <span class="chart-subtitle">Các quyết định chiến lược định lượng về Thương mại, Quota RSM & Cơ cấu lợi nhuận</span>
             </div>
             <div id="early_warning_container" class="early-warning-grid" style="margin-top: 10px;"></div>
           </div>
@@ -596,10 +609,10 @@
   </div>
 
   <!-- NẠP DỮ LIỆU & LOGIC -->
-  <script src="js/auth.js?v=20260815_23"></script>
-  <script src="data/dashboard_data.js?v=20260815_23"></script>
-  <script src="js/data-engine.js?v=20260815_23"></script>
-  <script src="js/charts.js?v=20260815_23"></script>
-  <script src="js/app.js?v=20260815_23"></script>
+  <script src="js/auth.js?v=20260815_24"></script>
+  <script src="data/dashboard_data.js?v=20260815_24"></script>
+  <script src="js/data-engine.js?v=20260815_24"></script>
+  <script src="js/charts.js?v=20260815_24"></script>
+  <script src="js/app.js?v=20260815_24"></script>
 </body>
 </html>
