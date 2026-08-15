@@ -62,16 +62,25 @@ class VikodaCharts {
           return res;
         },
       },
-      legend: { data: ['Doanh thu Actual', 'Doanh thu LY', 'Target', '% Đạt Target'], top: 0 },
-      grid: { left: '3%', right: '4%', bottom: '8%', top: '15%', containLabel: true },
-      xAxis: { type: 'category', data: data.labels },
+      legend: {
+        data: ['Doanh thu Actual', 'Doanh thu LY', 'Target', '% Đạt Target'],
+        bottom: 0,
+        left: 'center',
+        itemWidth: 10,
+        itemHeight: 10,
+        itemGap: 16,
+        textStyle: { fontSize: 11, color: '#475569', fontWeight: 600 },
+        icon: 'circle'
+      },
+      grid: { left: '3%', right: '3%', top: '36px', bottom: '40px', containLabel: true },
+      xAxis: { type: 'category', data: data.labels, axisLabel: { color: '#475569', fontSize: 11, fontWeight: 600 } },
       yAxis: [
-        { type: 'value', name: 'Triệu VNĐ', splitLine: { lineStyle: { color: '#F1F5F9' } } },
-        { type: 'value', name: '% Đạt', splitLine: { show: false } },
+        { type: 'value', name: 'Triệu VNĐ', nameTextStyle: { color: '#64748B', fontSize: 11, padding: [0, 0, 4, 0] }, splitLine: { lineStyle: { color: '#F1F5F9' } }, axisLabel: { color: '#64748B', fontSize: 10 } },
+        { type: 'value', name: '% Đạt', nameTextStyle: { color: '#64748B', fontSize: 11, padding: [0, 0, 4, 0] }, splitLine: { show: false }, axisLabel: { color: '#0F766E', fontSize: 10, formatter: '{value}%' } },
       ],
       series: [
-        { name: 'Doanh thu Actual', type: 'bar', data: data.actualSeries, itemStyle: { color: this.colors.blue, borderRadius: [4, 4, 0, 0] } },
-        { name: 'Doanh thu LY', type: 'bar', data: data.lySeries, itemStyle: { color: this.colors.gray, borderRadius: [4, 4, 0, 0] } },
+        { name: 'Doanh thu Actual', type: 'bar', barMaxWidth: 24, data: data.actualSeries, itemStyle: { color: this.colors.blue, borderRadius: [4, 4, 0, 0] } },
+        { name: 'Doanh thu LY', type: 'bar', barMaxWidth: 24, data: data.lySeries, itemStyle: { color: this.colors.gray, borderRadius: [4, 4, 0, 0] } },
         { name: 'Target', type: 'line', data: data.targetSeries, lineStyle: { color: this.colors.amber, width: 2, type: 'dashed' }, itemStyle: { color: this.colors.amber } },
         { name: '% Đạt Target', type: 'line', yAxisIndex: 1, data: data.attainmentSeries, lineStyle: { color: this.colors.teal, width: 2 }, itemStyle: { color: this.colors.teal } },
       ],
@@ -180,62 +189,62 @@ class VikodaCharts {
       },
       legend: {
         data: ['Doanh thu Actual', 'Doanh thu LY', 'Tăng trưởng YoY %'],
-        top: 2,
-        right: 8,
-        itemWidth: 12,
-        itemHeight: 12,
+        bottom: 0,
+        left: 'center',
+        itemWidth: 10,
+        itemHeight: 10,
         itemGap: 16,
-        textStyle: { fontSize: 12, color: '#334155', fontWeight: 600 },
-        icon: 'roundRect'
+        textStyle: { fontSize: 11, color: '#475569', fontWeight: 600 },
+        icon: 'circle'
       },
-      grid: { left: '2%', right: '2%', bottom: '6%', top: '56px', containLabel: true },
+      grid: { left: '3%', right: '3%', top: '36px', bottom: '40px', containLabel: true },
       xAxis: {
         type: 'category',
         data: data.categories,
-        axisLabel: { color: '#475569', fontWeight: 600, fontSize: 12 },
-        axisLine: { lineStyle: { color: '#CBD5E1' } }
+        axisLabel: { color: '#475569', fontWeight: 600, fontSize: 11 },
+        axisLine: { lineStyle: { color: '#E2E8F0' } }
       },
       yAxis: [
         {
           type: 'value',
           name: 'Doanh thu (Tr.đ)',
-          nameTextStyle: { color: '#64748B', fontSize: 11, padding: [0, 0, 6, 0] },
+          nameTextStyle: { color: '#64748B', fontSize: 11, padding: [0, 0, 4, 0] },
           splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } },
-          axisLabel: { color: '#64748B', fontSize: 11 }
+          axisLabel: { color: '#64748B', fontSize: 10 }
         },
         {
           type: 'value',
           name: 'YoY %',
-          nameTextStyle: { color: '#64748B', fontSize: 11, padding: [0, 0, 6, 0] },
+          nameTextStyle: { color: '#64748B', fontSize: 11, padding: [0, 0, 4, 0] },
           splitLine: { show: false },
-          axisLabel: { color: '#D97706', fontSize: 11, formatter: '{value}%' }
+          axisLabel: { color: '#D97706', fontSize: 10, formatter: '{value}%' }
         }
       ],
       series: [
         {
           name: 'Doanh thu Actual',
           type: 'bar',
-          barMaxWidth: 30,
+          barMaxWidth: 24,
           data: data.actuals,
           itemStyle: {
             color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
               { offset: 0, color: '#3B82F6' },
               { offset: 1, color: '#1D4ED8' }
             ]),
-            borderRadius: [6, 6, 0, 0]
+            borderRadius: [4, 4, 0, 0]
           }
         },
         {
           name: 'Doanh thu LY',
           type: 'bar',
-          barMaxWidth: 30,
+          barMaxWidth: 24,
           data: data.lys,
           itemStyle: {
             color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
               { offset: 0, color: '#CBD5E1' },
               { offset: 1, color: '#94A3B8' }
             ]),
-            borderRadius: [6, 6, 0, 0]
+            borderRadius: [4, 4, 0, 0]
           }
         },
         {
@@ -244,9 +253,9 @@ class VikodaCharts {
           yAxisIndex: 1,
           data: data.yoys,
           itemStyle: { color: '#F59E0B' },
-          lineStyle: { width: 3, color: '#F59E0B' },
+          lineStyle: { width: 2.5, color: '#F59E0B' },
           symbol: 'circle',
-          symbolSize: 7
+          symbolSize: 6
         },
       ],
     };
@@ -297,66 +306,66 @@ class VikodaCharts {
       },
       legend: {
         data: ['Khách hàng Mới', 'Ngừng mua (Churn)'],
-        top: 2,
-        right: 8,
-        itemWidth: 12,
-        itemHeight: 12,
-        itemGap: 16,
-        textStyle: { fontSize: 12, color: '#334155', fontWeight: 600 },
-        icon: 'roundRect'
+        bottom: 0,
+        left: 'center',
+        itemWidth: 10,
+        itemHeight: 10,
+        itemGap: 20,
+        textStyle: { fontSize: 11, color: '#475569', fontWeight: 600 },
+        icon: 'circle'
       },
-      grid: { left: '2%', right: '2%', bottom: '6%', top: '56px', containLabel: true },
+      grid: { left: '3%', right: '3%', top: '36px', bottom: '40px', containLabel: true },
       xAxis: {
         type: 'category',
         data: data.channels,
-        axisLabel: { color: '#475569', fontWeight: 600, fontSize: 12 },
-        axisLine: { lineStyle: { color: '#CBD5E1' } }
+        axisLabel: { color: '#475569', fontWeight: 600, fontSize: 11 },
+        axisLine: { lineStyle: { color: '#E2E8F0' } }
       },
       yAxis: {
         type: 'value',
         name: 'Số lượng KH (NPP/ĐL)',
-        nameTextStyle: { color: '#64748B', fontSize: 11, padding: [0, 0, 6, 0] },
+        nameTextStyle: { color: '#64748B', fontSize: 11, padding: [0, 0, 4, 0] },
         splitLine: { lineStyle: { type: 'dashed', color: '#F1F5F9' } },
-        axisLabel: { color: '#64748B', fontSize: 11 }
+        axisLabel: { color: '#64748B', fontSize: 10 }
       },
       series: [
         {
           name: 'Khách hàng Mới',
           type: 'bar',
-          barMaxWidth: 32,
+          barMaxWidth: 26,
           data: data.newCustomers,
           itemStyle: {
             color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
               { offset: 0, color: '#14B8A6' },
               { offset: 1, color: '#0D9488' }
             ]),
-            borderRadius: [6, 6, 0, 0]
+            borderRadius: [4, 4, 0, 0]
           },
           label: {
             show: true,
             position: 'top',
             color: '#0F766E',
-            fontSize: 11,
+            fontSize: 10,
             fontWeight: 700
           }
         },
         {
           name: 'Ngừng mua (Churn)',
           type: 'bar',
-          barMaxWidth: 32,
+          barMaxWidth: 26,
           data: data.churnCustomers,
           itemStyle: {
             color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
               { offset: 0, color: '#F87171' },
               { offset: 1, color: '#DC2626' }
             ]),
-            borderRadius: [6, 6, 0, 0]
+            borderRadius: [4, 4, 0, 0]
           },
           label: {
             show: true,
             position: 'top',
             color: '#B91C1C',
-            fontSize: 11,
+            fontSize: 10,
             fontWeight: 700
           }
         },
