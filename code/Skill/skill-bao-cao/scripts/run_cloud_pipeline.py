@@ -27,15 +27,24 @@ def run_command(cmd: list[str], cwd: Path) -> None:
 def run_pipeline(project_root: Path) -> None:
     scripts_sellin = project_root / "code/Skill/sell-in-monthly/scripts"
     scripts_baocao = project_root / "code/Skill/skill-bao-cao/scripts"
-    source_dir = project_root / "Data/Nguon"
+    
+    # Ưu tiên thư mục Data ERP chuẩn của dự án
+    source_dir = project_root / "Data/Data ERP"
+    if not source_dir.exists() or not any(source_dir.glob("*.xlsm")):
+        if (project_root / "Data/Nguon").exists():
+            source_dir = project_root / "Data/Nguon"
+
     staging_dir = project_root / "Data/Work/bao_cao/data/staging"
     output_dir = project_root / "Data/File bao cao/Sell In Thang"
     web_dir = project_root / "web/data"
 
     print("============================================================")
-    print(" 1/4 - TACH DU LIEU SELL IN TU FILE NGUON (EXTRACT SOURCES)")
+    print(f" 1/4 - TACH DU LIEU SELL IN TU ERP ({source_dir.name})")
     print("============================================================")
-    if source_dir.exists() and any(source_dir.glob("*.xlsx")):
+    has_sources = source_dir.exists() and any(
+        f.suffix.lower() in [".xlsm", ".xlsx"] for f in source_dir.iterdir() if f.is_file()
+    )
+    if has_sources:
         run_command([
             sys.executable,
             str(scripts_sellin / "extract_sources.py"),
