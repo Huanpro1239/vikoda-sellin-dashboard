@@ -85,7 +85,7 @@ def export_web_dataset(
     facts_compact = []
     for f in fact_sell:
         facts_compact.append([
-            f["Date"],
+            f.get("InvoiceDate") or f["Date"],
             f["CustomerKey"],
             f["ProductKey"],
             f["TerritoryKey"],

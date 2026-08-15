@@ -8,7 +8,7 @@
   <meta http-equiv="Expires" content="0">
   <title>Báo Cáo Sell In Vikoda | Hệ Thống Quản Trị Doanh Số</title>
   <meta name="description" content="Dashboard điều hành bán hàng Sell In thông minh Vikoda - Phân tích đa chiều, tự động hóa dự báo & nhịp độ kinh doanh">
-  <link rel="stylesheet" href="css/style.css?v=20260815_16">
+  <link rel="stylesheet" href="css/style.css?v=20260815_17">
   
   <!-- CDN Thư viện ECharts và SheetJS (Xuất Excel) -->
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -180,34 +180,34 @@
           </div>
         </div>
 
-        <!-- 4 THẺ KPI CHÍNH (HERO KPIS - DÙNG CHO CÁC VIEW) -->
-        <div class="kpi-cards-grid">
-          <div class="kpi-card blue">
-            <span class="kpi-label">Doanh thu Sell In</span>
-            <span class="kpi-value" id="kpi_actual">0 Tr.đ</span>
-            <span class="kpi-sub">Doanh số thực tế ghi nhận</span>
-          </div>
-          <div class="kpi-card teal">
-            <span class="kpi-label">% Đạt Target</span>
-            <span class="kpi-value" id="kpi_attainment">0%</span>
-            <span class="kpi-sub" id="kpi_attainment_sub">Target: 0 Tr.đ</span>
-          </div>
-          <div class="kpi-card purple">
-            <span class="kpi-label">Tăng trưởng YoY</span>
-            <span class="kpi-value" id="kpi_yoy">0%</span>
-            <span class="kpi-sub" id="kpi_yoy_sub">Cùng kỳ: 0 Tr.đ</span>
-          </div>
-          <div class="kpi-card amber">
-            <span class="kpi-label">Sản lượng Quy đổi (Volume)</span>
-            <span class="kpi-value" id="kpi_volume">0 Két/Thùng</span>
-            <span class="kpi-sub" id="kpi_volume_sub">Két · Thùng · Bình 19L</span>
-          </div>
-        </div>
-
         <!-- ================================================================
              PAGE 01: TỔNG QUAN ĐIỀU HÀNH
              ================================================================ -->
         <div class="view-page active" id="view_page_01">
+
+          <!-- 4 THẺ KPI CHÍNH (HERO KPIS - CHỈ HIỂN THỊ Ở TRANG 01) -->
+          <div class="kpi-cards-grid">
+            <div class="kpi-card blue">
+              <span class="kpi-label">Doanh thu Sell In</span>
+              <span class="kpi-value" id="kpi_actual">0 Tr.đ</span>
+              <span class="kpi-sub">Doanh số thực tế ghi nhận</span>
+            </div>
+            <div class="kpi-card teal">
+              <span class="kpi-label">% Đạt Target</span>
+              <span class="kpi-value" id="kpi_attainment">0%</span>
+              <span class="kpi-sub" id="kpi_attainment_sub">Target: 0 Tr.đ</span>
+            </div>
+            <div class="kpi-card purple">
+              <span class="kpi-label">Tăng trưởng YoY</span>
+              <span class="kpi-value" id="kpi_yoy">0%</span>
+              <span class="kpi-sub" id="kpi_yoy_sub">Cùng kỳ: 0 Tr.đ</span>
+            </div>
+            <div class="kpi-card amber">
+              <span class="kpi-label">Sản lượng Quy đổi (Volume)</span>
+              <span class="kpi-value" id="kpi_volume">0 Két/Thùng</span>
+              <span class="kpi-sub" id="kpi_volume_sub">Két · Thùng · Bình 19L</span>
+            </div>
+          </div>
 
           <!-- BIỂU ĐỒ HÀNG 1: TREND THÁNG + DONUT MIX -->
           <div class="charts-grid-2-1">
@@ -562,10 +562,10 @@
   </div>
 
   <!-- NẠP DỮ LIỆU & LOGIC -->
-  <script src="js/auth.js?v=20260815_16"></script>
-  <script src="data/dashboard_data.js?v=20260815_16"></script>
-  <script src="js/data-engine.js?v=20260815_16"></script>
-  <script src="js/charts.js?v=20260815_16"></script>
-  <script src="js/app.js?v=20260815_16"></script>
+  <script src="js/auth.js?v=20260815_17"></script>
+  <script src="data/dashboard_data.js?v=20260815_17"></script>
+  <script src="js/data-engine.js?v=20260815_17"></script>
+  <script src="js/charts.js?v=20260815_17"></script>
+  <script src="js/app.js?v=20260815_17"></script>
 </body>
 </html>

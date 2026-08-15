@@ -182,9 +182,10 @@ class VikodaApp {
   setQuickPeriod(type) {
     const curYear = window.dataEngine.metadata.current_year || 2026;
     const maxMonth = window.dataEngine.metadata.through_month ? String(window.dataEngine.metadata.through_month).padStart(2, '0') : '08';
+    const asOf = window.dataEngine.metadata.as_of_date || `${curYear}-${maxMonth}-15`;
 
     let start = `${curYear}-01-01`;
-    let end = `${curYear}-${maxMonth}-31`;
+    let end = asOf;
 
     const startInput = document.getElementById('filter_start_date');
     const endInput = document.getElementById('filter_end_date');
@@ -192,21 +193,21 @@ class VikodaApp {
 
     if (type === 'mtd') {
       start = `${curYear}-${maxMonth}-01`;
-      end = `${curYear}-${maxMonth}-31`;
+      end = asOf;
       if (monthSelect) monthSelect.value = `${curYear}-${maxMonth}`;
     } else if (type === 'qtd') {
       const m = parseInt(maxMonth, 10);
       const qStartMonth = String(Math.floor((m - 1) / 3) * 3 + 1).padStart(2, '0');
       start = `${curYear}-${qStartMonth}-01`;
-      end = `${curYear}-${maxMonth}-31`;
+      end = asOf;
       if (monthSelect) monthSelect.value = '';
     } else if (type === 'ytd') {
       start = `${curYear}-01-01`;
-      end = `${curYear}-${maxMonth}-31`;
+      end = asOf;
       if (monthSelect) monthSelect.value = '';
     } else if (type === 'all') {
       start = '2025-01-01';
-      end = `${curYear}-${maxMonth}-31`;
+      end = asOf;
       if (monthSelect) monthSelect.value = '';
     }
 
