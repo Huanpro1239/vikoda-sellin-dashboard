@@ -386,16 +386,23 @@ class VikodaApp {
     // Executive AI Alert Strip Text on Page 1
     const elExecAlert = document.getElementById('exec_alert_text');
     if (elExecAlert) {
-      const pred = window.dataEngine.getStatisticalForecastMetrics();
-      const warnings = window.dataEngine.getComprehensiveEarlyWarnings();
-      const criticalCount = warnings.filter((w) => w.severity === 'red').length;
-      const warnCount = warnings.filter((w) => w.severity === 'amber').length;
+      try {
+        const pred = window.dataEngine.getStatisticalForecastMetrics() || {};
+        const warnings = window.dataEngine.getComprehensiveEarlyWarnings() || [];
+        const criticalCount = warnings.filter((w) => w.severity === 'red').length;
+        const warnCount = warnings.filter((w) => w.severity === 'amber').length;
+        const fcVal = pred.forecast || pred.monthEndForecast || 0;
+        const attVal = pred.attainment || pred.forecastAttainment || 0;
+        const probVal = pred.probability || pred.probabilityOfHit || 90;
 
-      let alertSummary = `🎯 Dự báo cuối kỳ: ${pred.monthEndForecast.toLocaleString()} Tr.đ (${pred.forecastAttainment}% Target · Xác suất ${pred.probabilityOfHit}%)`;
-      if (criticalCount > 0) {
-        alertSummary = `🚨 ${criticalCount} khu vực áp lực tải cao · ${warnCount} NPP giảm sâu · ${alertSummary}`;
+        let alertSummary = `🎯 Dự báo cuối kỳ: ${fcVal.toLocaleString()} Tr.đ (${attVal}% Target · Xác suất ${probVal}%)`;
+        if (criticalCount > 0) {
+          alertSummary = `🚨 ${criticalCount} khu vực áp lực tải cao · ${warnCount} NPP giảm sâu · ${alertSummary}`;
+        }
+        elExecAlert.innerText = alertSummary;
+      } catch (e) {
+        console.warn('Lỗi cập nhật banner cảnh báo:', e);
       }
-      elExecAlert.innerText = alertSummary;
     }
 
     // Actual MTD / Selected Period
