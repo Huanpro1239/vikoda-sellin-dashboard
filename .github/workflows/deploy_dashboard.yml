@@ -1,4 +1,4 @@
-name: Vikoda Sell-In CI and Internal Validation
+name: Vikoda Sell-In CI, Cloud Refresh and Pages Deploy
 
 on:
   pull_request:
@@ -19,16 +19,16 @@ on:
       - '.github/workflows/deploy_dashboard.yml'
   workflow_dispatch:
     inputs:
-      validate_internal_data:
-        description: 'Run an ephemeral strict build against internal SharePoint data'
+      deploy_now:
+        description: 'Kéo dữ liệu SharePoint mới nhất, build và deploy lên GitHub Pages ngay'
         required: true
         type: boolean
-        default: false
+        default: true
   schedule:
     # 06:00 và 18:00 UTC+7 tương ứng 23:00 và 11:00 UTC.
     - cron: '0 23,11 * * *'
 
-# Mọi job chỉ đọc source. Internal data is validated ephemerally and never deployed.
+# Mặc định chỉ đọc source. Job deploy tự nâng quyền riêng ở cấp job.
 permissions:
   contents: read
 
@@ -42,7 +42,7 @@ jobs:
     if: >-
       github.event_name == 'pull_request' ||
       github.event_name == 'push' ||
-      (github.event_name == 'workflow_dispatch' && !inputs.validate_internal_data)
+      (github.event_name == 'workflow_dispatch' && !inputs.deploy_now)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -76,17 +76,27 @@ jobs:
       - name: Verify web JavaScript and regression tests
         run: npm run verify:web
 
-  validate-internal-build:
-    name: Validate internal SharePoint build (ephemeral)
+  build-and-deploy:
+    name: Cloud refresh from SharePoint and deploy to Pages
+    # Chỉ chạy trên main, khi đã bật ENABLE_PAGES_DEPLOY=true, và do lịch chạy
+    # hoặc do bấm tay (Run workflow) với deploy_now = true.
     if: >-
       github.ref == 'refs/heads/main' &&
-      vars.ENABLE_INTERNAL_DATA_VALIDATION == 'true' &&
+      vars.ENABLE_PAGES_DEPLOY == 'true' &&
       (github.event_name == 'schedule' ||
-       (github.event_name == 'workflow_dispatch' && inputs.validate_internal_data))
+       (github.event_name == 'workflow_dispatch' && inputs.deploy_now))
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     permissions:
       contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: 'pages'
+      cancel-in-progress: false
 
     steps:
       - name: Checkout repository without persisted credentials
@@ -161,7 +171,7 @@ jobs:
           --local-dir "Data/CloudInputs/DMSP"
           --require-cloud-auth
 
-      - name: Execute core data pipeline
+      - name: Execute core data pipeline (refresh web/data)
         run: >-
           python code/Skill/skill-bao-cao/scripts/run_cloud_pipeline.py
           --project-root .
@@ -185,5 +195,16 @@ jobs:
       - name: Verify web JavaScript and regression tests
         run: npm run verify:web
 
-      # Không upload artifact, deploy Pages, commit hay push. Dữ liệu nội bộ chỉ
-      # tồn tại trong runner tạm thời và bị hủy cùng job.
+      # Dữ liệu vừa build (web/data/dashboard_data.js|json) chỉ tồn tại trong
+      # runner và được publish thẳng lên Pages, KHÔNG commit vào git history.
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload dashboard (web/) as Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'web'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
