@@ -5,6 +5,10 @@ on:
     paths:
       - 'web/**'
       - 'code/**'
+      - 'Data/**'
+      - 'index.html'
+      - 'vercel.json'
+      - '.gitignore'
       - 'package*.json'
       - 'requirements*.txt'
       - '.github/workflows/deploy_dashboard.yml'
@@ -14,6 +18,10 @@ on:
     paths:
       - 'web/**'
       - 'code/**'
+      - 'Data/**'
+      - 'index.html'
+      - 'vercel.json'
+      - '.gitignore'
       - 'package*.json'
       - 'requirements*.txt'
       - '.github/workflows/deploy_dashboard.yml'
@@ -28,7 +36,6 @@ on:
     # 06:00 và 18:00 UTC+7 tương ứng 23:00 và 11:00 UTC.
     - cron: '0 23,11 * * *'
 
-# Mặc định chỉ đọc source. Job deploy tự nâng quyền riêng ở cấp job.
 permissions:
   contents: read
 
@@ -37,6 +44,67 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  repository-hygiene:
+    name: Reject production data in Git
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository without persisted credentials
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Reject changes under Data/ or web/data/
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA_PR: ${{ github.event.pull_request.base.sha }}
+          BASE_SHA_PUSH: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            BASE_SHA="$BASE_SHA_PR"
+          else
+            BASE_SHA="$BASE_SHA_PUSH"
+          fi
+
+          if [[ -z "${BASE_SHA:-}" || "$BASE_SHA" =~ ^0+$ ]]; then
+            echo "Không có base SHA để so sánh; bỏ qua guard cho event này."
+            exit 0
+          fi
+
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+
+          blocked=()
+          while IFS=$'\t' read -r status path renamed_path; do
+            [[ -z "${status:-}" ]] && continue
+            printf ' - %s\t%s%s\n' "$status" "$path" "${renamed_path:+ -> $renamed_path}"
+
+            # Cho phép PR hardening xóa dữ liệu đã tracked; chỉ chặn việc
+            # thêm/sửa hoặc rename dữ liệu nhạy cảm trở lại Git.
+            [[ "$status" == D* ]] && continue
+            candidate="$path"
+            if [[ "$status" == R* || "$status" == C* ]]; then
+              candidate="$renamed_path"
+            fi
+            if [[ "$candidate" == Data/* || "$candidate" == web/data/* ]]; then
+              blocked+=("$candidate")
+            fi
+          done < <(git diff --name-status "$BASE_SHA" "$GITHUB_SHA")
+
+          if (( ${#blocked[@]} > 0 )); then
+            printf 'ERROR: Không được commit dữ liệu nghiệp vụ/artifact sinh tự động vào Git:\n'
+            printf ' - %s\n' "${blocked[@]}"
+            echo 'Hãy lưu dữ liệu nguồn/output trong SharePoint hoặc approved storage.'
+            exit 1
+          fi
+
   test:
     name: Read-only CI
     if: >-
@@ -78,11 +146,14 @@ jobs:
 
   build-and-deploy:
     name: Cloud refresh from SharePoint and deploy to Pages
-    # Chỉ chạy trên main, khi đã bật ENABLE_PAGES_DEPLOY=true, và do lịch chạy
-    # hoặc do bấm tay (Run workflow) với deploy_now = true.
+    # Static Pages chỉ được phép publish khi:
+    # 1) ENABLE_PAGES_DEPLOY=true; và
+    # 2) WEB_DATA_CLASSIFICATION=public-or-sanitized.
+    # Không dùng GitHub Pages cho dữ liệu nội bộ/customer-level chưa được sanitize.
     if: >-
       github.ref == 'refs/heads/main' &&
       vars.ENABLE_PAGES_DEPLOY == 'true' &&
+      vars.WEB_DATA_CLASSIFICATION == 'public-or-sanitized' &&
       (github.event_name == 'schedule' ||
        (github.event_name == 'workflow_dispatch' && inputs.deploy_now))
     runs-on: ubuntu-latest
@@ -195,8 +266,6 @@ jobs:
       - name: Verify web JavaScript and regression tests
         run: npm run verify:web
 
-      # Dữ liệu vừa build (web/data/dashboard_data.js|json) chỉ tồn tại trong
-      # runner và được publish thẳng lên Pages, KHÔNG commit vào git history.
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 

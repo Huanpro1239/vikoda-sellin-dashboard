@@ -24,15 +24,26 @@ class MemoryStore {
   }
 }
 
-function makeAuth(clock) {
+function makeAuth(clock, passwordHash = 'a'.repeat(64)) {
   return new VikodaAuth({
     localStore: new MemoryStore(),
     sessionStore: new MemoryStore(),
     cryptoProvider: webcrypto,
+    passwordHash,
     now: () => clock.value,
     reload: () => {},
   });
 }
+
+test('unconfigured client gate defaults open because hosting is the real security boundary', async () => {
+  const clock = { value: 100 };
+  const auth = makeAuth(clock, '');
+
+  assert.equal(auth.isConfigured(), false);
+  assert.equal(auth.isAuthenticated(), true);
+  assert.equal(await auth.login('anything'), true);
+  assert.equal(auth.sessionStore.getItem(auth.STORAGE_KEY), null);
+});
 
 test('login stores a versioned, expiring session without plaintext credentials', async () => {
   const clock = { value: 1_000_000 };
