@@ -29,11 +29,13 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     env:
-      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID || secrets.MS_TENANT_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID || secrets.MS_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET || secrets.MS_CLIENT_SECRET }}
       SHAREPOINT_SITE_ID: ${{ secrets.SHAREPOINT_SITE_ID }}
       SHAREPOINT_DRIVE_ID: ${{ secrets.SHAREPOINT_DRIVE_ID }}
+      SHAREPOINT_HOSTNAME: ${{ vars.SHAREPOINT_HOSTNAME || 'vikodacomvn.sharepoint.com' }}
+      SHAREPOINT_SITE_PATH: ${{ vars.SHAREPOINT_SITE_PATH || '/sites/Planning' }}
 
     steps:
       - name: Checkout repository without persisted credentials
@@ -51,6 +53,9 @@ jobs:
 
       - name: Install pinned core dependencies
         run: python -m pip install --disable-pip-version-check --requirement requirements.txt
+
+      - name: Preflight cloud config and resolve SharePoint IDs
+        run: python code/common/sharepoint_bootstrap.py
 
       - name: Sync raw ERP data from SharePoint
         run: >-
