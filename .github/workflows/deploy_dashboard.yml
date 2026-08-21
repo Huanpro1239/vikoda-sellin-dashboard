@@ -54,7 +54,7 @@ jobs:
 
     steps:
       - name: Checkout repository without persisted credentials
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
           persist-credentials: false
@@ -118,7 +118,7 @@ jobs:
 
     steps:
       - name: Checkout repository without persisted credentials
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
           persist-credentials: false
@@ -171,7 +171,7 @@ jobs:
 
     steps:
       - name: Checkout repository without persisted credentials
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
           persist-credentials: false
