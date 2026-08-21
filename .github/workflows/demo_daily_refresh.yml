@@ -1,0 +1,124 @@
+name: Vikoda Demo Daily Refresh
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/demo_daily_refresh.yml'
+  workflow_dispatch:
+  schedule:
+    # 18:00 UTC+7 = 11:00 UTC
+    - cron: '0 11 * * *'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: vikoda-demo-pages-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh-and-deploy:
+    name: Refresh SharePoint data and deploy demo
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      SHAREPOINT_SITE_ID: ${{ secrets.SHAREPOINT_SITE_ID }}
+      SHAREPOINT_DRIVE_ID: ${{ secrets.SHAREPOINT_DRIVE_ID }}
+
+    steps:
+      - name: Checkout repository without persisted credentials
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install pinned core dependencies
+        run: python -m pip install --disable-pip-version-check --requirement requirements.txt
+
+      - name: Sync raw ERP data from SharePoint
+        run: >-
+          python code/Skill/skill-bao-cao/scripts/sharepoint_graph_sync.py
+          --action download
+          --folder "${{ vars.SHAREPOINT_ERP_FOLDER || 'Data ERP' }}"
+          --local-dir "Data/CloudInputs/ERP"
+          --require-cloud-auth
+
+      - name: Sync target data from SharePoint
+        run: >-
+          python code/Skill/skill-bao-cao/scripts/sharepoint_graph_sync.py
+          --action download
+          --folder "${{ vars.SHAREPOINT_TARGET_FOLDER || 'Target' }}"
+          --local-dir "Data/CloudInputs/Target"
+          --require-cloud-auth
+
+      - name: Sync customer catalog from SharePoint
+        run: >-
+          python code/Skill/skill-bao-cao/scripts/sharepoint_graph_sync.py
+          --action download
+          --folder "${{ vars.SHAREPOINT_CUSTOMER_FOLDER || 'Danh muc KH' }}"
+          --local-dir "Data/CloudInputs/DMKH"
+          --require-cloud-auth
+
+      - name: Sync product catalog from SharePoint
+        run: >-
+          python code/Skill/skill-bao-cao/scripts/sharepoint_graph_sync.py
+          --action download
+          --folder "${{ vars.SHAREPOINT_PRODUCT_FOLDER || 'Danh muc SP' }}"
+          --local-dir "Data/CloudInputs/DMSP"
+          --require-cloud-auth
+
+      - name: Execute strict Sell-In pipeline
+        run: >-
+          python code/Skill/skill-bao-cao/scripts/run_cloud_pipeline.py
+          --project-root .
+          --strict
+          --erp-source-dir "Data/CloudInputs/ERP"
+          --target-source-dir "Data/CloudInputs/Target"
+          --dmkh-source-dir "Data/CloudInputs/DMKH"
+          --product-catalog "Data/CloudInputs/DMSP/Danh Muc San Pham.xlsx"
+
+      - name: Finalize dashboard date from latest invoice
+        run: python code/common/finalize_data_dates.py --project-root .
+
+      - name: Run system health check
+        run: python code/health_check.py
+
+      - name: Run full Python test suite
+        run: python code/run_all_tests.py --quiet
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Verify web JavaScript and regression tests
+        run: npm run verify:web
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload dashboard as Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+
+      - name: Deploy demo to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
