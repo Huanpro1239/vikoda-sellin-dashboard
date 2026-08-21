@@ -33,8 +33,8 @@ on:
         type: boolean
         default: true
   schedule:
-    # 06:00 và 18:00 UTC+7 tương ứng 23:00 và 11:00 UTC.
-    - cron: '0 23,11 * * *'
+    # 18:00 UTC+7 tương ứng 11:00 UTC; chạy một lần mỗi ngày.
+    - cron: '0 11 * * *'
 
 permissions:
   contents: read
@@ -251,6 +251,9 @@ jobs:
           --target-source-dir "Data/CloudInputs/Target"
           --dmkh-source-dir "Data/CloudInputs/DMKH"
           --product-catalog "Data/CloudInputs/DMSP/Danh Muc San Pham.xlsx"
+
+      - name: Finalize dashboard date from latest invoice
+        run: python code/common/finalize_data_dates.py --project-root .
 
       - name: Run system health check
         run: python code/health_check.py
