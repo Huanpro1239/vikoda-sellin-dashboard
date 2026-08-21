@@ -1,21 +1,25 @@
 /**
- * VIKODA WEB DASHBOARD - LOCAL ACCESS GATE
+ * VIKODA WEB DASHBOARD - OPTIONAL LOCAL ACCESS GATE
  *
- * This module improves the local user experience only. Because the dashboard is
- * a static site, it is NOT a security boundary: confidential data must still be
- * protected by the hosting layer (for example Entra ID / an authenticated API).
+ * Đây chỉ là lớp UX cục bộ, KHÔNG phải security boundary. Dữ liệu nội bộ phải
+ * được bảo vệ bởi hosting/API có xác thực thật (ví dụ Entra ID / identity proxy).
+ * Không hard-code password/hash production trong source public.
  */
 
 class VikodaAuth {
   constructor(options = {}) {
-    // Keep only the legacy SHA-256 verifier; never embed plaintext passwords.
-    this.PASSWORD_HASH = '90515694a5e2f7bcae8841029c3f71c48f8a129d20c5d5e2e88a0b0d39e3cbe8';
+    const browserWindow = typeof window !== 'undefined' ? window : null;
+
+    // Optional UX-only gate. A deployment may inject a hash explicitly, but the
+    // presence of this hash must never be treated as server-side access control.
+    this.PASSWORD_HASH = options.passwordHash
+      || (browserWindow && browserWindow.VIKODA_ACCESS_GATE_HASH)
+      || '';
     this.STORAGE_KEY = 'vikoda_auth_session';
     this.SESSION_VERSION = 2;
     this.SESSION_TTL_MS = 8 * 60 * 60 * 1000;
     this.REMEMBER_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-    const browserWindow = typeof window !== 'undefined' ? window : null;
     this.localStore = options.localStore || (browserWindow && browserWindow.localStorage) || null;
     this.sessionStore = options.sessionStore || (browserWindow && browserWindow.sessionStorage) || null;
     this.cryptoProvider = options.cryptoProvider || globalThis.crypto;
@@ -23,6 +27,10 @@ class VikodaAuth {
     this.reload = options.reload || (() => {
       if (browserWindow && browserWindow.location) browserWindow.location.reload();
     });
+  }
+
+  isConfigured() {
+    return typeof this.PASSWORD_HASH === 'string' && /^[a-f0-9]{64}$/i.test(this.PASSWORD_HASH);
   }
 
   async sha256(message) {
@@ -70,10 +78,15 @@ class VikodaAuth {
   }
 
   isAuthenticated() {
+    // Không cấu hình client gate => không hiển thị lớp login giả bảo mật.
+    // Quyền truy cập phải do hosting quyết định.
+    if (!this.isConfigured()) return true;
     return this.readValidSession(this.sessionStore) || this.readValidSession(this.localStore);
   }
 
   async login(password, rememberMe = false) {
+    if (!this.isConfigured()) return true;
+
     const candidate = typeof password === 'string' ? password.trim() : '';
     if (!candidate) return false;
 
