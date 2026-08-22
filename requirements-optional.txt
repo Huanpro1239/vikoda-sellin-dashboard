@@ -5,4 +5,4 @@ python-docx==1.2.0
 # Required only by code/Skill/skill-bao-cao/scripts/pad_mcp_server.py.
 # That server uses the v1 FastMCP API; v2 is intentionally excluded until the
 # server is migrated and retested.
-mcp>=1.28,<2
+mcp>=2.0.0,<3
