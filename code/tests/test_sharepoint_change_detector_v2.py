@@ -6,10 +6,8 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 COMMON_DIR = PROJECT_ROOT / "code/common"
-SELLIN_DIR = PROJECT_ROOT / "code/Skill/sell-in-monthly/scripts"
-for folder in (COMMON_DIR, SELLIN_DIR):
-    if str(folder) not in sys.path:
-        sys.path.insert(0, str(folder))
+if str(COMMON_DIR) not in sys.path:
+    sys.path.insert(0, str(COMMON_DIR))
 
 import sharepoint_change_detector_v2 as detector
 
@@ -44,6 +42,12 @@ class SharePointChangeDetectorV2Tests(unittest.TestCase):
             "Vikoda_Sales_Data/Data ERP/readme.xlsx",
         ]
         self.assertEqual(["2026-07", "2026-08"], detector.erp_periods_from_paths(paths))
+
+    def test_filename_parser_is_lightweight_and_validates_period(self) -> None:
+        self.assertEqual("2026-08", detector.parse_erp_period_from_name("ERP_Vikoda_T8_2026.xlsx"))
+        self.assertEqual("2025-12", detector.parse_erp_period_from_name("ERP_VKD_T12_2025.xlsm"))
+        self.assertIsNone(detector.parse_erp_period_from_name("ERP_Vikoda_T13_2026.xlsx"))
+        self.assertIsNone(detector.parse_erp_period_from_name("readme.xlsx"))
 
 
 if __name__ == "__main__":
