@@ -32,11 +32,6 @@ on:
         required: true
         type: boolean
         default: true
-      publish_dashboard:
-        description: 'Publish sanitized dashboard to GitHub Pages'
-        required: true
-        type: boolean
-        default: true
   schedule:
     # Lightweight metadata poll. Expensive ETL only runs when SharePoint changes.
     - cron: '*/30 * * * *'
@@ -50,7 +45,7 @@ concurrency:
 
 jobs:
   repository-hygiene:
-    name: Reject production data in Git
+    name: Reject production data committed to Git
     if: github.event_name == 'pull_request' || github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -82,7 +77,7 @@ jobs:
           fi
           blocked="$(git diff --name-only "$BASE_SHA" "$GITHUB_SHA" | grep -E '^(Data/|web/data/)' || true)"
           if [[ -n "$blocked" ]]; then
-            echo "::error::Production data must not be committed to Git."
+            echo "::error::Runtime data must not be committed to Git. It is generated and published by the workflow instead."
             echo "$blocked"
             exit 1
           fi
@@ -140,7 +135,6 @@ jobs:
       source_changed: ${{ steps.source_change.outputs.changed }}
       change_reason: ${{ steps.source_change.outputs.reason }}
       rebuild_periods: ${{ steps.delta.outputs.rebuild_periods }}
-      pages_ready: ${{ steps.pages_gate.outputs.ready }}
     env:
       AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
       AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
@@ -149,7 +143,6 @@ jobs:
       SHAREPOINT_BASE_FOLDER: ${{ vars.SHAREPOINT_BASE_FOLDER || 'Vikoda_Sales_Data' }}
       PIPELINE_STATE_FILE: ${{ vars.SHAREPOINT_PIPELINE_STATE_FILE || '_vikoda_pipeline_state.json' }}
       INCREMENTAL_STATE_FILE: ${{ vars.SHAREPOINT_INCREMENTAL_STATE_FILE || '_vikoda_incremental_state.json' }}
-      PUBLISH_PAGES_REQUEST: ${{ github.event_name != 'workflow_dispatch' || inputs.publish_dashboard }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -346,33 +339,20 @@ jobs:
         if: steps.source_change.outputs.changed == 'true'
         run: npm run verify:web
 
-      - name: Evaluate GitHub Pages publication
-        id: pages_gate
+      - name: Verify full dashboard payload exists
         if: steps.source_change.outputs.changed == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          ready=false
-          [[ "${PUBLISH_PAGES_REQUEST:-false}" == "true" ]] && ready=true
-          echo "ready=$ready" >> "$GITHUB_OUTPUT"
-          echo "Sanitized GitHub Pages deploy: $ready"
+          test -s web/data/dashboard_data.json
+          test -s web/data/dashboard_data.js
+          echo "Full dashboard payload is ready for GitHub Pages."
 
-      - name: Build sanitized public GitHub Pages bundle
-        if: steps.source_change.outputs.changed == 'true' && steps.pages_gate.outputs.ready == 'true'
-        run: >-
-          python code/common/prepare_pages_dashboard.py
-          --source-dir web
-          --output-dir Data/CloudOutputs/GitHubPages
-
-      - name: Package sanitized GitHub Pages bundle
-        if: steps.source_change.outputs.changed == 'true' && steps.pages_gate.outputs.ready == 'true'
-        uses: actions/upload-artifact@v7
+      - name: Upload full dashboard as GitHub Pages artifact
+        if: steps.source_change.outputs.changed == 'true'
+        uses: actions/upload-pages-artifact@v5
         with:
-          name: github-pages-dashboard
-          path: Data/CloudOutputs/GitHubPages
-          retention-days: 1
-          if-no-files-found: error
-          include-hidden-files: true
+          path: web
 
       - name: Commit successful SharePoint source manifest
         if: steps.source_change.outputs.changed == 'true'
@@ -399,41 +379,28 @@ jobs:
             echo "- ERP periods changed: \`${{ steps.source_change.outputs.erp_periods || 'baseline/reconcile' }}\`"
             echo "- Data_Goc periods rebuilt: \`${{ steps.delta.outputs.rebuild_periods || 'none' }}\`"
             echo "- Data_Goc workbooks rebuilt: \`${{ steps.delta.outputs.rebuild_count || '0' }}\`"
-            echo "- Sanitized Pages bundle: \`${{ steps.pages_gate.outputs.ready || 'false' }}\`"
+            echo "- GitHub Pages payload: \`full dashboard data\`"
             echo "- SharePoint output: \`${SHAREPOINT_BASE_FOLDER}/Data_Goc\`"
             echo "- Commit: \`${GITHUB_SHA}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
   deploy-dashboard:
-    name: Deploy sanitized dashboard to GitHub Pages
+    name: Deploy full dashboard to GitHub Pages
     needs: [cloud-refresh]
     if: >-
       needs.cloud-refresh.result == 'success' &&
-      needs.cloud-refresh.outputs.source_changed == 'true' &&
-      needs.cloud-refresh.outputs.pages_ready == 'true'
+      needs.cloud-refresh.outputs.source_changed == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      actions: read
       pages: write
       id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Download sanitized dashboard bundle
-        uses: actions/download-artifact@v8
-        with:
-          name: github-pages-dashboard
-          path: pages-site
-
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
-
-      - name: Upload GitHub Pages artifact
-        uses: actions/upload-pages-artifact@v5
-        with:
-          path: pages-site
 
       - name: Deploy GitHub Pages
         id: deployment
