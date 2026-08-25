@@ -27,6 +27,7 @@ REQUIRED_WEB_FILES = (
     "js/executive-ui.js",
     "js/reference-analytics.js",
     "js/reference-fidelity-v4.js",
+    "js/reference-geography-v4.js",
     "js/auth.js",
 )
 
