@@ -179,7 +179,7 @@ jobs:
         run: >-
           python code/Skill/skill-bao-cao/scripts/sharepoint_graph_sync.py
           --action download
-          --folder "${{ vars.SHAREPOINT_ERP_FOLDER || 'Data ERP' }}"
+          --folder "${{ vars.SHAREPOINT_ERP_FOLDER || 'Vikoda_Sales_Data/Data ERP' }}"
           --local-dir "Data/CloudInputs/ERP"
           --require-cloud-auth
       - name: Download Target workbooks from SharePoint
