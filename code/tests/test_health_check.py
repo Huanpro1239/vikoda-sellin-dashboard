@@ -7,7 +7,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from code.health_check import DASHBOARD_JS_PREFIX, check_dashboard_data
+from code.health_check import (
+    DASHBOARD_JS_PREFIX,
+    REQUIRED_WEB_FILES,
+    check_dashboard_data,
+    check_web_files,
+)
 
 
 def payload() -> dict:
@@ -47,6 +52,12 @@ class DashboardHealthTests(unittest.TestCase):
             encoding="utf-8",
         )
 
+    def write_web_assets(self) -> None:
+        for relative in REQUIRED_WEB_FILES:
+            path = self.root / "web" / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("asset", encoding="utf-8")
+
     def test_matching_json_and_browser_payload_pass(self) -> None:
         self.write_artifacts(payload())
         self.assertTrue(check_dashboard_data(self.root))
@@ -70,6 +81,16 @@ class DashboardHealthTests(unittest.TestCase):
             encoding="utf-8",
         )
         self.assertFalse(check_dashboard_data(self.root))
+
+    def test_current_dashboard_assets_pass(self) -> None:
+        self.write_web_assets()
+        self.assertTrue(check_web_files(self.root))
+
+    def test_missing_current_dashboard_asset_fails(self) -> None:
+        self.write_web_assets()
+        missing = self.root / "web/css/vikoda-powerbi-theme.css"
+        missing.unlink()
+        self.assertFalse(check_web_files(self.root))
 
 
 if __name__ == "__main__":
