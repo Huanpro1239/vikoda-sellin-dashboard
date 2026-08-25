@@ -21,6 +21,7 @@ REQUIRED_WEB_FILES = (
     "css/vikoda-powerbi-theme.css",
     "css/reference-dashboard-v3.css",
     "css/reference-fidelity-v4.css",
+    "css/page05-sale-v5.css",
     "js/app.js",
     "js/charts.js",
     "js/data-engine.js",
@@ -28,6 +29,7 @@ REQUIRED_WEB_FILES = (
     "js/reference-analytics.js",
     "js/reference-fidelity-v4.js",
     "js/reference-geography-v4.js",
+    "js/page05-sale-v5.js",
     "js/auth.js",
 )
 
