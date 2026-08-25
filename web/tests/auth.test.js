@@ -24,7 +24,7 @@ class MemoryStore {
   }
 }
 
-function makeAuth(clock, passwordHash = 'a'.repeat(64)) {
+function makeAuth(clock, passwordHash = 'a'.repeat(64), extra = {}) {
   return new VikodaAuth({
     localStore: new MemoryStore(),
     sessionStore: new MemoryStore(),
@@ -32,6 +32,7 @@ function makeAuth(clock, passwordHash = 'a'.repeat(64)) {
     passwordHash,
     now: () => clock.value,
     reload: () => {},
+    ...extra,
   });
 }
 
@@ -88,4 +89,17 @@ test('logout clears both storage scopes', () => {
 
   assert.equal(auth.localStore.getItem(auth.STORAGE_KEY), null);
   assert.equal(auth.sessionStore.getItem(auth.STORAGE_KEY), null);
+});
+
+test('Azure Static Web Apps logout uses the platform auth endpoint', () => {
+  const clock = { value: 10_000 };
+  let target = '';
+  const auth = makeAuth(clock, '', {
+    staticWebAppAuth: true,
+    navigate: (url) => { target = url; },
+  });
+
+  auth.logout();
+
+  assert.equal(target, '/.auth/logout?post_logout_redirect_uri=/login.html');
 });
