@@ -136,6 +136,7 @@ jobs:
       SHAREPOINT_DRIVE_ID: ${{ vars.SHAREPOINT_DRIVE_ID || secrets.SHAREPOINT_DRIVE_ID }}
       SHAREPOINT_HOSTNAME: ${{ vars.SHAREPOINT_HOSTNAME || 'vikodacomvn.sharepoint.com' }}
       SHAREPOINT_SITE_PATH: ${{ vars.SHAREPOINT_SITE_PATH || '/sites/Planning' }}
+      SHAREPOINT_BASE_FOLDER: ${{ vars.SHAREPOINT_BASE_FOLDER || 'Vikoda_Sales_Data' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -179,28 +180,28 @@ jobs:
         run: >-
           python code/Skill/skill-bao-cao/scripts/sharepoint_graph_sync.py
           --action download
-          --folder "Vikoda_Sales_Data/Data ERP"
+          --folder "${SHAREPOINT_BASE_FOLDER}/Data ERP"
           --local-dir "Data/CloudInputs/ERP"
           --require-cloud-auth
       - name: Download Target workbooks from SharePoint
         run: >-
           python code/Skill/skill-bao-cao/scripts/sharepoint_graph_sync.py
           --action download
-          --folder "${{ vars.SHAREPOINT_TARGET_FOLDER || 'Target' }}"
+          --folder "${SHAREPOINT_BASE_FOLDER}/Target"
           --local-dir "Data/CloudInputs/Target"
           --require-cloud-auth
       - name: Download customer catalog from SharePoint
         run: >-
           python code/Skill/skill-bao-cao/scripts/sharepoint_graph_sync.py
           --action download
-          --folder "${{ vars.SHAREPOINT_CUSTOMER_FOLDER || 'Danh muc KH' }}"
+          --folder "${SHAREPOINT_BASE_FOLDER}/Danh muc KH"
           --local-dir "Data/CloudInputs/DMKH"
           --require-cloud-auth
       - name: Download product catalog from SharePoint
         run: >-
           python code/Skill/skill-bao-cao/scripts/sharepoint_graph_sync.py
           --action download
-          --folder "${{ vars.SHAREPOINT_PRODUCT_FOLDER || 'Danh muc SP' }}"
+          --folder "${SHAREPOINT_BASE_FOLDER}/Danh muc SP"
           --local-dir "Data/CloudInputs/DMSP"
           --require-cloud-auth
       - name: Execute strict Sell-In cloud pipeline
@@ -231,7 +232,7 @@ jobs:
         run: >-
           python code/Skill/skill-bao-cao/scripts/sharepoint_graph_sync.py
           --action upload
-          --folder "${{ vars.SHAREPOINT_DATA_GOC_FOLDER || 'Data_Goc' }}"
+          --folder "${SHAREPOINT_BASE_FOLDER}/Data_Goc"
           --local-dir "Data/Data_Goc"
           --require-cloud-auth
       - name: Package approved dashboard for controlled deployment
