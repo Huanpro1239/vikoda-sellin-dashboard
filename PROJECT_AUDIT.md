@@ -1,10 +1,13 @@
-# BÁO CÁO AUDIT HỆ THỐNG VIKODA SELL-IN DASHBOARD
+# BÁO CÁO AUDIT HỆ THỐNG VIKODA SELL-IN DATA PLATFORM
 
 **Repository:** `Huanpro1239/vikoda-sellin-dashboard`  
-**Ngày cập nhật:** 25/08/2026  
-**Phạm vi:** Kiến trúc dữ liệu, CI/CD, SharePoint, OIDC, bảo mật và repo hygiene
+**Ngày audit:** 25/08/2026  
+**Trạng thái:** **PRODUCTION CLOUD PIPELINE VALIDATED**  
+**Phạm vi:** SharePoint, Microsoft Graph, GitHub OIDC, CI/CD, Python ETL, Data_Goc upload, bảo mật và repository hygiene.
 
-## 1. Kiến trúc hiện hành
+## 1. Kết luận điều hành
+
+Hệ thống production đã được xác nhận end-to-end với kiến trúc:
 
 ```text
 SharePoint Online
@@ -13,7 +16,7 @@ Microsoft Graph
     ↓
 GitHub Actions OIDC
     ↓
-Microsoft Entra
+Microsoft Entra ID
     ↓
 Python ETL --strict
     ↓
@@ -23,31 +26,46 @@ Data/Data_Goc
     ↓
 Microsoft Graph Upload
     ↓
-SharePoint/Data_Goc
+SharePoint/Vikoda_Sales_Data/Data_Goc
 ```
 
-Không có Power Automate/Flow/webhook trung gian và không dùng Azure Client Secret dài hạn trong pipeline production.
+Production path **không dùng Power Automate/Flow/webhook trung gian** và **không dùng Azure Client Secret dài hạn**.
 
-## 2. Workflow
+## 2. Bằng chứng end-to-end
 
-Workflow chính:
+Manual production validation:
 
 ```text
-.github/workflows/vikoda_pipeline.yml
+Workflow: Vikoda Sell-In Pipeline
+Run: #29
+Run ID: 32869379937
+Branch: main
+Head SHA: 15385e92543fa409f1e96c126ee489f5356d5626
+Conclusion: success
 ```
 
-| Event | Hành vi |
-|---|---|
-| Pull request | Repository hygiene + read-only CI |
-| Push `main` | Repository hygiene + read-only CI |
-| Schedule 18:00 VN | CI → OIDC login → SharePoint refresh → ETL → upload `Data_Goc` |
-| Manual | Refresh ngay; publish dashboard chỉ khi được phê duyệt |
+Cloud job đã xác nhận:
 
-Cloud job có `id-token: write`; PR/push test không có quyền này.
+```text
+Validate Microsoft OIDC configuration          PASS
+Azure login with GitHub OIDC                   PASS
+Resolve SharePoint site and drive IDs           PASS
+Download ERP workbooks from SharePoint          PASS
+Download Target workbooks from SharePoint       PASS
+Download customer catalog from SharePoint       PASS
+Download product catalog from SharePoint        PASS
+Execute strict Sell-In cloud pipeline            PASS
+Finalize dashboard date from latest invoice     PASS
+Run system health check                          PASS
+Verify processed Data_Goc workbooks exist       PASS
+Upload processed Data_Goc to SharePoint          PASS
+```
+
+Run này xác nhận pipeline có thể đọc nguồn thật từ SharePoint, chạy ETL, validation/health check và ghi output trở lại SharePoint mà không cần máy cá nhân.
 
 ## 3. Xác thực Microsoft
 
-Mô hình cloud dùng:
+Mô hình hiện hành:
 
 ```text
 GitHub OIDC token
@@ -58,7 +76,15 @@ GitHub OIDC token
 → Microsoft Graph token
 ```
 
-GitHub chỉ cần Repository Variables:
+Federated identity production:
+
+```text
+Issuer: https://token.actions.githubusercontent.com
+Subject: repo:Huanpro1239@213777839/vikoda-sellin-dashboard@1333996723:ref:refs/heads/main
+Audience: api://AzureADTokenExchange
+```
+
+GitHub chỉ cần hai Repository Variables bắt buộc:
 
 ```text
 AZURE_TENANT_ID
@@ -67,89 +93,130 @@ AZURE_CLIENT_ID
 
 Không cần `AZURE_CLIENT_SECRET`.
 
-Federated credential chuẩn:
+## 4. SharePoint contract
+
+Production base folder:
 
 ```text
-Issuer: https://token.actions.githubusercontent.com
-Subject: repo:Huanpro1239/vikoda-sellin-dashboard:ref:refs/heads/main
-Audience: api://AzureADTokenExchange
+Vikoda_Sales_Data
 ```
 
-## 4. SharePoint authorization
+Folder mapping đã được xác nhận:
 
-Khuyến nghị:
+```text
+Vikoda_Sales_Data/Data ERP
+Vikoda_Sales_Data/Target
+Vikoda_Sales_Data/DanhMuc_KH
+Vikoda_Sales_Data/DanhMuc_SP
+Vikoda_Sales_Data/Data_Goc
+```
+
+`sharepoint_bootstrap.py` tự resolve site ID và default drive ID ở cloud run; không cần pin hai ID này trong GitHub Settings.
+
+## 5. Authorization
+
+Mô hình least-privilege:
 
 ```text
 Microsoft Graph Application permission: Sites.Selected
 Planning site role: write
 ```
 
-`code/common/sharepoint_bootstrap.py` tự resolve site ID và default drive ID khi không cấu hình sẵn.
+Không có yêu cầu production hiện tại để mở rộng sang quyền tenant-wide.
 
-## 5. Kiểm soát dữ liệu
+## 6. CI/CD và separation of duties
 
-- Không commit workbook production trong `Data/`.
-- Không commit payload production trong `web/data/`.
-- Không lưu `.env`, access token hoặc credential dài hạn trong repository.
-- Cloud pipeline fail-closed nếu thiếu OIDC config, SharePoint ID không resolve được hoặc không có workbook hợp lệ.
-- `run_cloud_pipeline.py --strict` yêu cầu artifact của chính lượt chạy hiện tại.
-- `Data_Goc` chỉ được upload sau ETL và health check thành công.
-
-## 6. Dashboard hosting
-
-Static hosting không phải ranh giới bảo mật cho dữ liệu nội bộ. Job publish chỉ chạy khi đồng thời có:
+Workflow duy nhất:
 
 ```text
-ENABLE_PAGES_DEPLOY=true
-WEB_DATA_CLASSIFICATION=public-or-sanitized
+.github/workflows/vikoda_pipeline.yml
 ```
 
-và manual workflow chọn `publish_dashboard=true`.
+| Event | Hành vi |
+|---|---|
+| Pull request | Repository hygiene + read-only CI |
+| Push `main` | Repository hygiene + read-only CI |
+| Schedule 18:00 VN | CI → OIDC → SharePoint → ETL → Data_Goc upload |
+| Manual | Refresh ngay; dashboard publish là opt-in |
 
-## 7. Trạng thái test cần xác nhận sau thay đổi OIDC
+Quyền mặc định là `contents: read`. Chỉ cloud job có `id-token: write`; chỉ deploy job có Pages permissions.
 
-CI push phải xác nhận:
+## 7. Data controls
+
+Các kiểm soát đang có:
+
+- `Data/` và `web/data/` production không được commit.
+- `.env`, token và credential dài hạn không được commit.
+- `run_cloud_pipeline.py --strict` yêu cầu artifact hợp lệ của lượt chạy hiện tại.
+- Thiếu workbook nguồn hoặc Graph configuration hợp lệ thì pipeline fail-closed.
+- `Data_Goc` chỉ upload sau ETL, finalization và health check thành công.
+- Upload Graph kiểm tra HTTP success, tên file và remote size hợp lệ; workbook Office cho phép server-side metadata làm size thay đổi.
+- Dashboard không tự publish trong scheduled refresh.
+
+## 8. Dashboard security gate
+
+Pages deploy chỉ được phép khi đồng thời:
 
 ```text
-Repository hygiene: PASS
-Python test suite: PASS
-Web regression: PASS
-Cloud refresh on push: SKIPPED
-Dashboard deploy on push: SKIPPED
+manual input: publish_dashboard = true
+ENABLE_PAGES_DEPLOY = true
+WEB_DATA_CLASSIFICATION = public-or-sanitized
 ```
 
-Sau đó cần manual end-to-end test để xác nhận:
+Static hosting không được xem là access control cho dữ liệu nội bộ.
+
+## 9. Repository hygiene
+
+Trạng thái current tree:
+
+- Production workbooks không thuộc current source tree.
+- `.gitignore` và workflow hygiene chặn thay đổi dưới `Data/` và `web/data/`.
+- `SECURITY.md` cảnh báo rõ về dữ liệu lịch sử trong public Git.
+- Dependabot đang theo dõi `pip` và `github-actions` hàng tuần.
+- `CODEOWNERS` đã tồn tại.
+- `AGENTS.md` được dùng làm guardrail để automation/AI không reintroduce kiến trúc legacy.
+
+## 10. Rủi ro còn lại / non-blocking follow-up
+
+### A. `main` hiện chưa bật branch protection
+
+Tại thời điểm audit, GitHub báo `main` chưa được protected. Đây không chặn production pipeline nhưng là hardening nên cân nhắc:
 
 ```text
-OIDC login: PASS
-Graph site/drive resolve: PASS
-SharePoint downloads: PASS
-ETL: PASS
-Data_Goc upload: PASS
+Require pull request before merge
+Require status checks
+Block force pushes
 ```
 
-## 8. Việc còn phải hoàn tất trước production cloud
+Không bật tự động trong đợt audit này để tránh thay đổi workflow phát triển hiện tại khi chưa có phê duyệt riêng.
 
-1. Tạo Federated Credential cho repo/branch `main` trong Entra App.
-2. Tạo Repository Variables `AZURE_TENANT_ID` và `AZURE_CLIENT_ID`.
-3. Xác nhận `Sites.Selected` đã Admin consent.
-4. Xác nhận app có `write` trên site `Planning`.
-5. Chạy manual workflow với `run_cloud_refresh=true`, `publish_dashboard=false`.
-6. Kiểm tra `Data_Goc` trên SharePoint có Modified time mới.
+### B. Repository là public nhưng mã nguồn có proprietary notice
 
-## 9. Kiểm tra local
+Public visibility không đồng nghĩa cấp license. Tuy nhiên nếu production data từng tồn tại trong Git history, cần xử lý như security incident riêng; `.gitignore` không xóa dữ liệu lịch sử, fork hoặc cache.
 
-```bash
-python -m pip install -r requirements.txt
-python code/run_all_tests.py --quiet
-npm run verify:web
-python code/health_check.py
+### C. Dashboard Pages đang cố ý gated
+
+Đây là control, không phải lỗi. Chỉ bật khi dữ liệu đã sanitize và có phê duyệt.
+
+### D. Folder contract cần được quản lý như interface
+
+Rename `Data ERP`, `Target`, `DanhMuc_KH`, `DanhMuc_SP` hoặc `Data_Goc` phải đi kèm code/doc update và manual end-to-end validation.
+
+## 11. Definition of Done cho thay đổi production
+
+Một thay đổi chỉ được xem là hoàn tất khi:
+
+```text
+Repository hygiene       PASS
+Python test suite        PASS
+Web regression           PASS
+Cloud refresh manual     PASS
+OIDC login               PASS
+All SharePoint downloads PASS
+Strict ETL               PASS
+Health check             PASS
+Data_Goc upload          PASS
 ```
 
-Khi test Microsoft Graph local:
-
-```bash
-az login --tenant <AZURE_TENANT_ID> --allow-no-subscriptions
-```
-
-Chi tiết xem [`HUONG_DAN_SHAREPOINT_GITHUB_ACTIONS.md`](HUONG_DAN_SHAREPOINT_GITHUB_ACTIONS.md).
+Chi tiết vận hành: [`HUONG_DAN_SHAREPOINT_GITHUB_ACTIONS.md`](HUONG_DAN_SHAREPOINT_GITHUB_ACTIONS.md).  
+Security policy: [`SECURITY.md`](SECURITY.md).

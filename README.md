@@ -1,298 +1,272 @@
-# VIKODA SELL-IN MANAGEMENT & AUTOMATION PLATFORM
+<div align="center">
 
-Nền tảng xử lý, đối soát và báo cáo Sell-In của Vikoda theo kiến trúc cloud không phụ thuộc máy tính cá nhân.
+# VIKODA SELL-IN DATA PLATFORM
 
-> **Kiến trúc chính thức:** SharePoint Online → Microsoft Graph → GitHub Actions OIDC → Python ETL → SharePoint `Data_Goc`.
+**SharePoint → Microsoft Graph → GitHub Actions OIDC → Python ETL → Excel / Dashboard**
+
+Nền tảng tự động hóa Sell-In theo hướng **secretless, fail-closed và cloud-first**: đọc dữ liệu nghiệp vụ từ SharePoint, xử lý bằng Python, kiểm tra chất lượng và ghi workbook đã chuẩn hóa trở lại SharePoint mà không cần Power Automate/Flow trung gian.
+
+[![Vikoda Sell-In Pipeline](https://github.com/Huanpro1239/vikoda-sellin-dashboard/actions/workflows/vikoda_pipeline.yml/badge.svg)](https://github.com/Huanpro1239/vikoda-sellin-dashboard/actions/workflows/vikoda_pipeline.yml)
+![Python](https://img.shields.io/badge/Python-3.12-3776AB)
+![Auth](https://img.shields.io/badge/Auth-GitHub%20OIDC%20%2B%20Entra-0078D4)
+![Graph](https://img.shields.io/badge/API-Microsoft%20Graph-00A4EF)
+![Power Automate](https://img.shields.io/badge/Power%20Automate-not%20required-success)
+![License](https://img.shields.io/badge/license-proprietary-important)
+
+</div>
+
+> **Production architecture:** SharePoint Online → Microsoft Graph → GitHub Actions OIDC → Python ETL → SharePoint `Data_Goc`.
 >
-> Dự án không dùng Power Automate/Flow/webhook trung gian và không dùng Azure Client Secret dài hạn.
+> **Security model:** không dùng Azure Client Secret dài hạn; production data không được commit vào Git; dashboard chỉ được publish khi đã phân loại `public-or-sanitized`.
 
-## 1. Mục tiêu hệ thống
+## Tại sao dự án này đáng chú ý?
 
-Hệ thống tự động hóa các công việc sau:
+| Vấn đề | Cách dự án xử lý |
+|---|---|
+| Tự động hóa SharePoint nhưng không muốn phụ thuộc Power Automate Premium | GitHub Actions + Microsoft Graph |
+| Không muốn lưu Client Secret dài hạn | GitHub OIDC + Microsoft Entra Federated Credential |
+| Excel nguồn nhiều tháng, nhiều file | Python ETL chuẩn hóa và sinh workbook theo kỳ |
+| Sợ pipeline dùng dữ liệu cũ rồi báo xanh giả | Thiết kế **fail-closed** và `--strict` |
+| Cần bảo vệ dữ liệu khách hàng/doanh thu | Production data chỉ tồn tại ở SharePoint và runner tạm thời |
+| Cần dashboard nhưng không muốn vô tình public dữ liệu nội bộ | Pages deployment có 3 lớp gate |
+| Muốn vận hành không phụ thuộc máy cá nhân | Schedule chạy trên GitHub-hosted runner |
 
-- Đọc file ERP từ SharePoint `Data ERP`.
-- Đọc Target, danh mục khách hàng và danh mục sản phẩm từ SharePoint.
-- Chuẩn hóa và tách dữ liệu Sell-In theo tháng.
-- Sinh các workbook `Sell in TMM_YYYY.xlsx`.
-- Tạo báo cáo tổng hợp `Bao_Cao_Sell_in.xlsx` và dữ liệu Web Dashboard.
-- Chạy validation, health check và test trước khi ghi đầu ra.
-- Upload các workbook đã xử lý về SharePoint `Data_Goc`.
-- Cho phép publish dashboard có kiểm soát khi dữ liệu đã được phân loại là public/sanitized.
-
-## 2. Kiến trúc vận hành chuẩn
+## Kiến trúc trong 60 giây
 
 ```mermaid
 flowchart LR
-    ERP[ERP] --> SP1[SharePoint / Data ERP]
-    TGT[Target] --> SP2[SharePoint / Target]
-    KH[Danh mục KH] --> SP3[SharePoint / Danh muc KH]
-    SP4[Danh mục SP] --> DMSP[SharePoint / Danh muc SP]
+    subgraph SP[SharePoint Online · Vikoda_Sales_Data]
+      ERP[Data ERP]
+      TGT[Target]
+      KH[DanhMuc_KH]
+      SPDM[DanhMuc_SP]
+      OUT[Data_Goc]
+    end
 
-    SP1 --> GRAPH[Microsoft Graph]
-    SP2 --> GRAPH
-    SP3 --> GRAPH
-    DMSP --> GRAPH
+    GH[GitHub Actions] -->|OIDC| ENTRA[Microsoft Entra ID]
+    ENTRA -->|short-lived token| GRAPH[Microsoft Graph]
 
-    GITHUB[GitHub Actions] -->|OIDC| ENTRA[Microsoft Entra]
-    ENTRA --> GRAPH
-    GRAPH --> ETL[Python ETL]
+    ERP --> GRAPH
+    TGT --> GRAPH
+    KH --> GRAPH
+    SPDM --> GRAPH
+
+    GRAPH --> ETL[Python ETL --strict]
     ETL --> QC[Validation + Health Check]
-    QC --> OUT1[Data/Data_Goc]
-    QC --> OUT2[Bao_Cao_Sell_in.xlsx]
-    QC --> WEB[web/data]
-    OUT1 --> GRAPH2[Microsoft Graph Upload]
-    GRAPH2 --> SPG[SharePoint / Data_Goc]
+    QC --> EXCEL[Monthly Excel outputs]
+    QC --> WEB[Dashboard data]
+    EXCEL --> GRAPH
+    GRAPH --> OUT
 
-    WEB -. chỉ khi được phê duyệt .-> PAGES[Dashboard Hosting]
+    WEB -. manual + approved only .-> PAGES[GitHub Pages]
 ```
 
-### Nguyên tắc vận hành
+### 6 nguyên tắc thiết kế
 
-1. **SharePoint là nguồn dữ liệu nghiệp vụ.** Không dùng Git làm nơi lưu workbook sản xuất.
-2. **GitHub Actions là bộ lập lịch và máy chạy ETL.** Lịch mặc định là 18:00 giờ Việt Nam (`11:00 UTC`).
-3. **GitHub OIDC là cơ chế xác thực cloud.** Không lưu Client Secret dài hạn trong GitHub.
-4. **Microsoft Graph là lớp đồng bộ hai chiều.** App Entra ID chỉ được cấp quyền cần thiết cho site `Planning`.
-5. **Pipeline fail-closed.** Thiếu cấu hình, thiếu workbook nguồn hoặc validation không đạt thì dừng; không dùng dữ liệu cũ để báo xanh giả.
-6. **Dashboard không tự động công khai dữ liệu nội bộ.** Publish chỉ chạy khi có cờ phê duyệt rõ ràng.
+1. **SharePoint là source of truth.** Git không phải kho workbook production.
+2. **OIDC thay cho secret dài hạn.** GitHub nhận token ngắn hạn từ Entra cho đúng repository/branch.
+3. **Graph là lớp I/O duy nhất của cloud pipeline.** Không dùng Flow/webhook trung gian.
+4. **ETL fail-closed.** Thiếu nguồn, sai cấu hình hoặc validation lỗi thì dừng.
+5. **CI và production tách quyền.** PR/push chỉ `contents: read`; cloud job mới có `id-token: write`.
+6. **Publish là opt-in.** Dữ liệu nội bộ không tự động được đưa lên static hosting.
 
-## 3. Workflow GitHub Actions
+## Cấu trúc SharePoint production
 
-Dự án sử dụng một workflow chính:
+Tên thư mục là một phần của interface giữa SharePoint và pipeline:
+
+```text
+Shared Documents/
+└── Vikoda_Sales_Data/
+    ├── Data ERP/
+    ├── Target/
+    ├── DanhMuc_KH/
+    │   └── Thong tin khach hang.xlsx
+    ├── DanhMuc_SP/
+    │   └── Danh Muc San Pham.xlsx
+    └── Data_Goc/
+```
+
+`Data_Goc` là đích ghi các workbook Sell-In đã xử lý. Pipeline không commit các file này trở lại repository.
+
+## Quy trình production
+
+```text
+1. Checkout + install dependencies
+2. Validate AZURE_CLIENT_ID / AZURE_TENANT_ID
+3. azure/login bằng GitHub OIDC
+4. Resolve SharePoint site + default drive
+5. Download Data ERP
+6. Download Target
+7. Download DanhMuc_KH
+8. Download DanhMuc_SP
+9. run_cloud_pipeline.py --strict
+10. finalize_data_dates.py
+11. health_check.py
+12. Verify Data/Data_Goc/*.xlsx
+13. Upload Data_Goc qua Microsoft Graph
+```
+
+### Trigger
+
+| Trigger | Mục đích | Cloud access |
+|---|---|---:|
+| Pull request | Repository hygiene + Python/Web regression tests | Không |
+| Push `main` | Read-only CI | Không |
+| Schedule `11:00 UTC` | Refresh production lúc **18:00 Việt Nam** | Có |
+| Manual dispatch | Refresh ngay; tùy chọn publish dashboard | Có |
+
+Workflow duy nhất:
 
 ```text
 .github/workflows/vikoda_pipeline.yml
 ```
 
-| Trigger | Mục đích | OIDC/SharePoint |
-|---|---|---|
-| Pull request | Kiểm tra code, test, chặn dữ liệu sản xuất vào Git | Không |
-| Push `main` | CI kiểm tra code | Không |
-| Schedule 18:00 VN | Refresh dữ liệu SharePoint → ETL → upload `Data_Goc` | Có |
-| Manual dispatch | Refresh ngay; tùy chọn publish dashboard đã được phê duyệt | Có |
+## Quick start cho quản trị viên
 
-### Pipeline cloud
+Cấu hình một lần theo [`HUONG_DAN_SHAREPOINT_GITHUB_ACTIONS.md`](HUONG_DAN_SHAREPOINT_GITHUB_ACTIONS.md). Sau đó để chạy ngay:
 
 ```text
-Validate OIDC configuration
-        ↓
-azure/login (GitHub OIDC)
-        ↓
-Resolve SharePoint site/drive
-        ↓
-Download Data ERP / Target / DMKH / DMSP
-        ↓
-run_cloud_pipeline.py --strict
-        ↓
-finalize_data_dates.py
-        ↓
-health_check.py
-        ↓
-Verify Data/Data_Goc/*.xlsx
-        ↓
-Upload Data_Goc → SharePoint
-```
+GitHub
+→ Actions
+→ Vikoda Sell-In Pipeline
+→ Run workflow
 
-## 4. Microsoft Entra ID + GitHub OIDC
-
-App gợi ý:
-
-```text
-vikoda-sellin-github-actions
-```
-
-Supported account type:
-
-```text
-Accounts in this organizational directory only (Single tenant)
-```
-
-### Federated Credential bắt buộc
-
-Trong Entra App:
-
-```text
-Certificates & secrets
-→ Federated credentials
-→ Add credential
-→ GitHub Actions deploying Azure resources
-```
-
-Cấu hình cho repository này:
-
-```text
-Organization: Huanpro1239
-Repository: vikoda-sellin-dashboard
-Entity type: Branch
-GitHub branch name: main
-```
-
-Federated credential tương ứng có:
-
-```text
-Issuer: https://token.actions.githubusercontent.com
-Subject: repo:Huanpro1239/vikoda-sellin-dashboard:ref:refs/heads/main
-Audience: api://AzureADTokenExchange
-```
-
-Không cần tạo `AZURE_CLIENT_SECRET`.
-
-## 5. GitHub Repository Variables
-
-Vào:
-
-```text
-Settings → Secrets and variables → Actions → Variables
-```
-
-Tạo hai biến OIDC bắt buộc:
-
-```text
-AZURE_TENANT_ID=<Directory tenant ID>
-AZURE_CLIENT_ID=<Application client ID của vikoda-sellin-github-actions>
-```
-
-Hai ID này là identifier, không phải mật khẩu nên có thể lưu dưới Repository Variables.
-
-Tạo thêm các biến SharePoint:
-
-```text
-SHAREPOINT_HOSTNAME=vikodacomvn.sharepoint.com
-SHAREPOINT_SITE_PATH=/sites/Planning
-SHAREPOINT_ERP_FOLDER=Data ERP
-SHAREPOINT_TARGET_FOLDER=Target
-SHAREPOINT_CUSTOMER_FOLDER=Danh muc KH
-SHAREPOINT_PRODUCT_FOLDER=Danh muc SP
-SHAREPOINT_DATA_GOC_FOLDER=Data_Goc
-```
-
-`SHAREPOINT_SITE_ID` và `SHAREPOINT_DRIVE_ID` là tùy chọn; `code/common/sharepoint_bootstrap.py` sẽ tự resolve nếu để trống.
-
-## 6. Quyền SharePoint
-
-Khuyến nghị Microsoft Graph Application permission:
-
-```text
-Sites.Selected
-```
-
-Sau khi Admin consent, cấp riêng app quyền:
-
-```text
-Site: https://vikodacomvn.sharepoint.com/sites/Planning
-Role: write
-```
-
-Không cấp quyền rộng hơn nếu không có yêu cầu nghiệp vụ rõ ràng.
-
-## 7. Cấu trúc dữ liệu
-
-```text
-SharePoint / Planning
-├── Data ERP/
-├── Target/
-├── Danh muc KH/
-├── Danh muc SP/
-└── Data_Goc/
-```
-
-Trong GitHub runner, dữ liệu tạm nằm ở:
-
-```text
-Data/CloudInputs/ERP
-Data/CloudInputs/Target
-Data/CloudInputs/DMKH
-Data/CloudInputs/DMSP
-Data/Data_Goc
-Data/File bao cao
-web/data
-```
-
-Các thư mục dữ liệu sản xuất không được commit trở lại repository.
-
-## 8. Sử dụng theo vai trò
-
-### Sales Admin / Kế toán
-
-1. Xuất file ERP theo định dạng pipeline hỗ trợ.
-2. Upload file vào SharePoint `Data ERP`.
-3. Không đổi tên/cấu trúc các thư mục SharePoint khi chưa cập nhật Repository Variables.
-4. Chờ lần refresh kế tiếp hoặc yêu cầu quản trị viên chạy workflow thủ công.
-5. Kiểm tra `Data_Goc` sau khi workflow hoàn tất.
-
-### Quản trị hệ thống
-
-Chạy ngay:
-
-```text
-GitHub → Actions → Vikoda Sell-In Pipeline → Run workflow
-```
-
-Giữ:
-
-```text
 run_cloud_refresh = true
 publish_dashboard = false
 ```
 
-Chỉ bật `publish_dashboard = true` khi đồng thời đã cấu hình:
+Kết quả đúng:
 
 ```text
-ENABLE_PAGES_DEPLOY=true
-WEB_DATA_CLASSIFICATION=public-or-sanitized
+Read-only CI                                   PASS
+Refresh SharePoint and rebuild Sell-In outputs PASS
+Deploy approved dashboard                     SKIPPED
 ```
 
-Nếu dữ liệu chứa khách hàng, doanh thu chi tiết hoặc thông tin nội bộ chưa sanitize thì **không publish lên static hosting**.
+`SKIPPED` ở dashboard là trạng thái mong muốn khi `publish_dashboard=false`.
 
-### Chạy local
+## Cấu hình tối thiểu
 
-Cài dependency:
+Repository Variables bắt buộc:
 
-```bash
-py -3.12 -m pip install -r requirements.txt
+```text
+AZURE_TENANT_ID = <Directory tenant ID>
+AZURE_CLIENT_ID = <Application client ID>
 ```
 
-Đăng nhập Azure CLI:
+Không cần và production workflow không đọc:
 
-```bash
-az login --tenant <AZURE_TENANT_ID> --allow-no-subscriptions
+```text
+AZURE_CLIENT_SECRET
 ```
 
-Sau đó có thể chạy bootstrap/Graph hoặc ETL local theo nhu cầu. OneDrive Sync + watcher PowerShell chỉ là phương án dự phòng trên Windows, không phải luồng cloud chính.
+Các biến SharePoint có default trong workflow và chỉ cần tạo khi muốn override:
 
-## 9. Kiểm thử
+```text
+SHAREPOINT_HOSTNAME
+SHAREPOINT_SITE_PATH
+SHAREPOINT_BASE_FOLDER
+```
 
-Python:
+Production hiện dùng base folder:
+
+```text
+Vikoda_Sales_Data
+```
+
+`SHAREPOINT_SITE_ID` và `SHAREPOINT_DRIVE_ID` không cần cấu hình trong GitHub; `code/common/sharepoint_bootstrap.py` tự resolve ở mỗi cloud run.
+
+## Microsoft Graph permission
+
+Mô hình least-privilege được khuyến nghị và đang dùng:
+
+```text
+Application permission: Sites.Selected
+Site: Planning
+Role: write
+```
+
+Không cần `Sites.ReadWrite.All` nếu `Sites.Selected` đáp ứng yêu cầu.
+
+## Chạy local
+
+Yêu cầu:
+
+```text
+Python 3.12+
+Node.js 24+
+Azure CLI (chỉ khi test Graph local)
+```
+
+Cài dependency và chạy regression suite:
 
 ```bash
+python -m pip install -r requirements.txt
 python code/run_all_tests.py --quiet
-```
-
-Web:
-
-```bash
 npm run verify:web
 ```
 
-Cloud pipeline còn chạy `health_check.py` trước khi upload đầu ra về SharePoint.
+Test Graph local:
 
-## 10. Bảo mật
+```bash
+az login --tenant <AZURE_TENANT_ID> --allow-no-subscriptions
+python code/common/sharepoint_bootstrap.py
+```
 
-- Không commit `.env`, token hoặc workbook sản xuất.
-- Không dùng Azure Client Secret cho cloud workflow.
-- GitHub OIDC token là ngắn hạn và chỉ được Entra chấp nhận khi federated credential khớp repository/branch.
-- Không ghi raw ERP, staging data hoặc `web/data` sản xuất vào Git.
-- Client-side password không phải access control.
-- CI cho PR/push chỉ dùng quyền `contents: read`; job cloud mới có `id-token: write`.
-- Chỉ job deploy dashboard mới được cấp quyền Pages.
+`AzureCliCredential` sẽ dùng phiên Azure CLI hiện tại. Các file `.cmd`/PowerShell trong `Chay CT/` là tiện ích Windows/local; chúng không phải production scheduler.
 
-Xem thêm [`SECURITY.md`](SECURITY.md).
+## Repository map
 
-## 11. Tài liệu vận hành
+```text
+.github/workflows/vikoda_pipeline.yml   # CI + scheduled/manual cloud pipeline
+code/common/                            # bootstrap, validation, date finalization
+code/Skill/sell-in-monthly/             # ETL Sell-In theo tháng
+code/Skill/skill-bao-cao/               # report pipeline + Graph sync
+web/                                    # static dashboard + regression tests
+Chay CT/                                # tiện ích local Windows
+README.md                               # overview
+HUONG_DAN_SHAREPOINT_GITHUB_ACTIONS.md  # production runbook
+PROJECT_AUDIT.md                        # trạng thái audit gần nhất
+SECURITY.md                             # security policy
+AGENTS.md                               # guardrails cho automation/AI contributors
+```
 
-Hướng dẫn cấu hình và kiểm tra end-to-end:
+## Bảo mật và dữ liệu
 
-[`HUONG_DAN_SHAREPOINT_GITHUB_ACTIONS.md`](HUONG_DAN_SHAREPOINT_GITHUB_ACTIONS.md)
+- Không commit `Data/`, `web/data/`, `.env`, token hoặc workbook production.
+- Không dùng Client Secret cho production workflow.
+- Không xem mật khẩu JavaScript phía client là access control.
+- Không publish customer/revenue-level data lên Pages nếu chưa sanitize và phê duyệt.
+- Nếu dữ liệu production từng tồn tại trong lịch sử Git công khai, phải xem đó là một security incident riêng; `.gitignore` không xóa lịch sử.
+
+Chi tiết: [`SECURITY.md`](SECURITY.md) và [`PROPRIETARY_NOTICE.md`](PROPRIETARY_NOTICE.md).
+
+## Trạng thái production
+
+Manual end-to-end validation gần nhất đã xác nhận toàn bộ luồng:
+
+```text
+OIDC login                     PASS
+SharePoint site/drive resolve  PASS
+ERP download                   PASS
+Target download                PASS
+Customer catalog download      PASS
+Product catalog download       PASS
+Strict ETL                     PASS
+Health check                   PASS
+Data_Goc upload                PASS
+```
+
+Bằng chứng và các rủi ro còn lại được ghi trong [`PROJECT_AUDIT.md`](PROJECT_AUDIT.md).
+
+## English summary
+
+**Vikoda Sell-In Data Platform** is a production-oriented example of a secretless SharePoint data pipeline built with **Microsoft Graph, GitHub Actions OIDC, Microsoft Entra ID, Python ETL and Excel automation**. It downloads operational workbooks from SharePoint, validates and transforms Sell-In data, generates monthly Excel outputs, and writes approved results back to SharePoint. Long-lived Azure client secrets and Power Automate are not required for the production path.
+
+Keywords: `sharepoint`, `microsoft-graph`, `github-actions`, `oidc`, `microsoft-entra`, `python`, `etl`, `excel-automation`, `sales-analytics`, `data-pipeline`.
 
 ---
 
-**Vikoda Sell-In Platform — SharePoint + Microsoft Graph + GitHub Actions OIDC + Python.**
+Nếu kiến trúc **SharePoint + Graph + OIDC + Python ETL** trong repository này hữu ích cho bạn, một ⭐ giúp dự án dễ được tìm thấy hơn.
+
+**Vikoda Sell-In Data Platform — automated, testable, least-privilege.**

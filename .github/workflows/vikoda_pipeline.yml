@@ -1,4 +1,5 @@
 name: Vikoda Sell-In Pipeline
+run-name: Vikoda Sell-In · ${{ github.event_name }} · ${{ github.ref_name }}
 
 on:
   pull_request:
@@ -11,6 +12,8 @@ on:
       - 'README.md'
       - 'SECURITY.md'
       - 'HUONG_DAN_SHAREPOINT_GITHUB_ACTIONS.md'
+      - 'PROJECT_AUDIT.md'
+      - 'AGENTS.md'
       - '.github/workflows/vikoda_pipeline.yml'
   push:
     branches:
@@ -24,6 +27,8 @@ on:
       - 'README.md'
       - 'SECURITY.md'
       - 'HUONG_DAN_SHAREPOINT_GITHUB_ACTIONS.md'
+      - 'PROJECT_AUDIT.md'
+      - 'AGENTS.md'
       - '.github/workflows/vikoda_pipeline.yml'
   workflow_dispatch:
     inputs:
@@ -58,7 +63,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -94,12 +99,12 @@ jobs:
       contents: read
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
           persist-credentials: false
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
           cache: pip
@@ -109,9 +114,10 @@ jobs:
       - name: Run full Python test suite
         run: python code/run_all_tests.py --quiet
       - name: Set up Node.js 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
+          package-manager-cache: false
       - name: Verify web JavaScript and regression tests
         run: npm run verify:web
 
@@ -128,23 +134,20 @@ jobs:
       contents: read
       id-token: write
     env:
-      # Client ID/Tenant ID không phải mật khẩu; ưu tiên Repository Variables.
-      # secrets.* chỉ là fallback tương thích nếu repo đã từng cấu hình theo cách cũ.
-      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID || secrets.AZURE_TENANT_ID }}
-      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID || secrets.AZURE_CLIENT_ID }}
-      SHAREPOINT_SITE_ID: ${{ vars.SHAREPOINT_SITE_ID || secrets.SHAREPOINT_SITE_ID }}
-      SHAREPOINT_DRIVE_ID: ${{ vars.SHAREPOINT_DRIVE_ID || secrets.SHAREPOINT_DRIVE_ID }}
+      # OIDC production: chỉ dùng Repository Variables, không dùng Client Secret.
+      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
       SHAREPOINT_HOSTNAME: ${{ vars.SHAREPOINT_HOSTNAME || 'vikodacomvn.sharepoint.com' }}
       SHAREPOINT_SITE_PATH: ${{ vars.SHAREPOINT_SITE_PATH || '/sites/Planning' }}
       SHAREPOINT_BASE_FOLDER: ${{ vars.SHAREPOINT_BASE_FOLDER || 'Vikoda_Sales_Data' }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
           persist-credentials: false
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
           cache: pip
@@ -235,13 +238,26 @@ jobs:
           --folder "${SHAREPOINT_BASE_FOLDER}/Data_Goc"
           --local-dir "Data/Data_Goc"
           --require-cloud-auth
+      - name: Write cloud refresh summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Vikoda Sell-In cloud refresh"
+            echo
+            echo "- Job status: **${{ job.status }}**"
+            echo "- Trigger: \`${{ github.event_name }}\`"
+            echo "- Source: \`SharePoint/${SHAREPOINT_BASE_FOLDER}\`"
+            echo "- Output: \`SharePoint/${SHAREPOINT_BASE_FOLDER}/Data_Goc\`"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Package approved dashboard for controlled deployment
         if: >-
           github.event_name == 'workflow_dispatch' &&
           inputs.publish_dashboard &&
           vars.ENABLE_PAGES_DEPLOY == 'true' &&
           vars.WEB_DATA_CLASSIFICATION == 'public-or-sanitized'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: approved-dashboard-web
           path: web
@@ -260,6 +276,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: read
       pages: write
       id-token: write
     environment:
@@ -267,16 +284,16 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Download approved dashboard artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: approved-dashboard-web
           path: web
       - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
       - name: Upload dashboard as Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: web
       - name: Deploy dashboard
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
