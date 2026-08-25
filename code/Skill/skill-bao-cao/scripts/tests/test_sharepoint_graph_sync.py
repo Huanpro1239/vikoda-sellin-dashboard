@@ -213,6 +213,67 @@ class SharePointGraphSyncTests(unittest.TestCase):
         self.assertTrue(graph_request.full_url.endswith("Sell%20in%20T08_2026.xlsx:/content"))
         self.assertEqual(b"test-workbook", graph_request.data)
 
+    @mock.patch.object(sync, "http_request_with_retry")
+    def test_upload_office_workbook_allows_remote_size_change(self, request: mock.Mock) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            workbook = Path(tmp) / "Sell in T08_2026.xlsx"
+            workbook.write_bytes(b"test-workbook")
+            response = {
+                "name": workbook.name,
+                "size": len(b"test-workbook") + 128,
+                "file": {},
+            }
+            request.return_value = (json.dumps(response).encode("utf-8"), 200)
+
+            result = sync.upload_file_to_sharepoint(
+                "token",
+                "site-id",
+                "drive-id",
+                "Data_Goc",
+                workbook,
+            )
+
+        self.assertEqual(workbook.name, result["name"])
+        self.assertGreater(result["size"], len(b"test-workbook"))
+
+    @mock.patch.object(sync, "http_request_with_retry")
+    def test_upload_non_office_file_rejects_remote_size_change(self, request: mock.Mock) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            payload = Path(tmp) / "payload.bin"
+            payload.write_bytes(b"payload")
+            response = {
+                "name": payload.name,
+                "size": len(b"payload") + 1,
+                "file": {},
+            }
+            request.return_value = (json.dumps(response).encode("utf-8"), 200)
+
+            with self.assertRaises(RuntimeError):
+                sync.upload_file_to_sharepoint(
+                    "token",
+                    "site-id",
+                    "drive-id",
+                    "Data_Goc",
+                    payload,
+                )
+
+    @mock.patch.object(sync, "http_request_with_retry")
+    def test_upload_rejects_zero_remote_size(self, request: mock.Mock) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            workbook = Path(tmp) / "Sell in T08_2026.xlsx"
+            workbook.write_bytes(b"test-workbook")
+            response = {"name": workbook.name, "size": 0, "file": {}}
+            request.return_value = (json.dumps(response).encode("utf-8"), 200)
+
+            with self.assertRaises(RuntimeError):
+                sync.upload_file_to_sharepoint(
+                    "token",
+                    "site-id",
+                    "drive-id",
+                    "Data_Goc",
+                    workbook,
+                )
+
 
 if __name__ == "__main__":
     unittest.main()
