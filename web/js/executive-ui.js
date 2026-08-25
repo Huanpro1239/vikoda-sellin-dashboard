@@ -43,6 +43,7 @@
     appendStylesheet('css/reference-fidelity-v4.css?v=4.0.0', 'data-vikoda-reference-fidelity');
     appendScript('js/reference-analytics.js?v=3.0.0', 'data-vikoda-reference-analytics');
     appendScript('js/reference-fidelity-v4.js?v=4.0.0', 'data-vikoda-reference-fidelity');
+    appendScript('js/reference-geography-v4.js?v=4.0.0', 'data-vikoda-reference-geography');
   }
 
   function tagFilterBlocks() {
