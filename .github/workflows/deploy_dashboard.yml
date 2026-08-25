@@ -32,6 +32,11 @@ on:
         required: true
         type: boolean
         default: true
+      deploy_pages:
+        description: 'Tương thích Flow Power Automate cũ; nên chuyển sang deploy_now'
+        required: false
+        type: boolean
+        default: false
   schedule:
     # 18:00 UTC+7 tương ứng 11:00 UTC; chạy một lần mỗi ngày.
     - cron: '0 11 * * *'
@@ -110,7 +115,7 @@ jobs:
     if: >-
       github.event_name == 'pull_request' ||
       github.event_name == 'push' ||
-      (github.event_name == 'workflow_dispatch' && !inputs.deploy_now)
+      (github.event_name == 'workflow_dispatch' && !inputs.deploy_now && !inputs.deploy_pages)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -155,7 +160,7 @@ jobs:
       vars.ENABLE_PAGES_DEPLOY == 'true' &&
       vars.WEB_DATA_CLASSIFICATION == 'public-or-sanitized' &&
       (github.event_name == 'schedule' ||
-       (github.event_name == 'workflow_dispatch' && inputs.deploy_now))
+       (github.event_name == 'workflow_dispatch' && (inputs.deploy_now || inputs.deploy_pages)))
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:
@@ -168,6 +173,15 @@ jobs:
     concurrency:
       group: 'pages'
       cancel-in-progress: false
+    env:
+      # Hỗ trợ cả tên secret mới và tên cũ để tránh hỏng cấu hình đang dùng.
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID || secrets.MS_TENANT_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID || secrets.MS_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET || secrets.MS_CLIENT_SECRET }}
+      SHAREPOINT_SITE_ID: ${{ secrets.SHAREPOINT_SITE_ID }}
+      SHAREPOINT_DRIVE_ID: ${{ secrets.SHAREPOINT_DRIVE_ID }}
+      SHAREPOINT_HOSTNAME: ${{ vars.SHAREPOINT_HOSTNAME || 'vikodacomvn.sharepoint.com' }}
+      SHAREPOINT_SITE_PATH: ${{ vars.SHAREPOINT_SITE_PATH || '/sites/Planning' }}
 
     steps:
       - name: Checkout repository without persisted credentials
@@ -186,13 +200,10 @@ jobs:
       - name: Install pinned core dependencies
         run: python -m pip install --disable-pip-version-check --requirement requirements.txt
 
+      - name: Preflight cloud config and resolve SharePoint IDs
+        run: python code/common/sharepoint_bootstrap.py
+
       - name: Sync raw data from SharePoint
-        env:
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          SHAREPOINT_SITE_ID: ${{ secrets.SHAREPOINT_SITE_ID }}
-          SHAREPOINT_DRIVE_ID: ${{ secrets.SHAREPOINT_DRIVE_ID }}
         run: >-
           python code/Skill/skill-bao-cao/scripts/sharepoint_graph_sync.py
           --action download
@@ -201,12 +212,6 @@ jobs:
           --require-cloud-auth
 
       - name: Sync target data from SharePoint
-        env:
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          SHAREPOINT_SITE_ID: ${{ secrets.SHAREPOINT_SITE_ID }}
-          SHAREPOINT_DRIVE_ID: ${{ secrets.SHAREPOINT_DRIVE_ID }}
         run: >-
           python code/Skill/skill-bao-cao/scripts/sharepoint_graph_sync.py
           --action download
@@ -215,12 +220,6 @@ jobs:
           --require-cloud-auth
 
       - name: Sync customer catalog from SharePoint
-        env:
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          SHAREPOINT_SITE_ID: ${{ secrets.SHAREPOINT_SITE_ID }}
-          SHAREPOINT_DRIVE_ID: ${{ secrets.SHAREPOINT_DRIVE_ID }}
         run: >-
           python code/Skill/skill-bao-cao/scripts/sharepoint_graph_sync.py
           --action download
@@ -229,12 +228,6 @@ jobs:
           --require-cloud-auth
 
       - name: Sync product catalog from SharePoint
-        env:
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          SHAREPOINT_SITE_ID: ${{ secrets.SHAREPOINT_SITE_ID }}
-          SHAREPOINT_DRIVE_ID: ${{ secrets.SHAREPOINT_DRIVE_ID }}
         run: >-
           python code/Skill/skill-bao-cao/scripts/sharepoint_graph_sync.py
           --action download
