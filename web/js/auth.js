@@ -1,9 +1,9 @@
 /**
  * VIKODA WEB DASHBOARD - OPTIONAL LOCAL ACCESS GATE
  *
- * Đây chỉ là lớp UX cục bộ, KHÔNG phải security boundary. Dữ liệu nội bộ phải
- * được bảo vệ bởi hosting/API có xác thực thật. Trên Azure Static Web Apps,
- * staticwebapp.config.json + Microsoft Entra ID là security boundary thực tế.
+ * This is only a local UX gate, not a security boundary. GitHub Pages deployment
+ * uses a sanitized public dataset, so the gate is intentionally open unless a
+ * local build injects VIKODA_ACCESS_GATE_HASH.
  */
 
 class VikodaAuth {
@@ -22,19 +22,8 @@ class VikodaAuth {
     this.sessionStore = options.sessionStore || (browserWindow && browserWindow.sessionStorage) || null;
     this.cryptoProvider = options.cryptoProvider || globalThis.crypto;
     this.now = options.now || (() => Date.now());
-    this.location = options.location || (browserWindow && browserWindow.location) || null;
-    const hostname = String(this.location && this.location.hostname || '').toLowerCase();
-    this.staticWebAppAuth = options.staticWebAppAuth ?? Boolean(
-      (browserWindow && browserWindow.VIKODA_SWA_AUTH === true)
-      || hostname.endsWith('.azurestaticapps.net'),
-    );
-    this.navigate = options.navigate || ((url) => {
-      if (!this.location) return;
-      if (typeof this.location.assign === 'function') this.location.assign(url);
-      else this.location.href = url;
-    });
     this.reload = options.reload || (() => {
-      if (this.location && typeof this.location.reload === 'function') this.location.reload();
+      if (browserWindow && browserWindow.location) browserWindow.location.reload();
     });
   }
 
@@ -79,7 +68,7 @@ class VikodaAuth {
         && session.expiresAt > this.now();
       if (valid) return true;
     } catch (_) {
-      // Legacy or malformed sessions are invalidated below.
+      // Malformed or legacy sessions are invalidated below.
     }
 
     store.removeItem(this.STORAGE_KEY);
@@ -87,8 +76,6 @@ class VikodaAuth {
   }
 
   isAuthenticated() {
-    // Không cấu hình client gate => không hiển thị lớp login giả bảo mật.
-    // Azure Static Web Apps chặn request trước khi index/data được phục vụ.
     if (!this.isConfigured()) return true;
     return this.readValidSession(this.sessionStore) || this.readValidSession(this.localStore);
   }
@@ -119,12 +106,7 @@ class VikodaAuth {
 
   logout({ reload = true } = {}) {
     this.clearSessions();
-    if (!reload) return;
-    if (this.staticWebAppAuth) {
-      this.navigate('/.auth/logout?post_logout_redirect_uri=/login.html');
-      return;
-    }
-    this.reload();
+    if (reload) this.reload();
   }
 }
 
