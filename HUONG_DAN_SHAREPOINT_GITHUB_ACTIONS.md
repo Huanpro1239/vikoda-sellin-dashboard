@@ -1,23 +1,38 @@
-# RUNBOOK PRODUCTION — SHAREPOINT WATCHER + GITHUB ACTIONS OIDC + WEB DASHBOARD
+# RUNBOOK PRODUCTION — SHAREPOINT + GITHUB ACTIONS OIDC + INCREMENTAL DATA_GOC
 
-Tài liệu này mô tả luồng production Vikoda Sell-In v2.4: SharePoint là source of truth, GitHub Actions tự kiểm tra dữ liệu nguồn định kỳ, chỉ chạy ETL khi có thay đổi và build lại Executive Dashboard từ đúng dữ liệu của lượt chạy đó.
+Tài liệu này là quy trình vận hành chuẩn của Vikoda Sell-In. Mục tiêu: người mới đọc một lần có thể hiểu dữ liệu ở đâu, pipeline phát hiện thay đổi thế nào, tháng nào được rebuild, Data_Goc được upload ra sao và dashboard được build như thế nào.
 
-Production path **không dùng Power Automate/Flow** và **không dùng Azure Client Secret dài hạn**.
+Production path không dùng Power Automate Premium, không dùng Client Secret dài hạn và không commit dữ liệu production vào Git.
 
-## 1. Luồng vận hành
+## 1. Luồng production
 
 ```text
-SharePoint source workbooks
-→ Graph metadata watcher (30 phút/lần)
-→ SHA-256 fingerprint
-→ Có thay đổi?
-   ├─ Không: kết thúc nhẹ, không ETL
-   └─ Có: OIDC → download → ETL --strict → validation/health
-           → Data_Goc + web/data → upload → web regression
-           → commit fingerprint → optional gated deploy
+ERP / Target / Danh mục trên SharePoint
+                ↓
+       Microsoft Graph metadata check
+                ↓
+          Source changed?
+          ├─ Không → STOP
+          └─ Có
+                ↓
+      Download Data_Goc baseline
+                ↓
+      Incremental monthly planner
+                ↓
+       REBUILD / SKIP từng tháng
+                ↓
+   Chỉ rebuild tháng ERP bị ảnh hưởng
+                ↓
+   Full Data_Goc = baseline + delta
+                ↓
+ Validation + Health Check + Web build
+                ↓
+ Chỉ upload Data_Goc delta lên SharePoint
+                ↓
+ Commit source manifest + incremental state
 ```
 
-## 2. SharePoint contract
+## 2. Cấu trúc SharePoint
 
 ```text
 Shared Documents/
@@ -29,45 +44,132 @@ Shared Documents/
     ├── DanhMuc_SP/
     │   └── Danh Muc San Pham.xlsx
     └── Data_Goc/
-        └── _vikoda_pipeline_state.json
+        ├── Sell in Txx_yyyy.xlsx
+        ├── _vikoda_pipeline_state.json
+        └── _vikoda_incremental_state.json
 ```
 
-Không rename các folder contract nếu chưa sửa workflow và chạy lại end-to-end validation.
+Mapping:
 
-## 3. Microsoft Entra / OIDC
+| Thành phần | SharePoint path |
+|---|---|
+| ERP | `Vikoda_Sales_Data/Data ERP` |
+| Target | `Vikoda_Sales_Data/Target` |
+| Khách hàng | `Vikoda_Sales_Data/DanhMuc_KH` |
+| Sản phẩm | `Vikoda_Sales_Data/DanhMuc_SP` |
+| Data_Goc | `Vikoda_Sales_Data/Data_Goc` |
 
-App production: `vikoda-sellin-github-actions`.
+Không đổi tên folder/file contract nếu chưa sửa workflow tương ứng.
 
-Microsoft Graph Application permission:
+## 3. Nguyên tắc incremental
+
+### 3.1 Không có source mới
+
+Graph fingerprint không đổi:
 
 ```text
-Sites.Selected
+Metadata check → no-source-change → STOP
 ```
 
-Site grant:
+Không download source, không ETL, không build workbook, không upload Data_Goc, không build web.
+
+### 3.2 Một tháng ERP thay đổi
+
+Ví dụ chỉ file tháng 08/2026 thay đổi:
 
 ```text
-Site: https://vikodacomvn.sharepoint.com/sites/Planning
-Role: write
+Data ERP/..._Vikoda_T08_2026.xlsx
 ```
 
-Federated identity production:
+Kết quả:
 
 ```text
+2026-08 = REBUILD
+các tháng khác = SKIP
+```
+
+Pipeline dùng Data_Goc hiện có làm baseline, rebuild `Sell in T08_2026.xlsx`, build dashboard từ full history rồi upload chỉ delta:
+
+```text
+Sell in T08_2026.xlsx
+_vikoda_incremental_state.json
+```
+
+Không upload lại các workbook tháng khác.
+
+### 3.3 Target hoặc danh mục thay đổi
+
+Pipeline vẫn rebuild report/web từ full Data_Goc baseline. Monthly planner chỉ rebuild workbook khi ERP/source-output reconciliation yêu cầu.
+
+### 3.4 Data_Goc là managed output
+
+Không sửa tay Data_Goc trong vận hành thường ngày. Input nghiệp vụ phải thay đổi ở ERP/Target/DanhMuc. Điều này giúp incremental state đáng tin cậy.
+
+## 4. Hai lớp state
+
+### Source manifest
+
+```text
+Data_Goc/_vikoda_pipeline_state.json
+```
+
+Lưu fingerprint + manifest của source sau lượt chạy thành công. Manifest dùng:
+
+```text
+path
+size
+lastModifiedDateTime
+eTag
+cTag
+```
+
+Nhờ đó pipeline biết chính xác file ERP nào thay đổi và suy ra period `YYYY-MM`.
+
+### Monthly incremental state
+
+```text
+Data_Goc/_vikoda_incremental_state.json
+```
+
+Lưu trạng thái source/output theo tháng cho engine `build_incremental_plan()`.
+
+State chỉ commit sau pipeline thành công. Nếu run fail, lượt poll kế tiếp vẫn phát hiện thay đổi và retry.
+
+## 5. Microsoft Entra / OIDC
+
+App Registration production dùng GitHub OIDC + Federated Credential.
+
+Graph permission khuyến nghị:
+
+```text
+Application permission: Sites.Selected
+Planning site role: write
+```
+
+Không dùng `Sites.ReadWrite.All` nếu không có yêu cầu bắt buộc.
+
+Federated identity hiện tại:
+
+```text
+Organization: Huanpro1239
+Organization / Owner ID: 213777839
+Repository: vikoda-sellin-dashboard
+Repository ID: 1333996723
+Branch: main
 Issuer: https://token.actions.githubusercontent.com
-Subject: repo:Huanpro1239@213777839/vikoda-sellin-dashboard@1333996723:ref:refs/heads/main
 Audience: api://AzureADTokenExchange
+Subject: repo:Huanpro1239@213777839/vikoda-sellin-dashboard@1333996723:ref:refs/heads/main
 ```
 
-Không tạo `AZURE_CLIENT_SECRET` cho production workflow.
+Production workflow không dùng `AZURE_CLIENT_SECRET`.
 
-## 4. Repository Variables
+## 6. GitHub Repository Variables
 
 Bắt buộc:
 
 ```text
-AZURE_TENANT_ID=<Directory tenant ID>
-AZURE_CLIENT_ID=<Application client ID>
+AZURE_TENANT_ID
+AZURE_CLIENT_ID
 ```
 
 Optional/default:
@@ -77,11 +179,18 @@ SHAREPOINT_HOSTNAME=vikodacomvn.sharepoint.com
 SHAREPOINT_SITE_PATH=/sites/Planning
 SHAREPOINT_BASE_FOLDER=Vikoda_Sales_Data
 SHAREPOINT_PIPELINE_STATE_FILE=_vikoda_pipeline_state.json
+SHAREPOINT_INCREMENTAL_STATE_FILE=_vikoda_incremental_state.json
 ```
 
-`SHAREPOINT_SITE_ID` / `SHAREPOINT_DRIVE_ID` không cần pin; bootstrap tự resolve.
+Không cần pin `SHAREPOINT_SITE_ID` / `SHAREPOINT_DRIVE_ID`; bootstrap tự resolve.
 
-## 5. Cơ chế phát hiện dữ liệu mới
+## 7. Workflow production
+
+File duy nhất:
+
+```text
+.github/workflows/vikoda_pipeline.yml
+```
 
 Schedule:
 
@@ -89,144 +198,185 @@ Schedule:
 */30 * * * *
 ```
 
-Đây là polling 30 phút, không phải webhook real-time. GitHub cron có thể chậm vài phút.
+Đây là metadata polling 30 phút. Heavy ETL chỉ chạy khi source fingerprint thay đổi.
 
-`code/common/sharepoint_change_detector.py` đọc metadata workbook qua Microsoft Graph và fingerprint:
-
-```text
-relative path
-size
-lastModifiedDateTime
-eTag
-cTag
-```
-
-Watcher theo dõi đệ quy `.xlsx/.xlsm` trong `Data ERP`, `Target`, `DanhMuc_KH`, `DanhMuc_SP`; file lock Office `~$...` được bỏ qua.
-
-Checkpoint của **lần xử lý thành công**:
+### Trình tự cloud job
 
 ```text
-Vikoda_Sales_Data/Data_Goc/_vikoda_pipeline_state.json
+Validate OIDC
+→ Azure login
+→ Resolve SharePoint site/drive
+→ Detect source change + changed ERP periods
+→ nếu không đổi: STOP
+→ Download Data_Goc baseline
+→ Download ERP / Target / DanhMuc
+→ Incremental planner
+→ Rebuild only affected Data_Goc months
+→ Rebuild downstream report + web data
+→ Finalize dashboard date
+→ Health Check
+→ Inspect Data_Goc delta
+→ Upload only delta
+→ Web regression
+→ Optional web deploy gate
+→ Commit source manifest
 ```
 
-Logic:
+## 8. Các file code chính
 
 ```text
-Không có state          → chạy
-Fingerprint khác        → chạy
-Manual force refresh    → chạy
-Fingerprint giống       → skip ETL
+code/common/sharepoint_change_detector.py
+```
+Graph fingerprint primitives.
+
+```text
+code/common/sharepoint_change_detector_v2.py
+```
+Per-file manifest diff + xác định ERP period thay đổi.
+
+```text
+code/Skill/sell-in-monthly/scripts/incremental.py
+```
+Planner `REBUILD/SKIP` theo tháng.
+
+```text
+code/Skill/sell-in-monthly/scripts/extract_sources.py --plan-file
+```
+Chỉ extract periods được planner đánh dấu REBUILD.
+
+```text
+code/common/incremental_cloud_pipeline.py
+```
+Orchestrator cho GitHub runner: baseline → planner → delta → downstream web.
+
+## 9. Chạy manual
+
+Vào:
+
+```text
+GitHub → Actions → Vikoda Sell-In Pipeline → Run workflow
 ```
 
-State chỉ commit sau `ETL + validation + health + Data_Goc upload + web regression` đều PASS. Job fail không đánh dấu source là đã xử lý.
+Chọn:
 
-## 6. Build Executive Dashboard
+```text
+Branch: main
+run_cloud_refresh = true
+publish_dashboard = false
+```
 
-`run_cloud_pipeline.py --strict` sinh cùng lượt:
+Manual run force metadata check nhưng monthly planner vẫn dùng incremental logic; không mặc định rebuild tất cả tháng.
+
+Không dùng rerun run cũ sau khi code/config vừa đổi. Tạo workflow run mới trên `main`.
+
+## 10. Kết quả thành công cần kiểm tra
+
+Cloud summary phải thể hiện:
+
+```text
+Source change: true/false
+ERP periods changed by manifest: 2026-08 hoặc baseline/reconcile
+Data_Goc periods rebuilt: 2026-08 hoặc none
+Data_Goc workbooks rebuilt: 1 hoặc 0
+```
+
+Nếu chỉ T08 thay đổi, không được thấy 20 workbook bị upload lại.
+
+Sau run thành công kiểm tra SharePoint Data_Goc:
+
+- workbook tháng thay đổi có Modified mới;
+- workbook không đổi giữ Modified cũ;
+- `_vikoda_incremental_state.json` được cập nhật;
+- `_vikoda_pipeline_state.json` được cập nhật sau cùng.
+
+## 11. Dashboard web
+
+Dashboard luôn build từ **full Data_Goc set**, không chỉ delta. Vì vậy incremental Excel không làm mất lịch sử trên dashboard.
+
+Runtime artifacts:
 
 ```text
 web/data/dashboard_data.json
 web/data/dashboard_data.js
 ```
 
-`export_web_data.py` chỉ export khi quality status = `PASS` và ghi atomically.
+Health/data-quality gate phải PASS trước khi web được coi là hợp lệ.
 
-UI v2.4:
+## 12. Web publishing security
 
-```text
-01. Tổng quan
-02. Vùng - Miền
-03. Khách hàng
-04. Sale quản lý
-05. Sản phẩm
-06. Chênh lệch
-```
+Production customer/revenue data là internal. GitHub Pages là public static hosting; JavaScript password không phải access control.
 
-KPI toàn cục:
-
-```text
-Actual | Cùng kỳ | Target | % Đạt Target | Tăng trưởng
-```
-
-Bộ lọc: kỳ báo cáo, Kênh, Miền, Vùng, Group Brand/Nhóm SP. `data-engine.js` vẫn là calculation contract; `executive-ui.js` chỉ quản lý presentation/dynamic controls.
-
-## 7. Web publishing
-
-### Internal dashboard
-
-Customer/revenue-level data là internal. GitHub Pages là public static hosting; password JavaScript không phải access control.
-
-Giữ:
+Giữ production:
 
 ```text
 ENABLE_PAGES_DEPLOY=false
 WEB_DATA_CLASSIFICATION=internal
 ```
 
-Pipeline vẫn build + validate dashboard nhưng không public.
-
-### Public/sanitized dashboard
-
-Chỉ khi payload đã sanitize/phê duyệt:
+Chỉ bật public khi payload đã sanitize và được phê duyệt:
 
 ```text
 ENABLE_PAGES_DEPLOY=true
 WEB_DATA_CLASSIFICATION=public-or-sanitized
 ```
 
-Scheduled refresh: nếu source đổi và hai gate mở, dashboard auto-deploy sau ETL.
-
-Manual refresh: ngoài hai gate còn cần `publish_dashboard=true`.
-
-## 8. Force refresh manual
+Manual publish còn yêu cầu:
 
 ```text
-GitHub → Actions → Vikoda Sell-In Pipeline → Run workflow
-Branch: main
-run_cloud_refresh=true
-publish_dashboard=false
+publish_dashboard=true
 ```
 
-Manual `run_cloud_refresh=true` bỏ qua so sánh fingerprint và chạy full pipeline.
+## 13. Troubleshooting
 
-## 9. Khi có dữ liệu mới
+### `AADSTS700213`
 
-Cloud job kỳ vọng:
+Federated Credential không khớp GitHub OIDC subject. Đối chiếu subject/issuer/audience ở mục 5.
+
+### Graph 403
+
+Kiểm tra `Sites.Selected`, Admin consent và site role `write`.
+
+### Graph 404 folder
+
+Đối chiếu đúng:
 
 ```text
-Validate OIDC                              PASS
-Azure login                               PASS
-Resolve site/drive                        PASS
-Detect SharePoint source changes          PASS · changed=true
-Download ERP/Target/DMKH/DMSP             PASS
-Strict ETL + web data build               PASS
-Finalize + Health Check                   PASS
-Data_Goc upload                           PASS
-Generated web regression                  PASS
-Source fingerprint commit                 PASS
-Pages deploy                              PASS hoặc SKIPPED theo security gate
+Vikoda_Sales_Data/Data ERP
+Vikoda_Sales_Data/Target
+Vikoda_Sales_Data/DanhMuc_KH
+Vikoda_Sales_Data/DanhMuc_SP
+Vikoda_Sales_Data/Data_Goc
 ```
 
-## 10. Khi không có dữ liệu mới
+### Baseline Data_Goc missing
 
-Scheduled run kỳ vọng:
+Incremental cloud fail-closed. Cần có Data_Goc hợp lệ từ một lượt full/baseline trước đó.
+
+### Planner rebuild nhiều tháng ngoài dự kiến
+
+Xem:
 
 ```text
-OIDC/bootstrap                            PASS
-Detect SharePoint source changes          PASS · changed=false
-Download/ETL/upload/web build             SKIPPED
-Workflow                                  PASS
+Data/Work/incremental_cloud_plan.json
 ```
 
-## 11. Troubleshooting
+Mỗi period có `action` và `reasons`. Các lý do thường gặp:
 
-- `state-missing`: chạy một full successful refresh để tạo `_vikoda_pipeline_state.json`.
-- `No .xlsx/.xlsm source workbook found`: kiểm tra 4 source path và Graph permission.
-- Source vừa upload nhưng chưa chạy: chờ polling hoặc force manual.
-- Dashboard build PASS nhưng Pages SKIPPED: kiểm tra security gate; với internal data đây là trạng thái đúng.
-- OIDC/403/404: kiểm tra federated subject, `Sites.Selected`, Planning site `write`, và path folder.
+```text
+force_period
+output_missing
+output_invalid
+new_invoice_dates
+invoice_date_counts_changed
+source_files_added
+source_files_removed
+```
 
-## 12. Test local
+### SharePoint Office size khác local
+
+Đã xử lý: `.xlsx/.xlsm` có thể thay package metadata sau upload. Incremental cloud không dùng package SHA remote để buộc rebuild tháng cũ; nó re-open workbook và đối soát cấu trúc/date-count, còn period thực sự thay đổi được force bằng source manifest.
+
+## 14. Test trước khi release
 
 ```bash
 python -m pip install -r requirements.txt
@@ -234,27 +384,18 @@ python code/run_all_tests.py --quiet
 npm run verify:web
 ```
 
-Graph local:
+Push/PR chỉ chạy read-only CI và repository hygiene. Production cloud chỉ chạy schedule/manual.
 
-```bash
-az login --tenant <AZURE_TENANT_ID> --allow-no-subscriptions
-python code/common/sharepoint_bootstrap.py
-```
+## 15. Quy tắc thay đổi hệ thống
 
-## 13. Definition of Done
+1. Không commit `Data/` hoặc `web/data/` production.
+2. Không reintroduce `AZURE_CLIENT_SECRET`.
+3. Không dùng Power Automate làm production dependency.
+4. Giữ `Sites.Selected` nếu có thể.
+5. Data_Goc là managed output.
+6. Thay đổi folder contract phải cập nhật workflow + README + runbook.
+7. Mọi thay đổi incremental phải có regression test.
+8. Sau thay đổi cloud logic, chạy một manual production validation trên `main`.
+9. Xác nhận chỉ workbook period thay đổi có Modified mới trên SharePoint.
 
-```text
-Repository hygiene             PASS
-Python suite                   PASS
-Web JS/regression              PASS
-Manual OIDC                    PASS
-Change detector                PASS
-All SharePoint downloads       PASS
-Strict ETL                     PASS
-Health check                   PASS
-Data_Goc upload                PASS
-Generated dashboard validation PASS
-Source fingerprint commit      PASS
-```
-
-Security: [`SECURITY.md`](SECURITY.md). Audit: [`PROJECT_AUDIT.md`](PROJECT_AUDIT.md).
+Guardrails: [`AGENTS.md`](AGENTS.md). Security: [`SECURITY.md`](SECURITY.md).
