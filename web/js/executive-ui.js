@@ -28,17 +28,21 @@
     document.head.appendChild(link);
   }
 
+  function appendScript(src, dataAttribute) {
+    if (document.querySelector(`script[${dataAttribute}]`)) return;
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = true;
+    script.setAttribute(dataAttribute, 'true');
+    document.head.appendChild(script);
+  }
+
   function loadPowerBiTheme() {
     appendStylesheet('css/vikoda-powerbi-theme.css?v=2.6.0', 'data-vikoda-powerbi-theme');
     appendStylesheet('css/reference-dashboard-v3.css?v=3.0.0', 'data-vikoda-reference-theme');
-
-    if (!document.querySelector('script[data-vikoda-reference-analytics]')) {
-      const script = document.createElement('script');
-      script.src = 'js/reference-analytics.js?v=3.0.0';
-      script.async = true;
-      script.setAttribute('data-vikoda-reference-analytics', 'true');
-      document.head.appendChild(script);
-    }
+    appendStylesheet('css/reference-fidelity-v4.css?v=4.0.0', 'data-vikoda-reference-fidelity');
+    appendScript('js/reference-analytics.js?v=3.0.0', 'data-vikoda-reference-analytics');
+    appendScript('js/reference-fidelity-v4.js?v=4.0.0', 'data-vikoda-reference-fidelity');
   }
 
   function tagFilterBlocks() {
