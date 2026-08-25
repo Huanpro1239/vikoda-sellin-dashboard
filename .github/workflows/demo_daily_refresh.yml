@@ -1,33 +1,23 @@
-name: Vikoda Demo Daily Refresh
+name: Vikoda Demo Manual Refresh
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - '.github/workflows/demo_daily_refresh.yml'
+  # Step 0 safety mode: manual runs only.
+  # Automatic schedule and push triggers are intentionally disabled until
+  # SharePoint credentials and data-classification controls are verified.
   workflow_dispatch:
-  schedule:
-    # 18:00 UTC+7 = 11:00 UTC
-    - cron: '0 11 * * *'
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: vikoda-demo-pages-refresh
+  group: vikoda-demo-manual-refresh
   cancel-in-progress: false
 
 jobs:
-  refresh-and-deploy:
-    name: Refresh SharePoint data and deploy demo
+  refresh-only:
+    name: Refresh SharePoint data (manual only, no Pages deploy)
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     env:
       AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID || secrets.MS_TENANT_ID }}
       AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID || secrets.MS_CLIENT_ID }}
@@ -115,15 +105,3 @@ jobs:
 
       - name: Verify web JavaScript and regression tests
         run: npm run verify:web
-
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload dashboard as Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: web
-
-      - name: Deploy demo to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
