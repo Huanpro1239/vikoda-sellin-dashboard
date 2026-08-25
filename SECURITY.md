@@ -1,43 +1,34 @@
 # Chính sách bảo mật
 
-## Phạm vi hỗ trợ
+## Phạm vi
 
-Nhánh `main` là phiên bản duy nhất được duy trì. Dự án xử lý dữ liệu bán hàng,
-khách hàng và chỉ tiêu kinh doanh; toàn bộ dữ liệu nguồn, dữ liệu staging, báo
-cáo Excel và payload chi tiết phải được xem là **dữ liệu nội bộ**.
+Nhánh `main` là phiên bản được duy trì. Pipeline xử lý dữ liệu Sell-In từ SharePoint và publish dashboard lên GitHub Pages.
+
+Theo cấu hình hiện tại, **dashboard GitHub Pages là public và publish đầy đủ payload dashboard**. Không có lớp ẩn danh, mã hóa hay access-control phía server cho Pages.
+
+## Những gì vẫn phải được bảo vệ
+
+- Không commit `.env`, access token, refresh token, certificate hoặc secret vào repository.
+- Không dùng `AZURE_CLIENT_SECRET` cho production workflow.
+- GitHub Actions truy cập Microsoft Graph bằng GitHub OIDC + Microsoft Entra Federated Credential.
+- `AZURE_TENANT_ID` và `AZURE_CLIENT_ID` chỉ là identifier và được lưu dưới Repository Variables.
+- Federated Credential chỉ trust đúng repository/branch production.
+- SharePoint Graph nên dùng `Sites.Selected` và chỉ cấp role `write` cho site cần thiết.
+
+## Dữ liệu runtime
+
+`Data/` và `web/data/` không được commit trực tiếp vào Git. Workflow tạo dữ liệu runtime trong runner, kiểm tra chất lượng rồi publish artifact lên GitHub Pages.
+
+Điều này giúp repository không phình theo từng kỳ dữ liệu và tránh lưu nhiều bản lịch sử dashboard trong Git. Tuy nhiên dữ liệu đã deploy trên GitHub Pages vẫn là dữ liệu công khai.
+
+## CI / workflow
+
+- Pull request và push chỉ chạy test/hygiene read-only.
+- Cloud job mới có `id-token: write` để lấy token OIDC cho Microsoft Graph.
+- Khi SharePoint không thay đổi, watcher dừng trước các bước download/ETL/deploy.
+- Khi có thay đổi, pipeline phải PASS health check và web regression trước khi tạo Pages artifact.
+- Source manifest chỉ commit lên SharePoint sau khi các bước build/package thành công.
 
 ## Báo cáo lỗ hổng
 
-Không đăng token, dữ liệu khách hàng hoặc bằng chứng khai thác vào GitHub Issue
-công khai. Hãy dùng **Private vulnerability reporting** trong tab Security của
-repository, hoặc liên hệ riêng với chủ repository/quản trị viên Vikoda. Không
-đính kèm dữ liệu sản xuất nếu chưa được yêu cầu qua kênh an toàn.
-
-## Quy tắc bắt buộc
-
-- Không commit dữ liệu trong `Data/`, payload giao dịch trong `web/data/`, file
-  `.env`, token, webhook, certificate hoặc cấu hình rclone thật.
-- Cloud authentication dùng **GitHub OIDC + Microsoft Entra Federated
-  Credential**. Không tạo hoặc lưu `AZURE_CLIENT_SECRET` cho production
-  workflow này.
-- `AZURE_TENANT_ID` và `AZURE_CLIENT_ID` là identifier và được lưu dưới GitHub
-  Repository Variables; không đưa access token hoặc refresh token vào Variables.
-- Federated Credential chỉ trust đúng repository `Huanpro1239/vikoda-sellin-dashboard`
-  và branch `main`.
-- Màn hình mật khẩu chạy bằng JavaScript phía client **không phải access
-  control**. Không xuất bản dữ liệu nội bộ trên static hosting nếu chưa có lớp
-  xác thực phía server/identity proxy và phê duyệt dữ liệu.
-- Job CI của pull request chỉ có `contents: read`; job cloud mới được cấp
-  `id-token: write`. Cloud job phải fail khi OIDC không hợp lệ hoặc khi SharePoint
-  không trả về workbook `.xlsm`/`.xlsx` hợp lệ.
-- SharePoint/Graph nên dùng `Sites.Selected` và cấp riêng role `write` cho site
-  `Planning`, thay vì quyền tenant-wide nếu không cần thiết.
-- Workbook có macro hoặc external link phải được quét và làm sạch trước khi chia sẻ.
-
-## Trạng thái dữ liệu lịch sử
-
-Thêm `.gitignore` không xóa file đã commit. Cho tới khi hoàn tất quy trình di
-chuyển dữ liệu, thu hồi quyền truy cập, rewrite lịch sử có kiểm soát và xác nhận
-cache/fork, phải giả định rằng mọi dữ liệu từng xuất hiện trong repository công
-khai đã bị lộ. Không rewrite history hoặc force-push nếu chưa có backup và kế
-hoạch phối hợp với mọi người đang clone repository.
+Không đăng token, secret hoặc bằng chứng khai thác vào GitHub Issue công khai. Dùng Private vulnerability reporting hoặc liên hệ riêng với quản trị viên repository.
