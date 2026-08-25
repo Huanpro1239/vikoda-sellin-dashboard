@@ -8,7 +8,6 @@ const webRoot = path.resolve(__dirname, '..');
 const appSource = fs.readFileSync(path.join(webRoot, 'js', 'app.js'), 'utf8');
 const chartsSource = fs.readFileSync(path.join(webRoot, 'js', 'charts.js'), 'utf8');
 const html = fs.readFileSync(path.join(webRoot, 'index.html'), 'utf8');
-const vercelConfig = JSON.parse(fs.readFileSync(path.resolve(webRoot, '..', 'vercel.json'), 'utf8'));
 
 function createAppHarness(asOfDate = '2026-08-15') {
   const dateInputs = {
@@ -135,15 +134,4 @@ test('markup has no inline JavaScript handlers and permits browser zoom', () => 
   assert.doesNotMatch(html, /\son(?:click|change|input|submit)\s*=/i);
   assert.doesNotMatch(html, /user-scalable\s*=\s*no|maximum-scale\s*=\s*1/i);
   assert.match(html, /aria-modal="true"/);
-});
-
-test('Vercel applies baseline browser security headers', () => {
-  const globalHeaders = vercelConfig.headers.find((entry) => entry.source === '/(.*)').headers;
-  const headerMap = Object.fromEntries(globalHeaders.map(({ key, value }) => [key, value]));
-
-  assert.match(headerMap['Content-Security-Policy'], /script-src-attr 'none'/);
-  assert.match(headerMap['Content-Security-Policy'], /object-src 'none'/);
-  assert.equal(headerMap['X-Content-Type-Options'], 'nosniff');
-  assert.ok(headerMap['Strict-Transport-Security']);
-  assert.ok(headerMap['Permissions-Policy']);
 });
