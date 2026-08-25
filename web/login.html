@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+  <title>Vikoda Sell-In | Đăng nhập</title>
+  <style>
+    :root{color-scheme:light;--navy:#0f2f4c;--navy2:#173f63;--cyan:#1689bd;--text:#17253a;--muted:#6b7f97;--border:#d5e0ea;--bg:#eef3f8}
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,"Segoe UI",Arial,sans-serif;background:radial-gradient(circle at 20% 10%,#214f74 0,#102f4c 40%,#081c2f 100%);color:var(--text)}
+    body{min-height:100vh;display:grid;place-items:center;padding:24px}.card{width:min(460px,100%);background:#fff;border:1px solid rgba(255,255,255,.45);border-radius:18px;box-shadow:0 28px 80px rgba(0,0,0,.28);overflow:hidden}.hero{padding:28px 30px 22px;background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff}.eyebrow{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#95d8f4}.hero h1{margin:7px 0 6px;font-size:28px;line-height:1.05}.hero p{margin:0;color:#d7e6f1;font-size:13px;line-height:1.55}.content{padding:26px 30px 30px}.status{margin-bottom:18px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:#f8fbfd;color:var(--muted);font-size:12px;line-height:1.5}.status.ok{border-color:#a8dfc7;background:#eefaf5;color:#0b6a4c}.status.warn{border-color:#f0c978;background:#fff9e9;color:#855a00}.button{display:flex;align-items:center;justify-content:center;width:100%;min-height:46px;border:0;border-radius:9px;background:var(--cyan);color:#fff;text-decoration:none;font-weight:800;font-size:14px;box-shadow:0 10px 20px rgba(22,137,189,.2)}.button:hover{background:#1179a8}.secondary{margin-top:10px;background:#fff;color:#274761;border:1px solid var(--border);box-shadow:none}.secondary:hover{background:#f4f8fb}.foot{margin:18px 0 0;text-align:center;color:#8191a5;font-size:10px}.hidden{display:none!important}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <section class="hero">
+      <div class="eyebrow">Vikoda Executive Analytics</div>
+      <h1>Sell-In Dashboard</h1>
+      <p>Dashboard điều hành nội bộ. Quyền truy cập được xác thực bằng Microsoft Entra ID.</p>
+    </section>
+    <section class="content">
+      <div class="status" id="auth_status">Đang kiểm tra phiên Microsoft…</div>
+      <a class="button hidden" id="login_btn" href="/.auth/login/aad?post_login_redirect_uri=/">Đăng nhập bằng Microsoft</a>
+      <a class="button secondary hidden" id="logout_btn" href="/.auth/logout?post_logout_redirect_uri=/login.html">Đăng xuất / đổi tài khoản</a>
+      <p class="foot">Chỉ tài khoản được cấp role <strong>vikoda-user</strong> mới có quyền mở dashboard.</p>
+    </section>
+  </main>
+  <script>
+    (async () => {
+      const status = document.getElementById('auth_status');
+      const login = document.getElementById('login_btn');
+      const logout = document.getElementById('logout_btn');
+      try {
+        const response = await fetch('/.auth/me', { cache: 'no-store', credentials: 'same-origin' });
+        const payload = response.ok ? await response.json() : {};
+        const principal = payload && payload.clientPrincipal;
+        const roles = Array.isArray(principal && principal.userRoles) ? principal.userRoles : [];
+        if (principal && roles.includes('vikoda-user')) {
+          status.className = 'status ok';
+          status.textContent = 'Đã xác thực và có quyền truy cập. Đang mở dashboard…';
+          window.location.replace('/');
+          return;
+        }
+        if (principal) {
+          status.className = 'status warn';
+          status.textContent = `Tài khoản ${principal.userDetails || ''} đã đăng nhập nhưng chưa được cấp quyền vikoda-user. Hãy liên hệ quản trị dashboard.`;
+          logout.classList.remove('hidden');
+          return;
+        }
+        status.textContent = 'Vui lòng đăng nhập bằng tài khoản Microsoft đã được quản trị viên cấp quyền.';
+        login.classList.remove('hidden');
+      } catch (error) {
+        status.className = 'status warn';
+        status.textContent = 'Không thể kiểm tra phiên đăng nhập. Hãy thử đăng nhập lại.';
+        login.classList.remove('hidden');
+      }
+    })();
+  </script>
+</body>
+</html>
