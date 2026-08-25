@@ -37,7 +37,7 @@ on:
         type: boolean
         default: true
       publish_dashboard:
-        description: 'Publish web only when repository security gates allow it'
+        description: 'Publish public Pages only when repository security gates allow it'
         required: true
         type: boolean
         default: false
@@ -139,6 +139,7 @@ jobs:
       change_reason: ${{ steps.source_change.outputs.reason }}
       rebuild_periods: ${{ steps.delta.outputs.rebuild_periods }}
       web_publish_ready: ${{ steps.web_gate.outputs.ready }}
+      swa_publish_ready: ${{ steps.swa_gate.outputs.ready }}
     env:
       AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
       AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
@@ -147,6 +148,7 @@ jobs:
       SHAREPOINT_BASE_FOLDER: ${{ vars.SHAREPOINT_BASE_FOLDER || 'Vikoda_Sales_Data' }}
       PIPELINE_STATE_FILE: ${{ vars.SHAREPOINT_PIPELINE_STATE_FILE || '_vikoda_pipeline_state.json' }}
       INCREMENTAL_STATE_FILE: ${{ vars.SHAREPOINT_INCREMENTAL_STATE_FILE || '_vikoda_incremental_state.json' }}
+      ENABLE_SWA_DEPLOY: ${{ vars.ENABLE_SWA_DEPLOY }}
       ENABLE_PAGES_DEPLOY: ${{ vars.ENABLE_PAGES_DEPLOY }}
       WEB_DATA_CLASSIFICATION: ${{ vars.WEB_DATA_CLASSIFICATION }}
       MANUAL_PUBLISH_REQUEST: ${{ github.event_name != 'workflow_dispatch' || inputs.publish_dashboard }}
@@ -361,7 +363,77 @@ jobs:
         if: steps.source_change.outputs.changed == 'true'
         run: npm run verify:web
 
-      - name: Evaluate safe web deployment gate
+      - name: Validate Azure Static Web Apps security configuration
+        if: steps.source_change.outputs.changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          config_path = Path('web/staticwebapp.config.json')
+          login_path = Path('web/login.html')
+          if not config_path.is_file() or not login_path.is_file():
+              raise SystemExit('Missing web/staticwebapp.config.json or web/login.html')
+          config = json.loads(config_path.read_text(encoding='utf-8'))
+          routes = {item.get('route'): item for item in config.get('routes', [])}
+          for route in ('/*', '/data/*'):
+              roles = routes.get(route, {}).get('allowedRoles', [])
+              if 'vikoda-user' not in roles:
+                  raise SystemExit(f'{route} must require vikoda-user')
+          if routes.get('/.auth/login/github', {}).get('statusCode') != 404:
+              raise SystemExit('GitHub login provider must stay blocked')
+          override = config.get('responseOverrides', {}).get('401', {})
+          if override.get('redirect') != '/login.html':
+              raise SystemExit('401 must redirect to /login.html')
+          print('Azure Static Web Apps security config: PASS')
+          PY
+
+      - name: Evaluate authenticated Azure Static Web Apps deployment gate
+        id: swa_gate
+        if: steps.source_change.outputs.changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ready=false
+          if [[ "${ENABLE_SWA_DEPLOY:-}" == "true" ]]; then
+            ready=true
+          fi
+          echo "ready=$ready" >> "$GITHUB_OUTPUT"
+          if [[ "$ready" == "true" ]]; then
+            echo "Azure Static Web Apps deployment gate: OPEN."
+          else
+            echo "Azure Static Web Apps deployment gate: CLOSED. Set ENABLE_SWA_DEPLOY=true after the Azure app and deployment token are configured."
+          fi
+
+      - name: Validate Azure Static Web Apps deployment token
+        if: steps.source_change.outputs.changed == 'true' && steps.swa_gate.outputs.ready == 'true'
+        shell: bash
+        env:
+          SWA_DEPLOYMENT_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${SWA_DEPLOYMENT_TOKEN:-}" ]]; then
+            echo "::error::AZURE_STATIC_WEB_APPS_API_TOKEN Repository Secret is missing."
+            exit 1
+          fi
+          echo "Azure Static Web Apps deployment token: available"
+
+      - name: Deploy authenticated dashboard to Azure Static Web Apps
+        if: steps.source_change.outputs.changed == 'true' && steps.swa_gate.outputs.ready == 'true'
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: web
+          output_location: ''
+          skip_app_build: true
+          skip_api_build: true
+          production_branch: main
+
+      - name: Evaluate safe public GitHub Pages deployment gate
         id: web_gate
         if: steps.source_change.outputs.changed == 'true'
         shell: bash
@@ -373,12 +445,12 @@ jobs:
           fi
           echo "ready=$ready" >> "$GITHUB_OUTPUT"
           if [[ "$ready" == "true" ]]; then
-            echo "Web deployment gate: OPEN."
+            echo "Public GitHub Pages deployment gate: OPEN."
           else
-            echo "Web deployment gate: CLOSED. Dashboard was built but production data will not be published publicly."
+            echo "Public GitHub Pages deployment gate: CLOSED. Production data will not be published publicly."
           fi
 
-      - name: Package approved dashboard for automatic deployment
+      - name: Package public approved dashboard for GitHub Pages
         if: steps.source_change.outputs.changed == 'true' && steps.web_gate.outputs.ready == 'true'
         uses: actions/upload-artifact@v7
         with:
@@ -412,13 +484,14 @@ jobs:
             echo "- ERP periods changed by manifest: \`${{ steps.source_change.outputs.erp_periods || 'baseline/reconcile' }}\`"
             echo "- Data_Goc periods rebuilt: \`${{ steps.delta.outputs.rebuild_periods || 'none' }}\`"
             echo "- Data_Goc workbooks rebuilt: \`${{ steps.delta.outputs.rebuild_count || '0' }}\`"
-            echo "- Web publish gate: \`${{ steps.web_gate.outputs.ready || 'closed' }}\`"
+            echo "- Azure SWA deploy gate: \`${{ steps.swa_gate.outputs.ready || 'closed' }}\`"
+            echo "- Public Pages gate: \`${{ steps.web_gate.outputs.ready || 'closed' }}\`"
             echo "- Output: \`SharePoint/${SHAREPOINT_BASE_FOLDER}/Data_Goc\`"
             echo "- Commit: \`${GITHUB_SHA}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
   deploy-dashboard:
-    name: Auto-deploy approved dashboard to GitHub Pages
+    name: Auto-deploy approved public dashboard to GitHub Pages
     needs: [cloud-refresh]
     if: >-
       needs.cloud-refresh.result == 'success' &&
