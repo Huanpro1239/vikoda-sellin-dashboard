@@ -33,6 +33,17 @@ def download_args(local_dir: Path) -> list[str]:
     ]
 
 
+def upload_args(local_dir: Path) -> list[str]:
+    return [
+        "--action",
+        "upload",
+        "--folder",
+        "Data_Goc",
+        "--local-dir",
+        str(local_dir),
+    ]
+
+
 class SharePointGraphSyncTests(unittest.TestCase):
     @mock.patch.object(sync, "http_request_with_retry")
     def test_download_follows_graph_pagination(self, request: mock.Mock) -> None:
@@ -160,19 +171,52 @@ class SharePointGraphSyncTests(unittest.TestCase):
     @mock.patch.object(sync, "get_graph_access_token", return_value="token")
     def test_upload_without_xlsx_fails_closed(self, _get_token: mock.Mock) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            result = sync.main(
-                [
-                    "--action",
-                    "upload",
-                    "--folder",
-                    "Data_Goc",
-                    "--local-dir",
-                    tmp,
-                ],
-                env=VALID_CLOUD_ENV,
-            )
+            result = sync.main(upload_args(Path(tmp)), env=VALID_CLOUD_ENV)
 
         self.assertEqual(3, result)
+
+    @mock.patch.object(sync, "upload_file_to_sharepoint")
+    @mock.patch.object(sync, "get_graph_access_token", return_value="token")
+    def test_upload_with_xlsx_uses_resolved_cloud_target(
+        self,
+        _get_token: mock.Mock,
+        upload: mock.Mock,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            workbook = Path(tmp) / "Sell in T08_2026.xlsx"
+            workbook.write_bytes(b"test-workbook")
+
+            result = sync.main(upload_args(Path(tmp)), env=VALID_CLOUD_ENV)
+
+        self.assertEqual(0, result)
+        upload.assert_called_once()
+        token, site_id, drive_id, folder, uploaded_file = upload.call_args.args
+        self.assertEqual("token", token)
+        self.assertEqual("site", site_id)
+        self.assertEqual("drive", drive_id)
+        self.assertEqual("Data_Goc", folder)
+        self.assertEqual("Sell in T08_2026.xlsx", uploaded_file.name)
+
+    @mock.patch.object(sync, "http_request_with_retry", return_value=(b"{}", 201))
+    def test_upload_file_uses_graph_put_content_endpoint(self, request: mock.Mock) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            workbook = Path(tmp) / "Sell in T08_2026.xlsx"
+            workbook.write_bytes(b"test-workbook")
+
+            sync.upload_file_to_sharepoint(
+                "token",
+                "site-id",
+                "drive-id",
+                "Data_Goc",
+                workbook,
+            )
+
+        request.assert_called_once()
+        graph_request = request.call_args.args[0]
+        self.assertEqual("PUT", graph_request.get_method())
+        self.assertIn("/sites/site-id/drives/drive-id/root:/Data_Goc/", graph_request.full_url)
+        self.assertTrue(graph_request.full_url.endswith("Sell%20in%20T08_2026.xlsx:/content"))
+        self.assertEqual(b"test-workbook", graph_request.data)
 
 
 if __name__ == "__main__":
