@@ -19,10 +19,12 @@ REQUIRED_WEB_FILES = (
     "index.html",
     "css/executive-dashboard.css",
     "css/vikoda-powerbi-theme.css",
+    "css/reference-dashboard-v3.css",
     "js/app.js",
     "js/charts.js",
     "js/data-engine.js",
     "js/executive-ui.js",
+    "js/reference-analytics.js",
     "js/auth.js",
 )
 
