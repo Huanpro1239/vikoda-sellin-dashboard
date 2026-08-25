@@ -213,12 +213,26 @@ def upload_file_to_sharepoint(
         )
 
     remote_size = response.get("size")
-    if isinstance(remote_size, int) and remote_size != len(data):
-        raise RuntimeError(
-            f"Kích thước file Graph phản hồi không khớp: local={len(data)}, remote={remote_size}"
-        )
+    if isinstance(remote_size, int):
+        if remote_size <= 0:
+            raise RuntimeError(
+                f"Graph phản hồi file remote rỗng hoặc size không hợp lệ: {local_file.name}"
+            )
+        if remote_size != len(data):
+            if local_file.suffix.lower() in SOURCE_WORKBOOK_SUFFIXES:
+                logger.warning(
+                    "Workbook đã upload nhưng size remote khác local; chấp nhận sai lệch do "
+                    "SharePoint có thể xử lý metadata Office sau upload: %s local=%s remote=%s",
+                    local_file.name,
+                    len(data),
+                    remote_size,
+                )
+            else:
+                raise RuntimeError(
+                    f"Kích thước file Graph phản hồi không khớp: local={len(data)}, remote={remote_size}"
+                )
 
-    logger.info("Đã upload SharePoint: %s (%s bytes)", local_file.name, len(data))
+    logger.info("Đã upload SharePoint: %s (%s bytes local)", local_file.name, len(data))
     return response
 
 
