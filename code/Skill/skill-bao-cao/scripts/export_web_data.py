@@ -79,6 +79,31 @@ def _load_quality_gate(
     return status, source_row_count
 
 
+def _customer_geography(dmkh_payload: dict[str, Any]) -> dict[str, dict[str, str]]:
+    """Extract province/district directly from canonical DMKH staging.
+
+    DMKH columns are stable: code=B, province/TINHTHANH=index 9 and
+    district/QUANHUYEN=index 10 in the normalized row schema.  Keeping this map
+    at the web-export boundary lets the browser reproduce the Power BI
+    Miền → Vùng → Tỉnh hierarchy without changing fact-table grain.
+    """
+    geography: dict[str, dict[str, str]] = {}
+    for raw in dmkh_payload.get("rows", []):
+        if not isinstance(raw, list) or not raw:
+            continue
+        code = str(raw[0] or "").strip()
+        if not code:
+            continue
+        province = str(raw[9] or "").strip() if len(raw) > 9 else ""
+        district = str(raw[10] or "").strip() if len(raw) > 10 else ""
+        current = geography.setdefault(code, {"province": "", "district": ""})
+        if province and not current["province"]:
+            current["province"] = province
+        if district and not current["district"]:
+            current["district"] = district
+    return geography
+
+
 def export_web_dataset(
     sell_in_path: Path,
     target_path: Path,
@@ -99,9 +124,12 @@ def export_web_dataset(
     current_year = int(sell_in.get("current_year", 0))
     through_month = int(sell_in.get("through_month", 0))
     as_of_date = str(sell_in.get("as_of_date") or "")
+    customer_geo = _customer_geography(dmkh)
 
     cust_map = {}
     for c in dim_customer:
+        code = str(c["CustomerCode"] or "").strip()
+        geo = customer_geo.get(code, {})
         cust_map[c["CustomerKey"]] = {
             "code": c["CustomerCode"],
             "name": c["CustomerName"],
@@ -110,6 +138,8 @@ def export_web_dataset(
             "system_mt": c["SystemMT"] or "",
             "mien": c["Mien"],
             "vung": c["Vung"],
+            "province": str(c.get("Province") or geo.get("province") or ""),
+            "district": str(c.get("District") or geo.get("district") or ""),
         }
 
     prod_map = {}
@@ -193,7 +223,7 @@ def export_web_dataset(
             "current_year": current_year,
             "through_month": through_month,
             "generated_at": datetime.now().astimezone().isoformat(),
-            "pipeline_version": "2.3.0",
+            "pipeline_version": "2.4.0",
             "quality_status": quality_status,
             "source_row_count": source_row_count,
             "fact_count": len(facts_compact),
