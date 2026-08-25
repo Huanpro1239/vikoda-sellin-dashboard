@@ -1,0 +1,322 @@
+/* VIKODA SELL-IN — SCREENSHOT FIDELITY V4
+ * Final overlay matching the supplied Power BI reference pages.
+ */
+.reference-dashboard-v3 {
+  --ref-sidebar-width: 230px;
+  --ref-header-height: 78px;
+}
+
+.reference-dashboard-v3 .app-header {
+  height: var(--ref-header-height);
+  min-height: var(--ref-header-height);
+  padding: 10px 18px 8px 25px;
+}
+
+.reference-dashboard-v3 .brand-title {
+  font-size: clamp(25px, 2vw, 30px);
+  font-weight: 720;
+}
+
+.reference-dashboard-v3 .app-sidebar {
+  width: var(--ref-sidebar-width);
+  min-width: var(--ref-sidebar-width);
+  padding: 15px 14px 18px;
+  background: #183f62 !important;
+}
+
+.reference-dashboard-v3 .nav-item {
+  min-height: 35px;
+  padding: 8px 12px;
+  background: #1b486d;
+  font-size: 12px;
+}
+
+.reference-dashboard-v3 .nav-item.active {
+  background: #1782b6;
+}
+
+.reference-dashboard-v3 .app-content {
+  padding: 7px 12px 14px;
+}
+
+/* KPI cards: tinted fill + colored outline exactly like the supplied pages. */
+.reference-dashboard-v3 .executive-kpi-grid {
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.reference-dashboard-v3 .executive-kpi-card {
+  min-height: 72px;
+  padding: 8px 10px 7px;
+  border-width: 1px;
+  border-top-width: 1px;
+  border-radius: 10px;
+  box-shadow: 7px 8px 14px rgba(28, 57, 82, .14);
+}
+
+.reference-dashboard-v3 .executive-kpi-card.actual { background: #eef3ff !important; border-color: #356dff; }
+.reference-dashboard-v3 .executive-kpi-card.ly { background: #f5f0ff !important; border-color: #8550ff; }
+.reference-dashboard-v3 .executive-kpi-card.target { background: #fff7e8 !important; border-color: #e88a27; }
+.reference-dashboard-v3 .executive-kpi-card.attainment { background: #edf9f7 !important; border-color: #3d978e; }
+.reference-dashboard-v3 .executive-kpi-card.growth { background: #eefaf3 !important; border-color: #4ac878; }
+
+.reference-dashboard-v3 .executive-kpi-card .kpi-label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.reference-dashboard-v3 .executive-kpi-card .kpi-value {
+  margin-top: 5px;
+  font-size: clamp(26px, 2.2vw, 31px);
+  font-weight: 700;
+}
+
+.reference-dashboard-v3 .executive-kpi-card .kpi-sub {
+  display: none !important;
+}
+
+/* Reference screenshots do not have an extra insight strip between KPI and visuals. */
+.reference-dashboard-v3 #view_page_01 > .analysis-summary-grid,
+.reference-dashboard-v3 #view_page_02 > .analysis-summary-grid,
+.reference-dashboard-v3 #view_page_03 > .analysis-summary-grid,
+.reference-dashboard-v3 #view_page_04 > .analysis-summary-grid,
+.reference-dashboard-v3 #view_page_01 > .executive-alert-strip {
+  display: none !important;
+}
+
+.reference-dashboard-v3 .chart-card,
+.reference-dashboard-v3 .table-card {
+  border-color: #bfcfdd;
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.reference-dashboard-v3 .chart-card {
+  padding: 8px 8px 4px;
+}
+
+.reference-dashboard-v3 .chart-card-header {
+  min-height: 48px;
+  padding: 1px 1px 5px;
+  border-bottom: 0;
+}
+
+.reference-dashboard-v3 .chart-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #142b40;
+}
+
+.reference-dashboard-v3 .chart-subtitle {
+  margin-top: 7px;
+  font-size: 10.5px;
+  color: #647b91;
+}
+
+.reference-dashboard-v3 .chart-container {
+  height: 250px;
+  min-height: 230px;
+}
+
+/* OVERVIEW: one full-width combo + two equal ranked bars. */
+.reference-dashboard-v3 #view_page_01 > .charts-grid-2-1 {
+  display: grid;
+  grid-template-columns: 1fr !important;
+  margin-bottom: 8px;
+}
+.reference-dashboard-v3 #view_page_01 > .charts-grid-2-1 .chart-container {
+  height: 255px !important;
+}
+.reference-dashboard-v3 #view_page_01 > .charts-grid-2 {
+  grid-template-columns: 1fr 1fr;
+}
+.reference-dashboard-v3 #view_page_01 > .charts-grid-2 .chart-container {
+  height: 205px;
+}
+.reference-dashboard-v3 #view_page_01 .reference-hidden-card {
+  display: none !important;
+}
+
+/* VÙNG-MIỀN: combo chart + matrix. */
+.reference-dashboard-v3 #view_page_04 > .charts-grid-2:first-of-type {
+  grid-template-columns: 1fr !important;
+}
+.reference-dashboard-v3 #view_page_04 #chart_p4_volume_trend {
+  height: 255px;
+}
+.reference-dashboard-v3 #view_page_04 .reference-hidden-card {
+  display: none !important;
+}
+.reference-dashboard-v3 .reference-matrix-card {
+  margin-top: 8px;
+  padding: 7px;
+}
+.reference-dashboard-v3 .reference-matrix-title {
+  margin: 1px 0 7px;
+  color: #112e47;
+  font-size: 14px;
+  font-weight: 650;
+}
+.reference-dashboard-v3 .reference-matrix-subtitle {
+  margin: -3px 0 7px;
+  color: #687f93;
+  font-size: 10px;
+}
+
+/* Customer page: top combo + donut, then one full matrix. */
+.reference-dashboard-v3 #view_page_02 > .charts-grid-2 {
+  grid-template-columns: minmax(0, 2.45fr) minmax(280px, .95fr);
+}
+.reference-dashboard-v3 #view_page_02 > .charts-grid-2 .chart-container {
+  height: 250px;
+}
+.reference-dashboard-v3 #view_page_02 > .charts-grid-2-1 {
+  grid-template-columns: 1fr !important;
+}
+.reference-dashboard-v3 #view_page_02 > .charts-grid-2-1 > .chart-card:first-child {
+  width: 100%;
+}
+.reference-dashboard-v3 #view_page_02 .reference-hidden-card {
+  display: none !important;
+}
+.reference-dashboard-v3 #view_page_02 .chart-tab-group {
+  display: none !important;
+}
+
+/* Product page: combo chart + monthly SKU matrix. */
+.reference-dashboard-v3 #view_page_03 > .charts-grid-2:first-of-type {
+  grid-template-columns: 1fr !important;
+}
+.reference-dashboard-v3 #view_page_03 #chart_p3_trend {
+  height: 250px;
+}
+.reference-dashboard-v3 #view_page_03 .reference-hidden-card {
+  display: none !important;
+}
+
+/* Variance page: no forecasting controls in the reference; just 2 visuals + cause matrix. */
+.reference-dashboard-v3 #view_page_06 .forecast-control-bar,
+.reference-dashboard-v3 #view_page_06 .predictive-metrics-grid {
+  display: none !important;
+}
+.reference-dashboard-v3 #view_page_06 > .charts-grid-2 {
+  grid-template-columns: 1.25fr 1fr;
+  margin-bottom: 9px;
+}
+.reference-dashboard-v3 #view_page_06 .chart-container {
+  height: 235px;
+}
+.reference-dashboard-v3 #view_page_06 > .chart-card:last-child {
+  padding: 7px;
+}
+.reference-dashboard-v3 #view_page_06 #early_warning_container {
+  display: block;
+}
+
+/* Power BI matrix style. */
+.reference-dashboard-v3 .reference-matrix-wrap {
+  max-height: 270px;
+  overflow: auto;
+  border: 1px solid #b7c8d7;
+}
+.reference-dashboard-v3 .reference-matrix {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: auto;
+  font-size: 11px;
+}
+.reference-dashboard-v3 .reference-matrix th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  min-width: 72px;
+  height: 42px;
+  padding: 6px 6px;
+  background: #0c3552;
+  border-right: 1px solid #97aec0;
+  border-bottom: 1px solid #93aabd;
+  color: #fff;
+  font-weight: 650;
+  text-align: center;
+  white-space: nowrap;
+}
+.reference-dashboard-v3 .reference-matrix th.text-col {
+  min-width: 128px;
+}
+.reference-dashboard-v3 .reference-matrix td {
+  height: 34px;
+  padding: 5px 7px;
+  border-right: 1px solid #c4d1dc;
+  border-bottom: 1px solid #c4d1dc;
+  background: #fff;
+  color: #153149;
+  white-space: nowrap;
+}
+.reference-dashboard-v3 .reference-matrix tbody tr:nth-child(even) td {
+  background: #e7f0f8;
+}
+.reference-dashboard-v3 .reference-matrix td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.reference-dashboard-v3 .reference-matrix td.positive { color: #087d49; }
+.reference-dashboard-v3 .reference-matrix td.negative { color: #c82c39; }
+.reference-dashboard-v3 .reference-matrix tfoot td {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: #0c3552 !important;
+  color: #fff !important;
+  font-weight: 700;
+}
+
+.reference-dashboard-v3 .reference-customer-matrix .reference-matrix-wrap,
+.reference-dashboard-v3 .reference-product-matrix .reference-matrix-wrap {
+  max-height: 245px;
+}
+
+/* Sidebar slicers: compact blocks matching the screenshot. */
+.reference-dashboard-v3 .slicer-card,
+.reference-dashboard-v3 .filter-select-group {
+  border-color: #5c8aaa;
+  border-radius: 6px;
+  background: rgba(8, 49, 78, .24);
+}
+.reference-dashboard-v3 .filter-select,
+.reference-dashboard-v3 .date-input {
+  background: #174c71;
+  border-color: #7bb1d1;
+  color: #9edaff;
+}
+.reference-dashboard-v3 .quick-date-pills {
+  display: none;
+}
+
+@media (min-width: 1500px) {
+  .reference-dashboard-v3 #view_page_01 > .charts-grid-2-1 .chart-container,
+  .reference-dashboard-v3 #view_page_04 #chart_p4_volume_trend,
+  .reference-dashboard-v3 #view_page_02 > .charts-grid-2 .chart-container,
+  .reference-dashboard-v3 #view_page_03 #chart_p3_trend {
+    height: 285px !important;
+  }
+  .reference-dashboard-v3 #view_page_01 > .charts-grid-2 .chart-container {
+    height: 230px;
+  }
+  .reference-dashboard-v3 .reference-matrix-wrap {
+    max-height: 315px;
+  }
+}
+
+@media (max-width: 900px) {
+  .reference-dashboard-v3 #view_page_01 > .charts-grid-2,
+  .reference-dashboard-v3 #view_page_02 > .charts-grid-2,
+  .reference-dashboard-v3 #view_page_06 > .charts-grid-2 {
+    grid-template-columns: 1fr;
+  }
+  .reference-dashboard-v3 .reference-matrix-wrap {
+    max-height: 360px;
+  }
+}
