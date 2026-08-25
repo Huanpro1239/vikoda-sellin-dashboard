@@ -15,6 +15,16 @@ from pathlib import Path
 
 
 DASHBOARD_JS_PREFIX = "window.VIKODA_DATA = "
+REQUIRED_WEB_FILES = (
+    "index.html",
+    "css/executive-dashboard.css",
+    "css/vikoda-powerbi-theme.css",
+    "js/app.js",
+    "js/charts.js",
+    "js/data-engine.js",
+    "js/executive-ui.js",
+    "js/auth.js",
+)
 
 
 def check_python_version() -> bool:
@@ -83,15 +93,8 @@ def check_dashboard_data(project_root: Path) -> bool:
 
 def check_web_files(project_root: Path) -> bool:
     web_dir = project_root / "web"
-    required = [
-        web_dir / "index.html",
-        web_dir / "css/style.css",
-        web_dir / "js/app.js",
-        web_dir / "js/charts.js",
-        web_dir / "js/data-engine.js",
-        web_dir / "js/auth.js",
-    ]
-    return all(f.exists() and f.stat().st_size > 0 for f in required)
+    required = [web_dir / relative for relative in REQUIRED_WEB_FILES]
+    return all(f.exists() and f.is_file() and f.stat().st_size > 0 for f in required)
 
 
 def run_health_check(project_root: Path) -> int:
@@ -116,9 +119,9 @@ def run_health_check(project_root: Path) -> int:
     if all_pass:
         print("SYSTEM HEALTHY\n")
         return 0
-    else:
-        print("SYSTEM UNHEALTHY - Review failed items above.\n")
-        return 1
+
+    print("SYSTEM UNHEALTHY - Review failed items above.\n")
+    return 1
 
 
 if __name__ == "__main__":
