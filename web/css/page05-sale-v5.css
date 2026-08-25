@@ -1,0 +1,321 @@
+/* VIKODA SELL-IN — SALE MANAGEMENT PAGE V5
+ * Dedicated visual hierarchy for menu 04 · Sale quản lý.
+ */
+.reference-dashboard-v3 #view_page_05 {
+  --sale-blue: #2f67e8;
+  --sale-cyan: #1593c4;
+  --sale-orange: #e58a16;
+  --sale-green: #15945b;
+  --sale-red: #dc3545;
+  --sale-navy: #0b304d;
+  --sale-line: #c6d4df;
+  --sale-soft: #edf3f7;
+}
+
+.reference-dashboard-v3 #view_page_05 .sales-management-panel {
+  margin: 0 0 10px;
+}
+
+.reference-dashboard-v3 #view_page_05 .sale-page-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 8px;
+  padding: 1px 2px;
+}
+
+.reference-dashboard-v3 #view_page_05 .sale-page-heading h2 {
+  margin: 0;
+  color: #16344d;
+  font-size: 15px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.reference-dashboard-v3 #view_page_05 .sale-page-heading p {
+  margin: 4px 0 0;
+  color: #6d8295;
+  font-size: 10px;
+}
+
+.reference-dashboard-v3 #view_page_05 .sale-page-heading .sale-period-note {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border: 1px solid #bfd0dc;
+  border-radius: 4px;
+  background: #f7fafc;
+  color: #476379;
+  font-size: 9.5px;
+  white-space: nowrap;
+}
+
+.reference-dashboard-v3 #view_page_05 #sales_management_summary {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 9px;
+}
+
+.reference-dashboard-v3 #view_page_05 #sales_management_summary .analysis-summary-card {
+  min-height: 65px;
+  padding: 8px 10px;
+  border: 1px solid var(--sale-line);
+  border-left-width: 4px;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: none;
+}
+
+.reference-dashboard-v3 #view_page_05 #sales_management_summary .analysis-summary-card.info { border-left-color: var(--sale-blue); }
+.reference-dashboard-v3 #view_page_05 #sales_management_summary .analysis-summary-card.good { border-left-color: var(--sale-green); }
+.reference-dashboard-v3 #view_page_05 #sales_management_summary .analysis-summary-card.warn { border-left-color: var(--sale-orange); }
+.reference-dashboard-v3 #view_page_05 #sales_management_summary .analysis-summary-card.bad { border-left-color: var(--sale-red); }
+
+.reference-dashboard-v3 #view_page_05 #sales_management_summary .analysis-summary-label {
+  font-size: 9px;
+  color: #708397;
+  font-weight: 650;
+  letter-spacing: .025em;
+}
+
+.reference-dashboard-v3 #view_page_05 #sales_management_summary .analysis-summary-value {
+  margin-top: 4px;
+  font-size: 18px;
+  color: #16344d;
+}
+
+.reference-dashboard-v3 #view_page_05 #sales_management_summary .analysis-summary-note {
+  margin-top: 4px;
+  font-size: 9px;
+  color: #76899a;
+}
+
+.reference-dashboard-v3 #view_page_05 .sales-management-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(340px, .95fr);
+  gap: 9px;
+  margin-bottom: 9px;
+}
+
+.reference-dashboard-v3 #view_page_05 .sales-management-grid .chart-card {
+  min-width: 0;
+  padding: 8px 8px 4px;
+  border: 1px solid var(--sale-line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.reference-dashboard-v3 #view_page_05 .sales-management-grid .chart-card-header {
+  min-height: 46px;
+  padding: 1px 2px 4px;
+}
+
+.reference-dashboard-v3 #view_page_05 .sales-management-grid .chart-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.reference-dashboard-v3 #view_page_05 .sales-management-grid .chart-subtitle {
+  margin-top: 5px;
+  font-size: 9.5px;
+}
+
+.reference-dashboard-v3 #view_page_05 .sales-management-grid .chart-container {
+  height: 285px;
+  min-height: 260px;
+}
+
+.reference-dashboard-v3 #view_page_05 .sale-performance-matrix {
+  margin-bottom: 10px;
+  padding: 7px;
+  border: 1px solid var(--sale-line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.reference-dashboard-v3 #view_page_05 .sale-performance-matrix .reference-matrix-title {
+  margin: 1px 2px 4px;
+  color: #16344d;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.reference-dashboard-v3 #view_page_05 .sale-performance-matrix .reference-matrix-subtitle {
+  margin: 0 2px 7px;
+  color: #6c8093;
+  font-size: 9.5px;
+}
+
+.reference-dashboard-v3 #view_page_05 .sale-performance-matrix .reference-matrix-wrap {
+  max-height: 285px;
+  border-color: #b9c9d6;
+}
+
+.reference-dashboard-v3 #view_page_05 .sale-performance-matrix .reference-matrix th {
+  height: 38px;
+  background: var(--sale-navy);
+  font-size: 9.5px;
+}
+
+.reference-dashboard-v3 #view_page_05 .sale-performance-matrix .reference-matrix td {
+  height: 31px;
+  font-size: 10px;
+}
+
+.reference-dashboard-v3 #view_page_05 > .table-card {
+  padding: 8px;
+  border: 1px solid var(--sale-line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.reference-dashboard-v3 #view_page_05 .sale-detail-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 7px;
+  padding: 0 2px 6px;
+  border-bottom: 1px solid #e7edf2;
+}
+
+.reference-dashboard-v3 #view_page_05 .sale-detail-heading strong {
+  color: #16344d;
+  font-size: 13px;
+}
+
+.reference-dashboard-v3 #view_page_05 .sale-detail-heading span {
+  color: #74889a;
+  font-size: 9.5px;
+}
+
+.reference-dashboard-v3 #view_page_05 .table-toolbar {
+  gap: 9px;
+  margin-bottom: 7px;
+  padding: 0;
+}
+
+.reference-dashboard-v3 #view_page_05 .search-box {
+  flex: 1 1 420px;
+  max-width: 620px;
+}
+
+.reference-dashboard-v3 #view_page_05 .search-box input {
+  width: 100%;
+  min-height: 33px;
+  padding: 6px 10px;
+  border: 1px solid #b8c9d6;
+  border-radius: 4px;
+  background: #f9fbfc;
+  font-size: 10.5px;
+}
+
+.reference-dashboard-v3 #view_page_05 .btn-primary {
+  min-height: 33px;
+  padding: 6px 12px;
+  border: 1px solid #1b658e;
+  border-radius: 4px;
+  background: #176b94;
+  box-shadow: none;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.reference-dashboard-v3 #view_page_05 > .table-card .table-responsive {
+  max-height: 420px;
+  border: 1px solid #b8c8d5;
+  border-radius: 3px;
+}
+
+.reference-dashboard-v3 #view_page_05 > .table-card .data-table {
+  min-width: 1160px;
+  font-size: 10px;
+}
+
+.reference-dashboard-v3 #view_page_05 > .table-card .data-table thead th {
+  height: 38px;
+  padding: 6px 7px;
+  background: var(--sale-navy);
+  color: #fff;
+  font-size: 9.5px;
+}
+
+.reference-dashboard-v3 #view_page_05 > .table-card .data-table td {
+  height: 34px;
+  padding: 5px 7px;
+}
+
+.reference-dashboard-v3 #view_page_05 > .table-card .data-table tbody tr:nth-child(even) td {
+  background: #edf4f9;
+}
+
+.reference-dashboard-v3 #view_page_05 > .table-card .data-table tbody tr:hover td {
+  background: #dcecf6;
+}
+
+.reference-dashboard-v3 #view_page_05 > .table-card .data-table td:nth-child(7) strong {
+  color: #215ccf;
+}
+
+.reference-dashboard-v3 #view_page_05 .meta-badge {
+  display: inline-flex;
+  min-width: 31px;
+  justify-content: center;
+  padding: 2px 6px;
+  border: 1px solid #b9cfdd;
+  border-radius: 10px;
+  background: #eef6fb;
+  color: #23536f;
+  font-size: 8.5px;
+  font-weight: 650;
+}
+
+.reference-dashboard-v3 #view_page_05 .table-pagination {
+  margin-top: 7px;
+  padding: 0 1px;
+  color: #6c8092;
+  font-size: 9.5px;
+}
+
+.reference-dashboard-v3 #view_page_05 .pagination-controls {
+  gap: 3px;
+}
+
+.reference-dashboard-v3 #view_page_05 .btn-page {
+  min-height: 27px;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 9px;
+}
+
+@media (min-width: 1500px) {
+  .reference-dashboard-v3 #view_page_05 .sales-management-grid .chart-container {
+    height: 310px;
+  }
+  .reference-dashboard-v3 #view_page_05 > .table-card .table-responsive {
+    max-height: 500px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .reference-dashboard-v3 #view_page_05 #sales_management_summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .reference-dashboard-v3 #view_page_05 .sales-management-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .reference-dashboard-v3 #view_page_05 #sales_management_summary {
+    grid-template-columns: 1fr 1fr;
+  }
+  .reference-dashboard-v3 #view_page_05 .sale-page-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .reference-dashboard-v3 #view_page_05 .sales-management-grid .chart-container {
+    height: 280px;
+  }
+}
