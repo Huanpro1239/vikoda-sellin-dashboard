@@ -33,18 +33,19 @@ on:
   workflow_dispatch:
     inputs:
       run_cloud_refresh:
-        description: 'Đọc dữ liệu mới nhất từ SharePoint, chạy ETL và cập nhật Data_Goc'
+        description: 'Force refresh SharePoint → ETL → Data_Goc → web build'
         required: true
         type: boolean
         default: true
       publish_dashboard:
-        description: 'Publish dashboard sau khi dữ liệu đã được phê duyệt public/sanitized'
+        description: 'Request web publish when the repository security gates allow it'
         required: true
         type: boolean
         default: false
   schedule:
-    # 18:00 Việt Nam = 11:00 UTC
-    - cron: '0 11 * * *'
+    # Poll every 30 minutes. The expensive ETL runs only when source workbook
+    # metadata differs from the last successful SharePoint state fingerprint.
+    - cron: '*/30 * * * *'
 
 permissions:
   contents: read
@@ -93,6 +94,9 @@ jobs:
 
   test:
     name: Read-only CI
+    # Source polling must stay lightweight. Code was already validated on PR/push;
+    # manual runs still execute the full suite before a forced production refresh.
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -122,38 +126,50 @@ jobs:
         run: npm run verify:web
 
   cloud-refresh:
-    name: Refresh SharePoint and rebuild Sell-In outputs
+    name: Detect SharePoint changes and rebuild outputs
     needs:
       - test
     if: >-
-      github.event_name == 'schedule' ||
-      (github.event_name == 'workflow_dispatch' && inputs.run_cloud_refresh)
+      always() &&
+      (needs.test.result == 'success' || needs.test.result == 'skipped') &&
+      (github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && inputs.run_cloud_refresh))
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     permissions:
       contents: read
       id-token: write
+    outputs:
+      source_changed: ${{ steps.source_change.outputs.changed }}
+      change_reason: ${{ steps.source_change.outputs.reason }}
+      web_publish_ready: ${{ steps.web_gate.outputs.ready }}
     env:
-      # OIDC production: chỉ dùng Repository Variables, không dùng Client Secret.
       AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
       AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
       SHAREPOINT_HOSTNAME: ${{ vars.SHAREPOINT_HOSTNAME || 'vikodacomvn.sharepoint.com' }}
       SHAREPOINT_SITE_PATH: ${{ vars.SHAREPOINT_SITE_PATH || '/sites/Planning' }}
       SHAREPOINT_BASE_FOLDER: ${{ vars.SHAREPOINT_BASE_FOLDER || 'Vikoda_Sales_Data' }}
+      PIPELINE_STATE_FILE: ${{ vars.SHAREPOINT_PIPELINE_STATE_FILE || '_vikoda_pipeline_state.json' }}
+      ENABLE_PAGES_DEPLOY: ${{ vars.ENABLE_PAGES_DEPLOY }}
+      WEB_DATA_CLASSIFICATION: ${{ vars.WEB_DATA_CLASSIFICATION }}
+      MANUAL_PUBLISH_REQUEST: ${{ github.event_name != 'workflow_dispatch' || inputs.publish_dashboard }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
         with:
           fetch-depth: 1
           persist-credentials: false
+
       - name: Set up Python 3.12
         uses: actions/setup-python@v7
         with:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: requirements.txt
-      - name: Install pinned core dependencies
-        run: python -m pip install --disable-pip-version-check --requirement requirements.txt
+
+      - name: Install lightweight Graph authentication dependency
+        run: python -m pip install --disable-pip-version-check azure-identity==1.24.0
+
       - name: Validate Microsoft OIDC configuration
         shell: bash
         run: |
@@ -171,43 +187,86 @@ jobs:
             exit 1
           fi
           echo "Microsoft OIDC configuration: available"
+
       - name: Azure login with GitHub OIDC
         uses: azure/login@v3
         with:
           client-id: ${{ env.AZURE_CLIENT_ID }}
           tenant-id: ${{ env.AZURE_TENANT_ID }}
           allow-no-subscriptions: true
+
       - name: Resolve SharePoint site and drive IDs
         run: python code/common/sharepoint_bootstrap.py
+
+      - name: Detect SharePoint source changes
+        id: source_change
+        shell: bash
+        env:
+          FORCE_REFRESH: ${{ github.event_name == 'workflow_dispatch' && inputs.run_cloud_refresh }}
+        run: |
+          set -euo pipefail
+          args=(
+            --action check
+            --state-path "${SHAREPOINT_BASE_FOLDER}/Data_Goc/${PIPELINE_STATE_FILE}"
+            --folder "${SHAREPOINT_BASE_FOLDER}/Data ERP"
+            --folder "${SHAREPOINT_BASE_FOLDER}/Target"
+            --folder "${SHAREPOINT_BASE_FOLDER}/DanhMuc_KH"
+            --folder "${SHAREPOINT_BASE_FOLDER}/DanhMuc_SP"
+            --manifest-file "Data/Work/sharepoint_source_manifest.json"
+          )
+          if [[ "$FORCE_REFRESH" == "true" ]]; then
+            args+=(--force)
+          fi
+          python code/common/sharepoint_change_detector.py "${args[@]}"
+
+      - name: Skip message when SharePoint has no new data
+        if: steps.source_change.outputs.changed != 'true'
+        run: >-
+          echo "No new SharePoint workbook metadata detected
+          (${{ steps.source_change.outputs.reason }}). ETL and web rebuild are skipped."
+
+      - name: Install pinned production dependencies
+        if: steps.source_change.outputs.changed == 'true'
+        run: python -m pip install --disable-pip-version-check --requirement requirements.txt
+
       - name: Download ERP workbooks from SharePoint
+        if: steps.source_change.outputs.changed == 'true'
         run: >-
           python code/Skill/skill-bao-cao/scripts/sharepoint_graph_sync.py
           --action download
           --folder "${SHAREPOINT_BASE_FOLDER}/Data ERP"
           --local-dir "Data/CloudInputs/ERP"
           --require-cloud-auth
+
       - name: Download Target workbooks from SharePoint
+        if: steps.source_change.outputs.changed == 'true'
         run: >-
           python code/Skill/skill-bao-cao/scripts/sharepoint_graph_sync.py
           --action download
           --folder "${SHAREPOINT_BASE_FOLDER}/Target"
           --local-dir "Data/CloudInputs/Target"
           --require-cloud-auth
+
       - name: Download customer catalog from SharePoint
+        if: steps.source_change.outputs.changed == 'true'
         run: >-
           python code/Skill/skill-bao-cao/scripts/sharepoint_graph_sync.py
           --action download
           --folder "${SHAREPOINT_BASE_FOLDER}/DanhMuc_KH"
           --local-dir "Data/CloudInputs/DMKH"
           --require-cloud-auth
+
       - name: Download product catalog from SharePoint
+        if: steps.source_change.outputs.changed == 'true'
         run: >-
           python code/Skill/skill-bao-cao/scripts/sharepoint_graph_sync.py
           --action download
           --folder "${SHAREPOINT_BASE_FOLDER}/DanhMuc_SP"
           --local-dir "Data/CloudInputs/DMSP"
           --require-cloud-auth
-      - name: Execute strict Sell-In cloud pipeline
+
+      - name: Execute strict Sell-In cloud pipeline and build web data
+        if: steps.source_change.outputs.changed == 'true'
         run: >-
           python code/Skill/skill-bao-cao/scripts/run_cloud_pipeline.py
           --project-root .
@@ -216,11 +275,17 @@ jobs:
           --target-source-dir "Data/CloudInputs/Target"
           --dmkh-source-dir "Data/CloudInputs/DMKH"
           --product-catalog "Data/CloudInputs/DMSP/Danh Muc San Pham.xlsx"
+
       - name: Finalize dashboard date from latest invoice
+        if: steps.source_change.outputs.changed == 'true'
         run: python code/common/finalize_data_dates.py --project-root .
+
       - name: Run system health check
+        if: steps.source_change.outputs.changed == 'true'
         run: python code/health_check.py
+
       - name: Verify processed Data_Goc workbooks exist
+        if: steps.source_change.outputs.changed == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -231,32 +296,46 @@ jobs:
             exit 1
           fi
           echo "Sẵn sàng upload ${#files[@]} workbook vào SharePoint/Data_Goc."
+
       - name: Upload processed Data_Goc to SharePoint
+        if: steps.source_change.outputs.changed == 'true'
         run: >-
           python code/Skill/skill-bao-cao/scripts/sharepoint_graph_sync.py
           --action upload
           --folder "${SHAREPOINT_BASE_FOLDER}/Data_Goc"
           --local-dir "Data/Data_Goc"
           --require-cloud-auth
-      - name: Write cloud refresh summary
-        if: always()
+
+      - name: Set up Node.js 24 for web release validation
+        if: steps.source_change.outputs.changed == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Validate generated web dashboard
+        if: steps.source_change.outputs.changed == 'true'
+        run: npm run verify:web
+
+      - name: Evaluate safe web deployment gate
+        id: web_gate
+        if: steps.source_change.outputs.changed == 'true'
         shell: bash
         run: |
-          {
-            echo "## Vikoda Sell-In cloud refresh"
-            echo
-            echo "- Job status: **${{ job.status }}**"
-            echo "- Trigger: \`${{ github.event_name }}\`"
-            echo "- Source: \`SharePoint/${SHAREPOINT_BASE_FOLDER}\`"
-            echo "- Output: \`SharePoint/${SHAREPOINT_BASE_FOLDER}/Data_Goc\`"
-            echo "- Commit: \`${GITHUB_SHA}\`"
-          } >> "$GITHUB_STEP_SUMMARY"
-      - name: Package approved dashboard for controlled deployment
-        if: >-
-          github.event_name == 'workflow_dispatch' &&
-          inputs.publish_dashboard &&
-          vars.ENABLE_PAGES_DEPLOY == 'true' &&
-          vars.WEB_DATA_CLASSIFICATION == 'public-or-sanitized'
+          set -euo pipefail
+          ready=false
+          if [[ "${ENABLE_PAGES_DEPLOY:-}" == "true" && "${WEB_DATA_CLASSIFICATION:-}" == "public-or-sanitized" && "${MANUAL_PUBLISH_REQUEST:-false}" == "true" ]]; then
+            ready=true
+          fi
+          echo "ready=$ready" >> "$GITHUB_OUTPUT"
+          if [[ "$ready" == "true" ]]; then
+            echo "Web deployment gate: OPEN (approved public-or-sanitized payload)."
+          else
+            echo "Web deployment gate: CLOSED. Production dashboard was built but will not be published to public static hosting."
+          fi
+
+      - name: Package approved dashboard for automatic deployment
+        if: steps.source_change.outputs.changed == 'true' && steps.web_gate.outputs.ready == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: approved-dashboard-web
@@ -264,15 +343,41 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
+      - name: Commit successful source fingerprint to SharePoint
+        if: steps.source_change.outputs.changed == 'true'
+        run: >-
+          python code/common/sharepoint_change_detector.py
+          --action commit
+          --state-path "${SHAREPOINT_BASE_FOLDER}/Data_Goc/${PIPELINE_STATE_FILE}"
+          --fingerprint "${{ steps.source_change.outputs.fingerprint }}"
+          --file-count "${{ steps.source_change.outputs.file_count }}"
+
+      - name: Write cloud refresh summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Vikoda Sell-In SharePoint watcher"
+            echo
+            echo "- Job status: **${{ job.status }}**"
+            echo "- Trigger: \`${{ github.event_name }}\`"
+            echo "- Source change: \`${{ steps.source_change.outputs.changed || 'not-checked' }}\`"
+            echo "- Reason: \`${{ steps.source_change.outputs.reason || 'n/a' }}\`"
+            echo "- Source workbooks: \`${{ steps.source_change.outputs.file_count || 'n/a' }}\`"
+            echo "- Web publish gate: \`${{ steps.web_gate.outputs.ready || 'closed' }}\`"
+            echo "- Source: \`SharePoint/${SHAREPOINT_BASE_FOLDER}\`"
+            echo "- Output: \`SharePoint/${SHAREPOINT_BASE_FOLDER}/Data_Goc\`"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   deploy-dashboard:
-    name: Deploy approved dashboard to GitHub Pages
+    name: Auto-deploy approved dashboard to GitHub Pages
     needs:
       - cloud-refresh
     if: >-
-      github.event_name == 'workflow_dispatch' &&
-      inputs.publish_dashboard &&
-      vars.ENABLE_PAGES_DEPLOY == 'true' &&
-      vars.WEB_DATA_CLASSIFICATION == 'public-or-sanitized'
+      needs.cloud-refresh.result == 'success' &&
+      needs.cloud-refresh.outputs.source_changed == 'true' &&
+      needs.cloud-refresh.outputs.web_publish_ready == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
