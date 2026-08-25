@@ -41,9 +41,11 @@
     appendStylesheet('css/vikoda-powerbi-theme.css?v=2.6.0', 'data-vikoda-powerbi-theme');
     appendStylesheet('css/reference-dashboard-v3.css?v=3.0.0', 'data-vikoda-reference-theme');
     appendStylesheet('css/reference-fidelity-v4.css?v=4.0.0', 'data-vikoda-reference-fidelity');
+    appendStylesheet('css/page05-sale-v5.css?v=5.0.0', 'data-vikoda-sale-v5');
     appendScript('js/reference-analytics.js?v=3.0.0', 'data-vikoda-reference-analytics');
     appendScript('js/reference-fidelity-v4.js?v=4.0.0', 'data-vikoda-reference-fidelity');
     appendScript('js/reference-geography-v4.js?v=4.0.0', 'data-vikoda-reference-geography');
+    appendScript('js/page05-sale-v5.js?v=5.0.0', 'data-vikoda-sale-v5');
   }
 
   function tagFilterBlocks() {
