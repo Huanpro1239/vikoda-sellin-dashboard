@@ -19,13 +19,26 @@
   const fmtMillion = (value) => `${Number(value || 0).toLocaleString('en-US', { maximumFractionDigits: 1 })} tr`;
   const fmtPercent = (value) => `${Number(value || 0).toFixed(1)}%`;
 
-  function loadPowerBiTheme() {
-    if (document.querySelector('link[data-vikoda-powerbi-theme]')) return;
+  function appendStylesheet(href, dataAttribute) {
+    if (document.querySelector(`link[${dataAttribute}]`)) return;
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = 'css/vikoda-powerbi-theme.css?v=2.6.0';
-    link.dataset.vikodaPowerbiTheme = 'true';
+    link.href = href;
+    link.setAttribute(dataAttribute, 'true');
     document.head.appendChild(link);
+  }
+
+  function loadPowerBiTheme() {
+    appendStylesheet('css/vikoda-powerbi-theme.css?v=2.6.0', 'data-vikoda-powerbi-theme');
+    appendStylesheet('css/reference-dashboard-v3.css?v=3.0.0', 'data-vikoda-reference-theme');
+
+    if (!document.querySelector('script[data-vikoda-reference-analytics]')) {
+      const script = document.createElement('script');
+      script.src = 'js/reference-analytics.js?v=3.0.0';
+      script.async = true;
+      script.setAttribute('data-vikoda-reference-analytics', 'true');
+      document.head.appendChild(script);
+    }
   }
 
   function tagFilterBlocks() {
