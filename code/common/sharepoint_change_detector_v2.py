@@ -1,28 +1,19 @@
 """SharePoint source change detector with per-file manifest and ERP-period diff outputs.
 
-This module extends the v2.4 fingerprint watcher without changing its Graph/auth
-implementation. The manifest is stored only after a successful pipeline run. On
-the next poll it can tell which ERP month(s) changed so Data_Goc can be rebuilt
-incrementally instead of regenerating every monthly workbook.
+The watcher deliberately depends only on the Python standard library plus the
+lightweight Graph/OIDC helper. It must run before the production ETL dependencies
+are installed so the 30-minute polling path stays cheap.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import os
-import sys
+import re
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-COMMON_DIR = PROJECT_ROOT / "code/common"
-SELLIN_DIR = PROJECT_ROOT / "code/Skill/sell-in-monthly/scripts"
-for folder in (COMMON_DIR, SELLIN_DIR):
-    if str(folder) not in sys.path:
-        sys.path.insert(0, str(folder))
-
-from incremental import parse_source_file  # noqa: E402
-from sharepoint_change_detector import (  # noqa: E402
+from sharepoint_change_detector import (
     ChangeDetectorError,
     build_state,
     compute_fingerprint,
@@ -32,6 +23,28 @@ from sharepoint_change_detector import (  # noqa: E402
     read_remote_state,
     write_remote_state,
 )
+
+ERP_FILE_PATTERN = re.compile(
+    r"_(?:Vikoda|Vkoda|VKD)_T(?P<month>\d{1,2})_(?P<year>\d{4})\.(?:xlsx|xlsm)$",
+    re.IGNORECASE,
+)
+
+
+def parse_erp_period_from_name(name: str) -> str | None:
+    """Return YYYY-MM from a valid ERP source filename without opening Excel.
+
+    This intentionally mirrors the Sell-In source naming contract but does not
+    import the ETL package (which requires openpyxl). The watcher only needs the
+    month encoded in the filename to decide which Data_Goc period may be affected.
+    """
+    match = ERP_FILE_PATTERN.search(str(name or "").strip())
+    if not match:
+        return None
+    month = int(match.group("month"))
+    year = int(match.group("year"))
+    if not 1 <= month <= 12 or year < 1900:
+        return None
+    return f"{year:04d}-{month:02d}"
 
 
 def _manifest_index(items: object) -> dict[str, dict[str, Any]]:
@@ -75,12 +88,12 @@ def changed_manifest_paths(previous_state: Mapping[str, Any] | None, current: li
 def erp_periods_from_paths(paths: Sequence[str]) -> list[str]:
     periods: set[str] = set()
     for raw in paths:
-        normalized = str(raw).replace("\\", "/")
+        normalized = str(raw).replace("\\", "/").strip("/")
         if "/Data ERP/" not in f"/{normalized}":
             continue
-        parsed = parse_source_file(Path(Path(normalized).name))
-        if parsed:
-            periods.add(str(parsed["period"]))
+        period = parse_erp_period_from_name(Path(normalized).name)
+        if period:
+            periods.add(period)
     return sorted(periods)
 
 
