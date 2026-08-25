@@ -63,23 +63,27 @@ App registrations
 → GitHub Actions deploying Azure resources
 ```
 
-Nhập:
+Cấu hình repository/branch:
 
 ```text
 Organization: Huanpro1239
+Organization / Owner ID: 213777839
 Repository: vikoda-sellin-dashboard
+Repository ID: 1333996723
 Entity type: Branch
 GitHub branch name: main
 Name: github-main-vikoda-sellin
 ```
 
-Giá trị trust phải tương ứng:
+GitHub Actions của repository này hiện phát OIDC token với subject ID-bound. Federated Credential trong Entra phải khớp chính xác:
 
 ```text
 Issuer: https://token.actions.githubusercontent.com
-Subject: repo:Huanpro1239/vikoda-sellin-dashboard:ref:refs/heads/main
+Subject: repo:Huanpro1239@213777839/vikoda-sellin-dashboard@1333996723:ref:refs/heads/main
 Audience: api://AzureADTokenExchange
 ```
+
+Không dùng subject legacy thiếu Owner ID/Repository ID. Khi GitHub thay đổi identity claim hoặc repository được chuyển owner, hãy lấy `subject claim` trực tiếp từ log bước `azure/login` và đồng bộ lại Federated Credential.
 
 Bước này thay thế hoàn toàn Client Secret.
 
@@ -233,10 +237,17 @@ Tạo biến `AZURE_TENANT_ID` bằng Directory (tenant) ID.
 
 ### `AADSTS700213: No matching federated identity record found`
 
-Federated Credential không khớp repository/branch. Kiểm tra subject phải là:
+Federated Credential không khớp OIDC subject mà GitHub thực sự phát. Với repository hiện tại, subject phải là:
 
 ```text
-repo:Huanpro1239/vikoda-sellin-dashboard:ref:refs/heads/main
+repo:Huanpro1239@213777839/vikoda-sellin-dashboard@1333996723:ref:refs/heads/main
+```
+
+Đối chiếu thêm:
+
+```text
+Issuer: https://token.actions.githubusercontent.com
+Audience: api://AzureADTokenExchange
 ```
 
 ### `Unable to get ACTIONS_ID_TOKEN_REQUEST_URL`
