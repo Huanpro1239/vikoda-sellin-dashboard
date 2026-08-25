@@ -1,3 +1,0 @@
-# Optional tools are separate from the production ETL/CI runtime.
-# Install only when generating the Word operations guide.
-python-docx==1.2.0

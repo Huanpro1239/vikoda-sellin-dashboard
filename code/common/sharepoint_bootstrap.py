@@ -1,9 +1,8 @@
-"""Bootstrap SharePoint Graph configuration for GitHub Actions.
+"""Bootstrap SharePoint Graph configuration for GitHub Actions OIDC.
 
-The production sync script historically required five secrets.  For the demo
-workflow we only require the three Entra application credentials; when the
-SharePoint site/drive IDs are not configured this helper resolves them through
-Microsoft Graph and exports them to subsequent Actions steps via GITHUB_ENV.
+Workflow đăng nhập Microsoft Entra bằng azure/login + GitHub OIDC trước khi chạy
+helper này. Helper lấy Graph token từ AzureCliCredential, resolve SharePoint
+site/drive nếu chưa cấu hình và export ID sang GITHUB_ENV cho các bước sau.
 """
 
 from __future__ import annotations
@@ -31,11 +30,10 @@ class BootstrapError(RuntimeError):
     """Raised when the cloud bootstrap cannot prove a usable configuration."""
 
 
-def _required_credentials(env: Mapping[str, str]) -> dict[str, str]:
+def _required_oidc_config(env: Mapping[str, str]) -> dict[str, str]:
     return {
         "AZURE_TENANT_ID": str(env.get("AZURE_TENANT_ID", "")).strip(),
         "AZURE_CLIENT_ID": str(env.get("AZURE_CLIENT_ID", "")).strip(),
-        "AZURE_CLIENT_SECRET": str(env.get("AZURE_CLIENT_SECRET", "")).strip(),
     }
 
 
@@ -87,16 +85,12 @@ def resolve_drive_id(token: str, site_id: str, env: Mapping[str, str]) -> str:
 
 def bootstrap(env: Mapping[str, str] | None = None) -> tuple[str, str]:
     active_env = os.environ if env is None else env
-    credentials = _required_credentials(active_env)
-    missing = [name for name, value in credentials.items() if not value]
+    oidc_config = _required_oidc_config(active_env)
+    missing = [name for name, value in oidc_config.items() if not value]
     if missing:
-        raise BootstrapError("Missing GitHub Actions secrets: " + ", ".join(missing))
+        raise BootstrapError("Missing GitHub OIDC configuration: " + ", ".join(missing))
 
-    token = get_graph_access_token(
-        credentials["AZURE_TENANT_ID"],
-        credentials["AZURE_CLIENT_ID"],
-        credentials["AZURE_CLIENT_SECRET"],
-    )
+    token = get_graph_access_token()
     site_id = resolve_site_id(token, active_env)
     drive_id = resolve_drive_id(token, site_id, active_env)
     return site_id, drive_id
@@ -117,7 +111,7 @@ def main() -> int:
             _append_github_env("SHAREPOINT_SITE_ID", site_id, os.environ)
         if not os.environ.get("SHAREPOINT_DRIVE_ID", "").strip():
             _append_github_env("SHAREPOINT_DRIVE_ID", drive_id, os.environ)
-        print("SharePoint cloud bootstrap: PASS")
+        print("SharePoint OIDC bootstrap: PASS")
         return 0
     except BootstrapError as exc:
         print(f"::error::{exc}")

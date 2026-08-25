@@ -1,6 +1,6 @@
-# HƯỚNG DẪN VẬN HÀNH SHAREPOINT + GITHUB ACTIONS
+# HƯỚNG DẪN SHAREPOINT + GITHUB ACTIONS OIDC
 
-Tài liệu này mô tả quy trình chuẩn của hệ thống Sell-In Vikoda sau khi loại bỏ lớp kích hoạt trung gian. GitHub Actions truy cập SharePoint trực tiếp bằng Microsoft Graph.
+Tài liệu này mô tả quy trình chuẩn của hệ thống Sell-In Vikoda. GitHub Actions truy cập SharePoint trực tiếp bằng Microsoft Graph và xác thực Microsoft Entra bằng GitHub OIDC. Không dùng Power Automate và không dùng Azure Client Secret.
 
 ## 1. Sơ đồ chuẩn
 
@@ -11,7 +11,7 @@ SharePoint Online - site Planning
           ↓
 Microsoft Graph
           ↓
-GitHub Actions
+GitHub Actions OIDC
           ↓
 Python ETL --strict
           ↓
@@ -23,8 +23,6 @@ Microsoft Graph Upload
           ↓
 SharePoint / Data_Goc
 ```
-
-Dashboard là đầu ra riêng. Chỉ publish khi dữ liệu đã được duyệt public/sanitized.
 
 ## 2. Entra App
 
@@ -40,7 +38,7 @@ Supported account type:
 Accounts in this organizational directory only (Single tenant)
 ```
 
-Microsoft Graph Application permission khuyến nghị:
+Microsoft Graph Application permission:
 
 ```text
 Sites.Selected
@@ -52,19 +50,40 @@ Sau khi Admin consent, cấp app role `write` riêng trên site:
 https://vikodacomvn.sharepoint.com/sites/Planning
 ```
 
-## 3. Client Secret
+## 3. Tạo Federated Credential cho GitHub
 
-Trong Entra App:
+Trong Microsoft Entra:
 
 ```text
-Certificates & secrets
-→ Client secrets
-→ New client secret
+App registrations
+→ vikoda-sellin-github-actions
+→ Certificates & secrets
+→ Federated credentials
+→ Add credential
+→ GitHub Actions deploying Azure resources
 ```
 
-Lưu **Value** ngay sau khi tạo. Không dùng `Secret ID` làm credential.
+Nhập:
 
-## 4. GitHub Secrets
+```text
+Organization: Huanpro1239
+Repository: vikoda-sellin-dashboard
+Entity type: Branch
+GitHub branch name: main
+Name: github-main-vikoda-sellin
+```
+
+Giá trị trust phải tương ứng:
+
+```text
+Issuer: https://token.actions.githubusercontent.com
+Subject: repo:Huanpro1239/vikoda-sellin-dashboard:ref:refs/heads/main
+Audience: api://AzureADTokenExchange
+```
+
+Bước này thay thế hoàn toàn Client Secret.
+
+## 4. GitHub Variables
 
 Vào:
 
@@ -73,29 +92,15 @@ Repository
 → Settings
 → Secrets and variables
 → Actions
-→ Repository secrets
+→ Variables
 ```
 
-Tạo đúng ba tên:
+Tạo:
 
 ```text
-AZURE_TENANT_ID
-AZURE_CLIENT_ID
-AZURE_CLIENT_SECRET
-```
+AZURE_TENANT_ID = <Directory tenant ID>
+AZURE_CLIENT_ID = <Application client ID>
 
-Quy tắc tên Secret:
-
-- Chỉ chữ, số và `_`.
-- Không có khoảng trắng.
-- Không có dấu `-`, `:`, `=` hoặc dấu ngoặc.
-- Không thêm khoảng trắng ở đầu/cuối.
-
-## 5. GitHub Variables
-
-Tạo các Repository Variables:
-
-```text
 SHAREPOINT_HOSTNAME = vikodacomvn.sharepoint.com
 SHAREPOINT_SITE_PATH = /sites/Planning
 SHAREPOINT_ERP_FOLDER = Data ERP
@@ -105,23 +110,45 @@ SHAREPOINT_PRODUCT_FOLDER = Danh muc SP
 SHAREPOINT_DATA_GOC_FOLDER = Data_Goc
 ```
 
-`SHAREPOINT_SITE_ID` và `SHAREPOINT_DRIVE_ID` là tùy chọn. Nếu không có, `sharepoint_bootstrap.py` sẽ tự resolve.
-
-## 6. Kiểm tra folder SharePoint
-
-Site `Planning` phải có tối thiểu:
+Không cần tạo:
 
 ```text
-Data ERP
-Target
-Danh muc KH
-Danh muc SP
-Data_Goc
+AZURE_CLIENT_SECRET
 ```
 
-Tên folder phải khớp với Repository Variables.
+`SHAREPOINT_SITE_ID` và `SHAREPOINT_DRIVE_ID` cũng không bắt buộc. Bootstrap sẽ tự resolve. Nếu muốn cache hai ID này, dùng Repository Variables chứ không cần Secrets.
 
-## 7. Chạy thử thủ công
+## 5. Workflow cloud
+
+File duy nhất:
+
+```text
+.github/workflows/vikoda_pipeline.yml
+```
+
+Cloud job yêu cầu:
+
+```text
+permissions:
+  contents: read
+  id-token: write
+```
+
+Trình tự:
+
+```text
+Validate Microsoft OIDC configuration
+→ azure/login@v3
+→ sharepoint_bootstrap.py
+→ download SharePoint folders
+→ run_cloud_pipeline.py --strict
+→ finalize_data_dates.py
+→ health_check.py
+→ verify Data_Goc
+→ upload Data_Goc to SharePoint
+```
+
+## 6. Chạy thử thủ công
 
 Vào:
 
@@ -138,9 +165,9 @@ publish_dashboard = false
 
 Lần test đầu tiên không publish dashboard.
 
-## 8. Kết quả đúng
+## 7. Kết quả đúng
 
-Các job phải có trạng thái:
+Các job:
 
 ```text
 Read-only CI                                   PASS
@@ -148,10 +175,12 @@ Refresh SharePoint and rebuild Sell-In outputs PASS
 Deploy approved dashboard                     SKIPPED
 ```
 
-Trong job refresh, các bước chính phải xanh:
+Trong cloud job, các bước phải xanh:
 
 ```text
-Preflight Entra credentials and resolve SharePoint IDs
+Validate Microsoft OIDC configuration
+Azure login with GitHub OIDC
+Resolve SharePoint site and drive IDs
 Download ERP workbooks from SharePoint
 Download Target workbooks from SharePoint
 Download customer catalog from SharePoint
@@ -163,11 +192,9 @@ Verify processed Data_Goc workbooks exist
 Upload processed Data_Goc to SharePoint
 ```
 
-Sau đó kiểm tra SharePoint `Data_Goc` có file `Sell in TMM_YYYY.xlsx` với thời gian Modified mới.
+Sau đó kiểm tra SharePoint `Data_Goc` có workbook mới hoặc Modified time mới.
 
-## 9. Lịch tự động
-
-Workflow chạy:
+## 8. Lịch tự động
 
 ```text
 11:00 UTC mỗi ngày
@@ -176,80 +203,97 @@ Workflow chạy:
 
 Schedule chỉ refresh dữ liệu và upload `Data_Goc`; không tự publish dashboard.
 
-## 10. Publish dashboard
+## 9. Publish dashboard
 
-Chỉ cấu hình khi dữ liệu đã được sanitize/phê duyệt.
+Chỉ dùng khi dữ liệu đã sanitize/phê duyệt.
 
-Repository Variables bắt buộc:
+Repository Variables:
 
 ```text
 ENABLE_PAGES_DEPLOY = true
 WEB_DATA_CLASSIFICATION = public-or-sanitized
 ```
 
-Sau đó chạy manual workflow với:
+Sau đó chạy manual workflow:
 
 ```text
 run_cloud_refresh = true
 publish_dashboard = true
 ```
 
-Nếu một trong hai biến phê duyệt không đúng, job deploy phải bị skip.
+## 10. Lỗi thường gặp
 
-## 11. Lỗi thường gặp
+### `AZURE_CLIENT_ID Repository Variable is missing`
 
-### Thiếu Azure Secret
+Tạo biến `AZURE_CLIENT_ID` trong tab **Variables**. Dùng Application (client) ID của app `vikoda-sellin-github-actions`.
 
-Log:
+### `AZURE_TENANT_ID Repository Variable is missing`
+
+Tạo biến `AZURE_TENANT_ID` bằng Directory (tenant) ID.
+
+### `AADSTS700213: No matching federated identity record found`
+
+Federated Credential không khớp repository/branch. Kiểm tra subject phải là:
 
 ```text
-Missing GitHub Actions secrets: AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET
+repo:Huanpro1239/vikoda-sellin-dashboard:ref:refs/heads/main
 ```
 
-Xử lý: kiểm tra đúng tên Repository Secrets và nhập Client Secret **Value**.
+### `Unable to get ACTIONS_ID_TOKEN_REQUEST_URL`
 
-### HTTP 401
+Cloud job thiếu:
 
-Nguyên nhân thường gặp:
+```text
+id-token: write
+```
 
-- Tenant ID sai.
-- Client ID sai.
-- Client Secret Value sai hoặc hết hạn.
+Workflow chuẩn đã cấu hình quyền này.
 
-### HTTP 403
+### HTTP 403 từ Microsoft Graph
 
-Nguyên nhân thường gặp:
+OIDC login đã thành công nhưng app chưa có quyền dữ liệu phù hợp. Kiểm tra:
 
-- App chưa Admin consent.
-- Chưa cấp `write` cho site `Planning`.
-- Cấp permission cho sai Application Client ID.
+```text
+Microsoft Graph Application permission: Sites.Selected
+Admin consent: Granted
+Planning site permission: write
+```
 
-### Không tìm thấy folder
+### Không tìm thấy SharePoint folder
 
-Kiểm tra các Repository Variables và tên folder SharePoint.
+Kiểm tra `SHAREPOINT_*_FOLDER` Variables và tên folder thật.
 
-### Pipeline báo không có workbook
+### Pipeline không có workbook
 
-Cloud pipeline cố tình fail-closed. Kiểm tra `Data ERP`, `Target`, `Danh muc KH`, `Danh muc SP` có workbook `.xlsx`/`.xlsm` hợp lệ.
+Pipeline cố tình fail-closed. Kiểm tra `Data ERP`, `Target`, `Danh muc KH`, `Danh muc SP` có workbook `.xlsx`/`.xlsm` hợp lệ.
 
-### Không có file trong Data_Goc
+## 11. Test local
 
-Kiểm tra log `run_cloud_pipeline.py --strict`. Workflow không upload nếu ETL không tạo workbook mới.
+Cài dependency:
 
-## 12. Quy tắc vận hành
+```bash
+python -m pip install -r requirements.txt
+```
 
-- Không commit dữ liệu ERP thật lên GitHub.
-- Không đưa Client Secret vào source code, README hoặc log.
-- Không sửa workbook nguồn trong quá trình ETL.
-- Không publish dashboard chứa dữ liệu nội bộ lên static hosting.
-- Khi thay Client Secret, cập nhật GitHub Secret trước khi secret cũ hết hạn.
-- Sau thay đổi code, luôn để CI chạy xanh trước khi manual refresh production.
+Đăng nhập Azure CLI:
 
-## 13. Lệnh kiểm tra local
+```bash
+az login --tenant <AZURE_TENANT_ID> --allow-no-subscriptions
+```
+
+Sau đó test:
 
 ```bash
 python code/run_all_tests.py --quiet
 npm run verify:web
 ```
 
-Khi cần test Graph từ local, cấu hình biến môi trường theo `.env.example`; tuyệt đối không commit `.env`.
+Khi chạy Graph script local, `AzureCliCredential` sẽ dùng phiên đăng nhập Azure CLI hiện tại.
+
+## 12. Quy tắc bảo mật
+
+- Không tạo hoặc lưu `AZURE_CLIENT_SECRET` cho workflow này.
+- Không commit token, `.env` hoặc workbook sản xuất.
+- Federated Credential chỉ trust đúng repository và branch `main`.
+- Không cấp `Sites.ReadWrite.All` nếu `Sites.Selected` đáp ứng được yêu cầu.
+- Không publish static dashboard chứa dữ liệu nội bộ chưa được sanitize.

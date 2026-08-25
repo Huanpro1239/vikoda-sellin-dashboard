@@ -2,18 +2,18 @@
 
 **Repository:** `Huanpro1239/vikoda-sellin-dashboard`  
 **Ngày cập nhật:** 25/08/2026  
-**Phạm vi:** Kiến trúc dữ liệu, CI/CD, SharePoint, bảo mật và repo hygiene
+**Phạm vi:** Kiến trúc dữ liệu, CI/CD, SharePoint, OIDC, bảo mật và repo hygiene
 
 ## 1. Kiến trúc hiện hành
-
-Pipeline chính thức:
 
 ```text
 SharePoint Online
     ↓
 Microsoft Graph
     ↓
-GitHub Actions
+GitHub Actions OIDC
+    ↓
+Microsoft Entra
     ↓
 Python ETL --strict
     ↓
@@ -26,11 +26,11 @@ Microsoft Graph Upload
 SharePoint/Data_Goc
 ```
 
-Không có lớp Flow/webhook trung gian trong pipeline production.
+Không có Power Automate/Flow/webhook trung gian và không dùng Azure Client Secret dài hạn trong pipeline production.
 
 ## 2. Workflow
 
-Dự án chỉ dùng workflow chính:
+Workflow chính:
 
 ```text
 .github/workflows/vikoda_pipeline.yml
@@ -40,93 +40,116 @@ Dự án chỉ dùng workflow chính:
 |---|---|
 | Pull request | Repository hygiene + read-only CI |
 | Push `main` | Repository hygiene + read-only CI |
-| Schedule 18:00 VN | CI → SharePoint refresh → ETL → upload `Data_Goc` |
-| Manual | Có thể refresh ngay; publish dashboard chỉ khi được phê duyệt |
+| Schedule 18:00 VN | CI → OIDC login → SharePoint refresh → ETL → upload `Data_Goc` |
+| Manual | Refresh ngay; publish dashboard chỉ khi được phê duyệt |
 
-## 3. Trạng thái kiểm thử
+Cloud job có `id-token: write`; PR/push test không có quyền này.
 
-Run CI sau khi chuẩn hóa kiến trúc đã đạt:
+## 3. Xác thực Microsoft
 
-- `sell-in-monthly`: 69 tests PASS.
-- `skill-bao-cao`: 135 tests PASS.
-- `production-hardening`: 20 tests PASS.
-- Tổng Python: 224 tests PASS.
-- Web regression: 16 tests PASS.
-- Repository hygiene: PASS.
+Mô hình cloud dùng:
 
-Cloud refresh bị skip trên push là đúng thiết kế; cloud chỉ chạy theo schedule hoặc manual dispatch.
+```text
+GitHub OIDC token
+→ Microsoft Entra Federated Credential
+→ azure/login
+→ Azure CLI session
+→ AzureCliCredential
+→ Microsoft Graph token
+```
 
-## 4. Kiểm soát dữ liệu
-
-- Không commit workbook production trong `Data/`.
-- Không commit payload production trong `web/data/`.
-- Không lưu `.env`, Client Secret hoặc token trong repository.
-- Cloud pipeline fail-closed nếu thiếu credential hoặc SharePoint không trả workbook hợp lệ.
-- `run_cloud_pipeline.py --strict` yêu cầu artifact của chính lượt chạy hiện tại.
-- `Data_Goc` chỉ được upload sau khi ETL và health check thành công.
-
-## 5. Microsoft Entra / Graph
-
-Repository Secrets bắt buộc:
+GitHub chỉ cần Repository Variables:
 
 ```text
 AZURE_TENANT_ID
 AZURE_CLIENT_ID
-AZURE_CLIENT_SECRET
 ```
 
-SharePoint site/drive có thể được tự resolve bởi `code/common/sharepoint_bootstrap.py`.
+Không cần `AZURE_CLIENT_SECRET`.
 
-Khuyến nghị permission:
+Federated credential chuẩn:
+
+```text
+Issuer: https://token.actions.githubusercontent.com
+Subject: repo:Huanpro1239/vikoda-sellin-dashboard:ref:refs/heads/main
+Audience: api://AzureADTokenExchange
+```
+
+## 4. SharePoint authorization
+
+Khuyến nghị:
 
 ```text
 Microsoft Graph Application permission: Sites.Selected
-Site Planning: write
+Planning site role: write
 ```
+
+`code/common/sharepoint_bootstrap.py` tự resolve site ID và default drive ID khi không cấu hình sẵn.
+
+## 5. Kiểm soát dữ liệu
+
+- Không commit workbook production trong `Data/`.
+- Không commit payload production trong `web/data/`.
+- Không lưu `.env`, access token hoặc credential dài hạn trong repository.
+- Cloud pipeline fail-closed nếu thiếu OIDC config, SharePoint ID không resolve được hoặc không có workbook hợp lệ.
+- `run_cloud_pipeline.py --strict` yêu cầu artifact của chính lượt chạy hiện tại.
+- `Data_Goc` chỉ được upload sau ETL và health check thành công.
 
 ## 6. Dashboard hosting
 
-Static hosting không phải ranh giới bảo mật cho dữ liệu nội bộ. Job publish chỉ được phép chạy khi đồng thời có:
+Static hosting không phải ranh giới bảo mật cho dữ liệu nội bộ. Job publish chỉ chạy khi đồng thời có:
 
 ```text
 ENABLE_PAGES_DEPLOY=true
 WEB_DATA_CLASSIFICATION=public-or-sanitized
 ```
 
-và người vận hành chủ động chọn `publish_dashboard=true` trong manual workflow.
+và manual workflow chọn `publish_dashboard=true`.
 
-## 7. Thành phần legacy đã loại bỏ
+## 7. Trạng thái test cần xác nhận sau thay đổi OIDC
 
-Đã xóa khỏi cây `main`:
+CI push phải xác nhận:
 
-- Hai workflow cũ chồng chéo.
-- Hướng dẫn SharePoint legacy.
-- Helper Flow Studio.
-- PAD/MCP server.
-- Bộ `.agents/skills` legacy.
-- Tài liệu Word binary cũ; script sinh Word đã được viết lại theo kiến trúc Graph hiện hành.
+```text
+Repository hygiene: PASS
+Python test suite: PASS
+Web regression: PASS
+Cloud refresh on push: SKIPPED
+Dashboard deploy on push: SKIPPED
+```
+
+Sau đó cần manual end-to-end test để xác nhận:
+
+```text
+OIDC login: PASS
+Graph site/drive resolve: PASS
+SharePoint downloads: PASS
+ETL: PASS
+Data_Goc upload: PASS
+```
 
 ## 8. Việc còn phải hoàn tất trước production cloud
 
-1. Tạo đủ ba GitHub Repository Secrets.
-2. Xác nhận Entra App được Admin consent.
-3. Xác nhận App có quyền `write` trên site `Planning`.
-4. Chạy manual workflow với `run_cloud_refresh=true`, `publish_dashboard=false`.
-5. Kiểm tra `Data_Goc` trên SharePoint có Modified time mới.
-6. Chỉ sau khi end-to-end refresh PASS mới để schedule vận hành ổn định.
+1. Tạo Federated Credential cho repo/branch `main` trong Entra App.
+2. Tạo Repository Variables `AZURE_TENANT_ID` và `AZURE_CLIENT_ID`.
+3. Xác nhận `Sites.Selected` đã Admin consent.
+4. Xác nhận app có `write` trên site `Planning`.
+5. Chạy manual workflow với `run_cloud_refresh=true`, `publish_dashboard=false`.
+6. Kiểm tra `Data_Goc` trên SharePoint có Modified time mới.
 
-## 9. Lệnh kiểm tra local
+## 9. Kiểm tra local
 
 ```bash
+python -m pip install -r requirements.txt
 python code/run_all_tests.py --quiet
 npm run verify:web
 python code/health_check.py
 ```
 
-Dependency tạo Word guide là tùy chọn:
+Khi test Microsoft Graph local:
 
 ```bash
-python -m pip install -r requirements-optional.txt
+az login --tenant <AZURE_TENANT_ID> --allow-no-subscriptions
 ```
 
-Chi tiết vận hành xem [`HUONG_DAN_SHAREPOINT_GITHUB_ACTIONS.md`](HUONG_DAN_SHAREPOINT_GITHUB_ACTIONS.md).
+Chi tiết xem [`HUONG_DAN_SHAREPOINT_GITHUB_ACTIONS.md`](HUONG_DAN_SHAREPOINT_GITHUB_ACTIONS.md).

@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1]
@@ -14,9 +15,6 @@ import sharepoint_graph_sync as sync
 
 
 VALID_CLOUD_ENV = {
-    "AZURE_TENANT_ID": "tenant",
-    "AZURE_CLIENT_ID": "client",
-    "AZURE_CLIENT_SECRET": "secret",
     "SHAREPOINT_SITE_ID": "site",
     "SHAREPOINT_DRIVE_ID": "drive",
 }
@@ -45,6 +43,13 @@ def upload_args(local_dir: Path) -> list[str]:
 
 
 class SharePointGraphSyncTests(unittest.TestCase):
+    def test_graph_token_uses_azure_cli_credential(self) -> None:
+        credential = mock.Mock()
+        credential.get_token.return_value = SimpleNamespace(token="oidc-token")
+        token = sync.get_graph_access_token(credential)
+        self.assertEqual("oidc-token", token)
+        credential.get_token.assert_called_once_with("https://graph.microsoft.com/.default")
+
     @mock.patch.object(sync, "http_request_with_retry")
     def test_download_follows_graph_pagination(self, request: mock.Mock) -> None:
         first_page = {
@@ -98,32 +103,28 @@ class SharePointGraphSyncTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 sync.download_sharepoint_folder("token", "site", "drive", "Data ERP", Path(tmp))
 
-    def test_ci_without_any_cloud_credentials_fails_closed(self) -> None:
+    def test_ci_without_sharepoint_ids_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             result = sync.main(download_args(Path(tmp)), env={"CI": "true"})
-
         self.assertEqual(2, result)
 
-    def test_explicit_cloud_requirement_without_credentials_fails(self) -> None:
+    def test_explicit_cloud_requirement_without_sharepoint_ids_fails(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             args = [*download_args(Path(tmp)), "--require-cloud-auth"]
             result = sync.main(args, env={})
-
         self.assertEqual(2, result)
 
-    def test_partial_credentials_never_fall_back_to_local_data(self) -> None:
+    def test_partial_sharepoint_configuration_never_falls_back_to_local_data(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             result = sync.main(
                 download_args(Path(tmp)),
-                env={"AZURE_TENANT_ID": "tenant"},
+                env={"SHAREPOINT_SITE_ID": "site"},
             )
-
         self.assertEqual(2, result)
 
     def test_local_mode_without_cloud_configuration_is_a_noop(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             result = sync.main(download_args(Path(tmp)), env={})
-
         self.assertEqual(0, result)
 
     @mock.patch.object(sync, "download_sharepoint_folder", return_value=[])
@@ -135,7 +136,6 @@ class SharePointGraphSyncTests(unittest.TestCase):
     ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             result = sync.main(download_args(Path(tmp)), env=VALID_CLOUD_ENV)
-
         self.assertEqual(3, result)
 
     @mock.patch.object(sync, "download_sharepoint_folder")
@@ -150,7 +150,6 @@ class SharePointGraphSyncTests(unittest.TestCase):
             note.write_text("not an ERP workbook", encoding="utf-8")
             download.return_value = [note]
             result = sync.main(download_args(Path(tmp)), env=VALID_CLOUD_ENV)
-
         self.assertEqual(3, result)
 
     @mock.patch.object(sync, "download_sharepoint_folder")
@@ -165,14 +164,12 @@ class SharePointGraphSyncTests(unittest.TestCase):
             downloaded.write_bytes(b"non-empty test workbook")
             download.return_value = [downloaded]
             result = sync.main(download_args(Path(tmp)), env=VALID_CLOUD_ENV)
-
         self.assertEqual(0, result)
 
     @mock.patch.object(sync, "get_graph_access_token", return_value="token")
     def test_upload_without_xlsx_fails_closed(self, _get_token: mock.Mock) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             result = sync.main(upload_args(Path(tmp)), env=VALID_CLOUD_ENV)
-
         self.assertEqual(3, result)
 
     @mock.patch.object(sync, "upload_file_to_sharepoint")
@@ -185,7 +182,6 @@ class SharePointGraphSyncTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             workbook = Path(tmp) / "Sell in T08_2026.xlsx"
             workbook.write_bytes(b"test-workbook")
-
             result = sync.main(upload_args(Path(tmp)), env=VALID_CLOUD_ENV)
 
         self.assertEqual(0, result)
@@ -202,7 +198,6 @@ class SharePointGraphSyncTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             workbook = Path(tmp) / "Sell in T08_2026.xlsx"
             workbook.write_bytes(b"test-workbook")
-
             sync.upload_file_to_sharepoint(
                 "token",
                 "site-id",

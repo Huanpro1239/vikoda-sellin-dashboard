@@ -1,8 +1,9 @@
 """Đồng bộ workbook giữa SharePoint Online và GitHub Actions qua Microsoft Graph.
 
-Thiết kế chính thức của project dùng OAuth2 Client Credentials từ Microsoft Entra ID.
-Script fail-closed trong CI: thiếu credential, không có workbook nguồn hoặc upload lỗi
-đều trả mã thoát khác 0.
+Xác thực cloud dùng GitHub OIDC -> Microsoft Entra -> Azure CLI session. Workflow
+đăng nhập bằng azure/login; Python lấy Graph token bằng AzureCliCredential. Không
+cần Client Secret dài hạn. Script fail-closed trong CI: thiếu cấu hình SharePoint,
+không có workbook nguồn hoặc upload lỗi đều trả mã thoát khác 0.
 """
 
 from __future__ import annotations
@@ -18,6 +19,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from azure.identity import AzureCliCredential
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -25,10 +28,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger("SharePointSync")
 
+GRAPH_SCOPE = "https://graph.microsoft.com/.default"
 CLOUD_ENV_NAMES = (
-    "AZURE_TENANT_ID",
-    "AZURE_CLIENT_ID",
-    "AZURE_CLIENT_SECRET",
     "SHAREPOINT_SITE_ID",
     "SHAREPOINT_DRIVE_ID",
 )
@@ -40,7 +41,7 @@ def _env_flag(env: Mapping[str, str], name: str) -> bool:
     return value not in {"", "0", "false", "no", "off"}
 
 
-def _cloud_credentials(env: Mapping[str, str]) -> dict[str, str]:
+def _cloud_configuration(env: Mapping[str, str]) -> dict[str, str]:
     return {name: str(env.get(name, "")) for name in CLOUD_ENV_NAMES}
 
 
@@ -94,25 +95,13 @@ def http_request_with_retry(
     raise RuntimeError(f"Hết lượt retry. Lỗi cuối: {last_error}")
 
 
-def get_graph_access_token(tenant_id: str, client_id: str, client_secret: str) -> str:
-    """Lấy Microsoft Graph access token bằng OAuth2 Client Credentials."""
-    token_url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
-    payload = urllib.parse.urlencode(
-        {
-            "client_id": client_id,
-            "scope": "https://graph.microsoft.com/.default",
-            "client_secret": client_secret,
-            "grant_type": "client_credentials",
-        }
-    ).encode("utf-8")
-
-    req = urllib.request.Request(token_url, data=payload, method="POST")
-    req.add_header("Content-Type", "application/x-www-form-urlencoded")
-    body, _ = http_request_with_retry(req)
-    data = json.loads(body.decode("utf-8"))
-    token = data.get("access_token")
-    if not isinstance(token, str) or not token:
-        raise RuntimeError("Entra ID không trả về access_token hợp lệ")
+def get_graph_access_token(credential: Any | None = None) -> str:
+    """Lấy Graph access token từ Azure CLI session do azure/login hoặc az login tạo."""
+    active_credential = credential or AzureCliCredential()
+    access_token = active_credential.get_token(GRAPH_SCOPE)
+    token = str(getattr(access_token, "token", "") or "").strip()
+    if not token:
+        raise RuntimeError("Azure CLI credential không trả về Microsoft Graph access token hợp lệ")
     return token
 
 
@@ -241,33 +230,30 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None
     parser.add_argument(
         "--require-cloud-auth",
         action="store_true",
-        help="Fail nếu thiếu Entra/SharePoint credentials",
+        help="Fail nếu chưa có SharePoint IDs/Azure CLI authentication",
     )
     args = parser.parse_args(argv)
 
     local_path = Path(args.local_dir).resolve()
     active_env = os.environ if env is None else env
-    credentials = _cloud_credentials(active_env)
-    configured = [name for name, value in credentials.items() if value.strip()]
+    configuration = _cloud_configuration(active_env)
+    configured = [name for name, value in configuration.items() if value.strip()]
     cloud_required = args.require_cloud_auth or _env_flag(active_env, "CI")
 
     if not configured and not cloud_required:
-        logger.info("[LOCAL MODE] Không có cloud credentials; không thực hiện Graph sync.")
+        logger.info("[LOCAL MODE] Không có cloud configuration; không thực hiện Graph sync.")
         return 0
 
-    missing = [name for name, value in credentials.items() if not value.strip()]
+    missing = [name for name, value in configuration.items() if not value.strip()]
     if missing:
         logger.error("[CLOUD MODE] Thiếu cấu hình bắt buộc: %s", ", ".join(missing))
         return 2
 
-    tenant_id = credentials["AZURE_TENANT_ID"]
-    client_id = credentials["AZURE_CLIENT_ID"]
-    client_secret = credentials["AZURE_CLIENT_SECRET"]
-    site_id = credentials["SHAREPOINT_SITE_ID"]
-    drive_id = credentials["SHAREPOINT_DRIVE_ID"]
+    site_id = configuration["SHAREPOINT_SITE_ID"]
+    drive_id = configuration["SHAREPOINT_DRIVE_ID"]
 
-    logger.info("Kết nối Microsoft Graph...")
-    token = get_graph_access_token(tenant_id, client_id, client_secret)
+    logger.info("Kết nối Microsoft Graph bằng Azure CLI/OIDC...")
+    token = get_graph_access_token()
 
     if args.action == "download":
         logger.info("Tải dữ liệu từ SharePoint '%s'", args.folder)

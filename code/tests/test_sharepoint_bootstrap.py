@@ -13,25 +13,24 @@ if str(COMMON_DIR) not in sys.path:
 import sharepoint_bootstrap as bootstrap
 
 
-VALID_APP_ENV = {
+VALID_OIDC_ENV = {
     "AZURE_TENANT_ID": "tenant",
     "AZURE_CLIENT_ID": "client",
-    "AZURE_CLIENT_SECRET": "secret",
 }
 
 
 class SharePointBootstrapTests(unittest.TestCase):
-    def test_missing_app_credentials_reports_exact_names(self) -> None:
+    def test_missing_oidc_configuration_reports_exact_names(self) -> None:
         with self.assertRaises(bootstrap.BootstrapError) as context:
             bootstrap.bootstrap({"AZURE_TENANT_ID": "tenant"})
         message = str(context.exception)
         self.assertIn("AZURE_CLIENT_ID", message)
-        self.assertIn("AZURE_CLIENT_SECRET", message)
+        self.assertNotIn("AZURE_CLIENT_SECRET", message)
 
     @mock.patch.object(bootstrap, "get_graph_access_token", return_value="token")
     def test_existing_site_and_drive_ids_are_reused(self, token: mock.Mock) -> None:
         env = {
-            **VALID_APP_ENV,
+            **VALID_OIDC_ENV,
             "SHAREPOINT_SITE_ID": "site-id",
             "SHAREPOINT_DRIVE_ID": "drive-id",
         }
@@ -40,7 +39,7 @@ class SharePointBootstrapTests(unittest.TestCase):
         self.assertEqual("site-id", site_id)
         self.assertEqual("drive-id", drive_id)
         graph.assert_not_called()
-        token.assert_called_once_with("tenant", "client", "secret")
+        token.assert_called_once_with()
 
     @mock.patch.object(bootstrap, "get_graph_access_token", return_value="token")
     def test_missing_site_and_drive_ids_are_resolved(self, _token: mock.Mock) -> None:
@@ -49,7 +48,7 @@ class SharePointBootstrapTests(unittest.TestCase):
             "_graph_json",
             side_effect=[{"id": "resolved-site"}, {"id": "resolved-drive"}],
         ) as graph:
-            site_id, drive_id = bootstrap.bootstrap(VALID_APP_ENV)
+            site_id, drive_id = bootstrap.bootstrap(VALID_OIDC_ENV)
         self.assertEqual("resolved-site", site_id)
         self.assertEqual("resolved-drive", drive_id)
         first_url = graph.call_args_list[0].args[1]
