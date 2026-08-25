@@ -19,8 +19,38 @@
   const fmtMillion = (value) => `${Number(value || 0).toLocaleString('en-US', { maximumFractionDigits: 1 })} tr`;
   const fmtPercent = (value) => `${Number(value || 0).toFixed(1)}%`;
 
+  function loadPowerBiTheme() {
+    if (document.querySelector('link[data-vikoda-powerbi-theme]')) return;
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'css/vikoda-powerbi-theme.css?v=2.6.0';
+    link.dataset.vikodaPowerbiTheme = 'true';
+    document.head.appendChild(link);
+  }
+
+  function tagFilterBlocks() {
+    const mapping = {
+      select_channel: 'channel',
+      select_mien: 'mien',
+      select_vung: 'vung',
+      select_group: 'group',
+    };
+    Object.entries(mapping).forEach(([id, key]) => {
+      const select = document.getElementById(id);
+      const block = select?.closest('.filter-select-group');
+      if (block) {
+        block.classList.add(`filter-block-${key}`);
+        block.dataset.filterBlock = key;
+      }
+    });
+  }
+
   function pageIdFromActiveNav() {
     return document.querySelector('.nav-item.active')?.getAttribute('data-page') || 'page_01';
+  }
+
+  function setPageContext(pageId = pageIdFromActiveNav()) {
+    document.body.dataset.dashboardPage = pageId;
   }
 
   function getReportingYear() {
@@ -37,10 +67,12 @@
   }
 
   function updateTitle() {
-    const page = PAGE_CONFIG[pageIdFromActiveNav()] || PAGE_CONFIG.page_01;
+    const pageId = pageIdFromActiveNav();
+    const page = PAGE_CONFIG[pageId] || PAGE_CONFIG.page_01;
     const year = getReportingYear();
     const title = document.querySelector('.brand-title');
     const subtitle = document.querySelector('.brand-subtitle');
+    setPageContext(pageId);
     if (title) title.textContent = `VIKODA SELL-IN | ${page.title}${page.order === 1 ? ` ${year}` : ''}`;
     if (subtitle) subtitle.textContent = `Năm ${year} · Actual so với cùng kỳ ${year - 1} và Target · Đơn vị: triệu đồng`;
     document.title = `Vikoda Sell-In | ${page.title}`;
@@ -74,7 +106,8 @@
       const timeText = stamp && !Number.isNaN(stamp.getTime())
         ? stamp.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })
         : 'mới nhất';
-      status.textContent = `● AUTO SYNC · dữ liệu đến ${asOf || year} · build ${timeText}`;
+      status.textContent = `AUTO SYNC · dữ liệu đến ${asOf || year} · ${timeText}`;
+      status.title = 'Dashboard được build tự động từ dữ liệu SharePoint sau khi pipeline kiểm tra thành công.';
     }
   }
 
@@ -156,7 +189,11 @@
     document.querySelectorAll('.nav-item, .mobile-nav-btn').forEach((item) => {
       if (item.dataset.boundExecutiveTitle) return;
       item.dataset.boundExecutiveTitle = 'true';
-      item.addEventListener('click', () => window.setTimeout(updateTitle, 0));
+      item.addEventListener('click', () => {
+        const requestedPage = item.getAttribute('data-page');
+        if (requestedPage) setPageContext(requestedPage);
+        window.setTimeout(updateTitle, 0);
+      });
     });
   }
 
@@ -181,8 +218,11 @@
   }
 
   function init() {
+    loadPowerBiTheme();
+    tagFilterBlocks();
     bindNavigationTitle();
     bindExtraFilters();
+    setPageContext();
     updateTitle();
     waitForData();
   }
