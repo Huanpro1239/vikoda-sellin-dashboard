@@ -194,14 +194,14 @@ jobs:
         run: >-
           python code/Skill/skill-bao-cao/scripts/sharepoint_graph_sync.py
           --action download
-          --folder "${SHAREPOINT_BASE_FOLDER}/Danh muc KH"
+          --folder "${SHAREPOINT_BASE_FOLDER}/DanhMuc_KH"
           --local-dir "Data/CloudInputs/DMKH"
           --require-cloud-auth
       - name: Download product catalog from SharePoint
         run: >-
           python code/Skill/skill-bao-cao/scripts/sharepoint_graph_sync.py
           --action download
-          --folder "${SHAREPOINT_BASE_FOLDER}/Danh muc SP"
+          --folder "${SHAREPOINT_BASE_FOLDER}/DanhMuc_SP"
           --local-dir "Data/CloudInputs/DMSP"
           --require-cloud-auth
       - name: Execute strict Sell-In cloud pipeline
