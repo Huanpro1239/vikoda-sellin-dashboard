@@ -167,7 +167,7 @@ class SharePointGraphSyncTests(unittest.TestCase):
         self.assertEqual(0, result)
 
     @mock.patch.object(sync, "get_graph_access_token", return_value="token")
-    def test_upload_without_xlsx_fails_closed(self, _get_token: mock.Mock) -> None:
+    def test_upload_without_supported_delta_file_fails_closed(self, _get_token: mock.Mock) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             result = sync.main(upload_args(Path(tmp)), env=VALID_CLOUD_ENV)
         self.assertEqual(3, result)
@@ -192,6 +192,30 @@ class SharePointGraphSyncTests(unittest.TestCase):
         self.assertEqual("drive", drive_id)
         self.assertEqual("Data_Goc", folder)
         self.assertEqual("Sell in T08_2026.xlsx", uploaded_file.name)
+
+    @mock.patch.object(sync, "upload_file_to_sharepoint")
+    @mock.patch.object(sync, "get_graph_access_token", return_value="token")
+    def test_upload_accepts_incremental_state_checkpoint_without_workbook(
+        self,
+        _get_token: mock.Mock,
+        upload: mock.Mock,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            checkpoint = Path(tmp) / "_vikoda_incremental_state.json"
+            checkpoint.write_text('{"schema_version":1}', encoding="utf-8")
+            result = sync.main(upload_args(Path(tmp)), env=VALID_CLOUD_ENV)
+
+        self.assertEqual(0, result)
+        upload.assert_called_once()
+        self.assertEqual("_vikoda_incremental_state.json", upload.call_args.args[-1].name)
+
+    @mock.patch.object(sync, "get_graph_access_token", return_value="token")
+    def test_upload_rejects_unrelated_json_file(self, _get_token: mock.Mock) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            payload = Path(tmp) / "payload.json"
+            payload.write_text('{"unsafe":true}', encoding="utf-8")
+            result = sync.main(upload_args(Path(tmp)), env=VALID_CLOUD_ENV)
+        self.assertEqual(3, result)
 
     @mock.patch.object(sync, "http_request_with_retry", return_value=(b"{}", 201))
     def test_upload_file_uses_graph_put_content_endpoint(self, request: mock.Mock) -> None:
