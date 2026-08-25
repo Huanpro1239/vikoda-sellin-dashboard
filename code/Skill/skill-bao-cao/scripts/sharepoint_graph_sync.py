@@ -34,6 +34,8 @@ CLOUD_ENV_NAMES = (
     "SHAREPOINT_DRIVE_ID",
 )
 SOURCE_WORKBOOK_SUFFIXES = {".xlsm", ".xlsx"}
+DATA_GOC_UPLOAD_WORKBOOK_SUFFIXES = {".xlsx"}
+DATA_GOC_STATE_PREFIX = "_vikoda_"
 
 
 def _env_flag(env: Mapping[str, str], name: str) -> bool:
@@ -43,6 +45,16 @@ def _env_flag(env: Mapping[str, str], name: str) -> bool:
 
 def _cloud_configuration(env: Mapping[str, str]) -> dict[str, str]:
     return {name: str(env.get(name, "")) for name in CLOUD_ENV_NAMES}
+
+
+def _is_data_goc_upload_candidate(path: Path) -> bool:
+    """Chỉ cho phép workbook Data_Goc và checkpoint JSON nội bộ được upload theo lô."""
+    if not path.is_file() or path.stat().st_size <= 0:
+        return False
+    suffix = path.suffix.lower()
+    if suffix in DATA_GOC_UPLOAD_WORKBOOK_SUFFIXES:
+        return True
+    return suffix == ".json" and path.name.startswith(DATA_GOC_STATE_PREFIX)
 
 
 def http_request_with_retry(
@@ -290,18 +302,28 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None
 
     logger.info("Upload dữ liệu lên SharePoint '%s'", args.folder)
     upload_files = sorted(
-        path
-        for path in local_path.glob("*.xlsx")
-        if path.is_file() and path.stat().st_size > 0
-    )
+        path for path in local_path.iterdir() if _is_data_goc_upload_candidate(path)
+    ) if local_path.is_dir() else []
     if not upload_files:
-        logger.error("Không tìm thấy file .xlsx hợp lệ để upload từ: %s", local_path)
+        logger.error(
+            "Không tìm thấy workbook .xlsx hoặc checkpoint _vikoda_*.json hợp lệ để upload từ: %s",
+            local_path,
+        )
         return 3
 
     for local_file in upload_files:
         upload_file_to_sharepoint(token, site_id, drive_id, args.folder, local_file)
 
-    logger.info("Hoàn tất upload %s workbook.", len(upload_files))
+    workbook_count = sum(
+        1 for path in upload_files if path.suffix.lower() in DATA_GOC_UPLOAD_WORKBOOK_SUFFIXES
+    )
+    checkpoint_count = len(upload_files) - workbook_count
+    logger.info(
+        "Hoàn tất upload %s file (%s workbook, %s checkpoint JSON).",
+        len(upload_files),
+        workbook_count,
+        checkpoint_count,
+    )
     return 0
 
 
