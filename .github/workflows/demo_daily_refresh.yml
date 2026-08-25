@@ -105,3 +105,22 @@ jobs:
 
       - name: Verify web JavaScript and regression tests
         run: npm run verify:web
+
+      - name: Verify processed Data_Goc workbooks exist
+        shell: bash
+        run: |
+          shopt -s nullglob
+          files=(Data/Data_Goc/*.xlsx)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::error::No processed .xlsx workbooks found in Data/Data_Goc"
+            exit 1
+          fi
+          echo "Found ${#files[@]} processed workbook(s) ready for SharePoint upload."
+
+      - name: Upload processed Data_Goc to SharePoint
+        run: >-
+          python code/Skill/skill-bao-cao/scripts/sharepoint_graph_sync.py
+          --action upload
+          --folder "${{ vars.SHAREPOINT_DATA_GOC_FOLDER || 'Data_Goc' }}"
+          --local-dir "Data/Data_Goc"
+          --require-cloud-auth
