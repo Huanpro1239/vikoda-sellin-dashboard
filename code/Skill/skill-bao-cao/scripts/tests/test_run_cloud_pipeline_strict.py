@@ -278,8 +278,13 @@ class RunCloudPipelineStrictTests(unittest.TestCase):
             )
             fixture._write_text("web/data/dashboard_data.js", "window.VIKODA_DATA = {};\n")
             fixture.skip.add("export_web_data.py")
-            with self.assertRaisesRegex(pipeline.PipelineValidationError, "lượt chạy này"):
-                self._run(fixture)
+            # This test targets the web-artifact refresh contract. Pinning the
+            # nanosecond start marker prevents filesystem mtime granularity on
+            # hosted runners from making the unrelated monthly-staging guard
+            # fail first and turning this focused assertion into a flaky test.
+            with mock.patch.object(pipeline.time, "time_ns", return_value=0):
+                with self.assertRaisesRegex(pipeline.PipelineValidationError, "lượt chạy này"):
+                    self._run(fixture)
 
     def test_strict_rejects_old_generated_at_even_after_rewrite(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
