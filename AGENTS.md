@@ -46,7 +46,11 @@ Nếu đổi folder contract, phải cập nhật workflow + README + runbook v�
 - Không thêm `AZURE_CLIENT_SECRET` vào workflow production.
 - Giữ Microsoft Graph `Sites.Selected` nếu không có lý do bắt buộc mở rộng quyền.
 - PR/push CI không được có `id-token: write`.
-- Chỉ cloud refresh job được cấp `id-token: write`.
+- `cloud-refresh` được cấp `id-token: write` chỉ để đăng nhập Microsoft Entra
+  bằng OIDC và gọi Microsoft Graph.
+- `deploy-dashboard` được cấp `id-token: write` chỉ cho cơ chế xác thực của
+  GitHub Pages deployment; job này không được nhận cấu hình Microsoft Entra/Graph.
+- Không job nào khác được cấp `id-token: write`.
 
 ## Data guardrails
 

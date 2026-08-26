@@ -103,6 +103,9 @@ jobs:
           cache: pip
           cache-dependency-path: requirements.txt
 
+      - name: Validate workflow least-privilege contract
+        run: python code/common/validate_workflow_policy.py
+
       - name: Install pinned dependencies
         run: python -m pip install --disable-pip-version-check --requirement requirements.txt
 
@@ -394,6 +397,7 @@ jobs:
     permissions:
       contents: read
       pages: write
+      # Required by actions/deploy-pages for GitHub Pages, not Microsoft Graph.
       id-token: write
     environment:
       name: github-pages

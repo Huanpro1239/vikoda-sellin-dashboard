@@ -24,10 +24,14 @@ Theo cấu hình hiện tại, **dashboard GitHub Pages là public và publish �
 ## CI / workflow
 
 - Pull request và push chỉ chạy test/hygiene read-only.
-- Cloud job mới có `id-token: write` để lấy token OIDC cho Microsoft Graph.
+- `cloud-refresh` có `id-token: write` để lấy token OIDC cho Microsoft Graph;
+  `deploy-dashboard` có cùng quyền chỉ để xác thực deployment với GitHub Pages.
+  PR/push CI và các job còn lại không được có quyền này.
 - Khi SharePoint không thay đổi, watcher dừng trước các bước download/ETL/deploy.
 - Khi có thay đổi, pipeline phải PASS health check và web regression trước khi tạo Pages artifact.
 - Source manifest chỉ commit lên SharePoint sau khi các bước build/package thành công.
+- Contract quyền của workflow được kiểm tra bằng
+  `python code/common/validate_workflow_policy.py` trong bộ regression tests và CI.
 
 ## Báo cáo lỗ hổng
 
