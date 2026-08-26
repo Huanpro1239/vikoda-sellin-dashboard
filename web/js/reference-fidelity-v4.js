@@ -207,9 +207,12 @@
     const chart = charts.getOrCreate(chartId);
     if (!chart) return;
     const data = aggregateActual(charts.engine, dimension).slice(0, 5).reverse();
+    const isRegionRanking = dimension === 'vung';
     chart.setOption({
       tooltip: { ...tooltip(), trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: (p) => `<strong>${escapeHTML(p[0]?.name || '')}</strong><br/>Actual: <strong>${fmt(p[0]?.value)} tr</strong>` },
-      grid: { left: 132, right: 72, top: 14, bottom: 31 },
+      grid: isRegionRanking
+        ? { left: 8, right: 76, top: 14, bottom: 31, containLabel: true }
+        : { left: 132, right: 72, top: 14, bottom: 31 },
       xAxis: {
         type: 'value',
         name: 'Doanh thu (triệu đồng)',
@@ -219,7 +222,9 @@
       yAxis: {
         type: 'category', data: data.map((d) => d.name),
         axisLine: { show: false }, axisTick: { show: false },
-        axisLabel: { ...axisText(), color: '#263f55', width: 120, overflow: 'truncate' },
+        axisLabel: isRegionRanking
+          ? { ...axisText(), color: '#193b57', fontSize: 11, fontWeight: 600, width: 160, overflow: 'break', interval: 0, lineHeight: 14, margin: 10 }
+          : { ...axisText(), color: '#263f55', width: 120, overflow: 'truncate' },
       },
       series: [{
         type: 'bar', barWidth: 20,
