@@ -28,6 +28,10 @@
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   });
+  const fmtCompact = (value) => {
+    const number = Number(value || 0);
+    return Math.abs(number) >= 1000 ? `${fmt(number / 1000)}k` : fmt(number);
+  };
   const signed = (value, digits = 0) => `${Number(value || 0) >= 0 ? '+' : ''}${fmt(value, digits)}`;
 
   function tooltip() {
@@ -98,6 +102,8 @@
     const chart = charts.getOrCreate(chartId);
     if (!chart) return;
     const data = monthlyComboData(charts.engine);
+    const isProductTrend = chartId === 'chart_p3_trend';
+    const valueLabelFontSize = isProductTrend ? 10 : 8.5;
 
     chart.setOption({
       animationDuration: 300,
@@ -116,7 +122,9 @@
         },
       },
       legend: { ...legend(), data: ['Actual', 'Cùng kỳ', 'Target', '% đạt Target', '% Growth'] },
-      grid: { left: 64, right: 72, top: 50, bottom: 36 },
+      grid: isProductTrend
+        ? { left: 72, right: 78, top: 54, bottom: 40, containLabel: true }
+        : { left: 64, right: 72, top: 50, bottom: 36 },
       xAxis: {
         type: 'category',
         data: data.labels.map((label) => label.replace('T', '')),
@@ -132,6 +140,7 @@
         {
           type: 'value',
           name: 'Doanh thu (triệu đồng)',
+          ...(isProductTrend ? { min: 0 } : {}),
           nameTextStyle: { color: C.muted, fontSize: 9 },
           splitLine: gridLine(),
           axisLabel: { ...axisText(), formatter: (v) => v ? `${fmt(v)} tr` : '-' },
@@ -145,23 +154,33 @@
       ],
       series: [
         {
-          name: 'Actual', type: 'bar', barMaxWidth: 20, data: data.actual,
+          name: 'Actual', type: 'bar', barMaxWidth: isProductTrend ? 26 : 20, data: data.actual,
           itemStyle: { color: C.blue },
-          label: { show: true, position: 'top', fontSize: 8.5, color: '#476078', formatter: (p) => p.value === null ? '' : fmt(p.value) },
+          label: {
+            show: true,
+            position: isProductTrend ? 'insideTop' : 'top',
+            distance: isProductTrend ? 5 : 3,
+            fontSize: valueLabelFontSize,
+            fontWeight: isProductTrend ? 700 : 400,
+            color: isProductTrend ? '#fff' : '#476078',
+            formatter: (p) => p.value === null ? '' : (isProductTrend ? fmtCompact(p.value) : fmt(p.value)),
+          },
         },
-        { name: 'Cùng kỳ', type: 'bar', barMaxWidth: 20, data: data.ly, itemStyle: { color: C.gray } },
-        { name: 'Target', type: 'bar', barMaxWidth: 20, data: data.target, itemStyle: { color: C.orange } },
+        { name: 'Cùng kỳ', type: 'bar', barMaxWidth: isProductTrend ? 26 : 20, data: data.ly, itemStyle: { color: C.gray } },
+        { name: 'Target', type: 'bar', barMaxWidth: isProductTrend ? 26 : 20, data: data.target, itemStyle: { color: C.orange } },
         {
           name: '% đạt Target', type: 'line', yAxisIndex: 1, data: data.attainment,
-          symbol: 'circle', symbolSize: 6, smooth: .12,
+          symbol: 'circle', symbolSize: isProductTrend ? 7 : 6, smooth: .12,
           lineStyle: { color: C.teal, width: 2.5 }, itemStyle: { color: C.teal },
-          label: { show: true, position: 'top', fontSize: 8.5, color: '#375c5a', formatter: (p) => p.value === null ? '' : `${fmt(p.value)}%` },
+          label: { show: true, position: 'top', fontSize: valueLabelFontSize, fontWeight: isProductTrend ? 600 : 400, color: '#375c5a', formatter: (p) => p.value === null ? '' : `${fmt(p.value)}%` },
+          labelLayout: { hideOverlap: true },
         },
         {
           name: '% Growth', type: 'line', yAxisIndex: 1, data: data.growth,
-          symbol: 'circle', symbolSize: 6, smooth: .1,
+          symbol: 'circle', symbolSize: isProductTrend ? 7 : 6, smooth: .1,
           lineStyle: { color: C.purple, width: 2.5 }, itemStyle: { color: C.purple },
-          label: { show: true, position: 'bottom', fontSize: 8.5, color: '#5e3fb2', formatter: (p) => p.value === null ? '' : `${fmt(p.value)}%` },
+          label: { show: true, position: 'bottom', fontSize: valueLabelFontSize, fontWeight: isProductTrend ? 600 : 400, color: '#5e3fb2', formatter: (p) => p.value === null ? '' : `${fmt(p.value)}%` },
+          labelLayout: { hideOverlap: true },
         },
       ],
     }, true);
@@ -449,9 +468,12 @@
     const page = document.getElementById('view_page_03');
     if (!page || page.dataset.fidelityConfigured) return;
     page.dataset.fidelityConfigured = 'true';
-    setCardText('chart_p3_trend', '1 · XU HƯỚNG SẢN PHẨM 12 THÁNG', 'X · Tháng 1–12   |   CỘT · Doanh thu (triệu đồng)   |   ĐƯỜNG · % đạt Target · % Growth');
+    setCardText('chart_p3_trend', '1 · XU HƯỚNG SẢN PHẨM 12 THÁNG', 'X · Tháng 1–12   |   CỘT · Doanh thu (triệu đồng; k = nghìn)   |   ĐƯỜNG · % đạt Target · % Growth');
+    const trendCard = document.getElementById('chart_p3_trend')?.closest('.chart-card');
     [document.getElementById('chart_p3_brand'), document.getElementById('chart_p3_hero_skus'), document.getElementById('chart_p3_declining_skus')].forEach((node) => node?.closest('.chart-card')?.classList.add('reference-hidden-card'));
     const firstGrid = page.querySelector(':scope > .charts-grid-2');
+    firstGrid?.classList.add('reference-product-trend-grid');
+    trendCard?.classList.add('reference-product-trend-card');
     if (firstGrid && !document.getElementById('reference_product_matrix')) {
       firstGrid.insertAdjacentElement('afterend', tableShell('reference_product_matrix', '2 · GROUP BRAND - BRAND - SKU', 'Ma trận doanh thu 12 tháng theo Group Brand / Brand / SKU'));
       const wrap = document.querySelector('#reference_product_matrix .reference-matrix-wrap');

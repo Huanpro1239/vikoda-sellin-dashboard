@@ -185,12 +185,19 @@
   display: none !important;
 }
 
-/* Product page: combo chart + monthly SKU matrix. */
-.reference-dashboard-v3 #view_page_03 > .charts-grid-2:first-of-type {
-  grid-template-columns: 1fr !important;
+/* Product page: combo chart + monthly SKU matrix.
+   The explicit class avoids :first-of-type, which can select the wrong DIV
+   after the analytical summary is injected ahead of the chart grid. */
+.reference-dashboard-v3 #view_page_03 > .reference-product-trend-grid {
+  grid-template-columns: minmax(0, 1fr) !important;
+  width: 100%;
+}
+.reference-dashboard-v3 #view_page_03 .reference-product-trend-card {
+  width: 100%;
+  min-width: 0;
 }
 .reference-dashboard-v3 #view_page_03 #chart_p3_trend {
-  height: 250px;
+  height: 300px;
 }
 .reference-dashboard-v3 #view_page_03 .reference-hidden-card {
   display: none !important;
@@ -300,7 +307,7 @@
   .reference-dashboard-v3 #view_page_04 #chart_p4_volume_trend,
   .reference-dashboard-v3 #view_page_02 > .charts-grid-2 .chart-container,
   .reference-dashboard-v3 #view_page_03 #chart_p3_trend {
-    height: 285px !important;
+    height: 325px !important;
   }
   .reference-dashboard-v3 #view_page_01 > .charts-grid-2 .chart-container {
     height: 230px;

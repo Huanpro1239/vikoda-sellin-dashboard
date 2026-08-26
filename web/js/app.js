@@ -201,6 +201,7 @@ class VikodaApp {
     document.querySelectorAll('.view-page').forEach((v) => {
       v.classList.toggle('active', v.id === `view_${pageId}`);
     });
+    document.dispatchEvent(new CustomEvent('vikoda:pagechange', { detail: { pageId } }));
 
     // Tự động cuộn lên đầu trang trên điện thoại
     const content = document.querySelector('.app-content');
