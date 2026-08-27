@@ -36,8 +36,8 @@ test('product layout assets use a fresh cache version', () => {
   const html = read('web/index.html');
 
   assert.match(shell, /reference-fidelity-v4\.css\?v=4\.2\.0/);
-  assert.match(shell, /reference-fidelity-v4\.js\?v=4\.2\.0/);
-  assert.match(html, /executive-ui\.js\?v=2\.6\.0/);
+  assert.match(shell, /reference-fidelity-v4\.js\?v=4\.3\.0/);
+  assert.match(html, /executive-ui\.js\?v=2\.7\.0/);
   assert.match(html, /app\.js\?v=2\.5\.0/);
 });
 

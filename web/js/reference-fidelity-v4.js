@@ -347,7 +347,11 @@
       const l = ly.get(key) || 0;
       const t = target.get(key) || 0;
       return { key, code: cust.code || key, name: cust.name || key, actual: a, ly: l, target: t, growth: l > 0 ? (a - l) / l * 100 : (a > 0 ? 100 : 0), attainment: t > 0 ? a / t * 100 : 0, share: total > 0 ? a / total * 100 : 0 };
-    }).filter((r) => r.actual > 0).sort((a, b) => b.actual - a.actual);
+    }).filter((r) => r.actual > 0).sort((a, b) => (
+      b.actual - a.actual
+      || a.name.localeCompare(b.name, 'vi')
+      || a.code.localeCompare(b.code, 'vi')
+    ));
   }
 
   function renderCustomerTop(charts) {
@@ -388,8 +392,12 @@
     }, true);
   }
 
-  function customerMonthlyRows(engine, selected) {
-    const year = currentYear(engine);
+  function customerMatrixYear(engine) {
+    const selectedEnd = String(engine.filters?.endDate || '');
+    return Number(selectedEnd.slice(0, 4)) || currentYear(engine);
+  }
+
+  function customerMonthlyRows(engine, selected, year = customerMatrixYear(engine)) {
     const rows = new Map(selected.map((r) => [r.key, { ...r, months: Array(12).fill(0) }]));
     engine.getFilteredFacts({ ...engine.filters, startDate: `${year}-01-01`, endDate: `${year}-12-31` }).forEach((fact) => {
       if (!rows.has(fact[1])) return;
@@ -402,11 +410,13 @@
   function renderCustomerMatrix(engine) {
     const host = document.getElementById('reference_customer_matrix_wrap');
     if (!host) return;
-    const selected = customerMetrics(engine).slice(0, 12);
-    const rows = customerMonthlyRows(engine, selected);
+    const selected = customerMetrics(engine);
+    const year = customerMatrixYear(engine);
+    const rows = customerMonthlyRows(engine, selected, year);
     const totals = Array(12).fill(0);
     rows.forEach((r) => r.months.forEach((v, i) => { totals[i] += v; }));
-    const year = currentYear(engine);
+    const subtitle = host.closest('.chart-card')?.querySelector('.chart-subtitle');
+    if (subtitle) subtitle.textContent = `${fmt(rows.length)} khách hàng có doanh thu · Sắp xếp theo Actual kỳ chọn`;
     host.innerHTML = `<table class="reference-matrix"><thead><tr><th>Mã KH</th><th class="text-col">Khách hàng</th>${Array.from({ length: 12 }, (_, i) => `<th>T${String(i + 1).padStart(2, '0')} ${year}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr><td>${escapeHTML(r.code)}</td><td>${escapeHTML(r.name)}</td>${r.months.map((v) => `<td class="num">${v ? `${fmt(v)} tr` : ''}</td>`).join('')}</tr>`).join('')}</tbody><tfoot><tr><td colspan="2">Total</td>${totals.map((v) => `<td class="num">${v ? `${fmt(v)} tr` : ''}</td>`).join('')}</tr></tfoot></table>`;
   }
 
@@ -422,8 +432,8 @@
     if (tableCard) {
       const title = tableCard.querySelector('.chart-title');
       const subtitle = tableCard.querySelector('.chart-subtitle');
-      if (title) title.textContent = '2 · TOP KHÁCH HÀNG VÀ DIỄN BIẾN 12 THÁNG';
-      if (subtitle) subtitle.textContent = 'Ma trận doanh thu tháng của Top 12 khách hàng theo Actual kỳ chọn';
+      if (title) title.textContent = '3 · KHÁCH HÀNG VÀ DIỄN BIẾN 12 THÁNG';
+      if (subtitle) subtitle.textContent = 'Tất cả khách hàng có doanh thu theo bộ lọc hiện tại';
       const responsive = tableCard.querySelector('.table-responsive');
       if (responsive) {
         responsive.id = 'reference_customer_matrix_wrap';
