@@ -1,0 +1,136 @@
+name: Vikoda SharePoint Refresh Watch
+run-name: Vikoda SharePoint Watch · ${{ github.event_name }} · ${{ github.ref_name }}
+
+on:
+  # GitHub documents that scheduled runs can be delayed/dropped during high load,
+  # especially near the start of an hour. Use staggered local-time checks as a
+  # redundant watcher beside the production pipeline's primary schedule.
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+      timezone: 'Asia/Ho_Chi_Minh'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sharepoint_refresh_watch.yml'
+
+permissions:
+  contents: read
+  actions: write
+  id-token: write
+
+concurrency:
+  group: vikoda-sharepoint-refresh-watch
+  cancel-in-progress: true
+
+jobs:
+  watch:
+    name: Check SharePoint and dispatch refresh when needed
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      SHAREPOINT_HOSTNAME: ${{ vars.SHAREPOINT_HOSTNAME || 'vikodacomvn.sharepoint.com' }}
+      SHAREPOINT_SITE_PATH: ${{ vars.SHAREPOINT_SITE_PATH || '/sites/Planning' }}
+      SHAREPOINT_BASE_FOLDER: ${{ vars.SHAREPOINT_BASE_FOLDER || 'Vikoda_Sales_Data' }}
+      PIPELINE_STATE_FILE: ${{ vars.SHAREPOINT_PIPELINE_STATE_FILE || '_vikoda_pipeline_state.json' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install lightweight Graph authentication dependency
+        run: python -m pip install --disable-pip-version-check azure-identity==1.24.0
+
+      - name: Validate Microsoft OIDC configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${AZURE_CLIENT_ID:-}" ]] || { echo "::error::AZURE_CLIENT_ID Repository Variable is missing."; exit 1; }
+          [[ -n "${AZURE_TENANT_ID:-}" ]] || { echo "::error::AZURE_TENANT_ID Repository Variable is missing."; exit 1; }
+
+      - name: Azure login with GitHub OIDC for Microsoft Graph
+        uses: azure/login@v3
+        with:
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      - name: Resolve SharePoint site and drive IDs
+        run: python code/common/sharepoint_bootstrap.py
+
+      - name: Detect SharePoint source changes
+        id: source_change
+        shell: bash
+        run: |
+          set -euo pipefail
+          python code/common/sharepoint_change_detector_v2.py \
+            --action check \
+            --state-path "${SHAREPOINT_BASE_FOLDER}/Data_Goc/${PIPELINE_STATE_FILE}" \
+            --folder "${SHAREPOINT_BASE_FOLDER}/Data ERP" \
+            --folder "${SHAREPOINT_BASE_FOLDER}/Target" \
+            --folder "${SHAREPOINT_BASE_FOLDER}/DanhMuc_KH" \
+            --folder "${SHAREPOINT_BASE_FOLDER}/DanhMuc_SP" \
+            --manifest-file "Data/Work/sharepoint_watch_manifest.json"
+
+      - name: Check whether production refresh is already active
+        id: active_refresh
+        if: steps.source_change.outputs.changed == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          active="$(gh run list \
+            --repo "$GITHUB_REPOSITORY" \
+            --workflow vikoda_pipeline.yml \
+            --branch main \
+            --limit 20 \
+            --json status \
+            --jq '[.[] | select(.status == "queued" or .status == "in_progress")] | length')"
+          if [[ "$active" == "0" ]]; then
+            echo "dispatch=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "dispatch=false" >> "$GITHUB_OUTPUT"
+            echo "Production refresh already active; watchdog will not create a duplicate run."
+          fi
+
+      - name: Dispatch production SharePoint refresh
+        if: >-
+          steps.source_change.outputs.changed == 'true' &&
+          steps.active_refresh.outputs.dispatch == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run vikoda_pipeline.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref main \
+            -f run_cloud_refresh=true
+          echo "Production refresh dispatched for ERP periods: ${{ steps.source_change.outputs.erp_periods || 'catalog/target change' }}"
+
+      - name: Write watchdog summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Vikoda SharePoint refresh watchdog"
+            echo
+            echo "- Status: **${{ job.status }}**"
+            echo "- Trigger: \`${{ github.event_name }}\`"
+            echo "- Source changed: \`${{ steps.source_change.outputs.changed || 'not-checked' }}\`"
+            echo "- Reason: \`${{ steps.source_change.outputs.reason || 'n/a' }}\`"
+            echo "- ERP periods: \`${{ steps.source_change.outputs.erp_periods || 'none' }}\`"
+            echo "- Dispatch allowed: \`${{ steps.active_refresh.outputs.dispatch || 'not-needed' }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
