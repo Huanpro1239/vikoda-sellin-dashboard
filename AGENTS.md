@@ -8,16 +8,44 @@ Kiến trúc production duy nhất:
 
 ```text
 SharePoint Online
+→ Power Automate Standard (event signal only)
+→ GitHub repository_dispatch: sharepoint_changed
+→ GitHub Actions
+→ GitHub OIDC + Microsoft Entra ID
 → Microsoft Graph
-→ GitHub Actions OIDC
-→ Microsoft Entra ID
-→ Python ETL --strict
-→ Validation + Health Check
-→ Microsoft Graph upload
-→ SharePoint Data_Goc
+→ fingerprint/change detection
+→ incremental Python ETL
+→ validation + health check
+→ Microsoft Graph upload Data_Goc
+→ GitHub Pages deploy
 ```
 
-Không reintroduce Power Automate/Flow/webhook làm production trigger và không reintroduce Azure Client Secret dài hạn.
+Power Automate chỉ phát tín hiệu khi file nguồn được tạo/sửa. Nó không xử lý ETL,
+không giữ credential Graph và không quyết định dữ liệu nào cần rebuild. GitHub
+workflow luôn xác minh fingerprint SharePoint trước khi download/ETL/deploy.
+
+Không reintroduce scheduled SharePoint polling cho production refresh. Manual
+`workflow_dispatch` phải được giữ làm phương án fallback vận hành.
+
+## Event contract
+
+Power Automate chỉ được dispatch event:
+
+```text
+sharepoint_changed
+```
+
+Chỉ 4 folder nguồn được phép kích hoạt event:
+
+```text
+Vikoda_Sales_Data/Data ERP
+Vikoda_Sales_Data/Target
+Vikoda_Sales_Data/DanhMuc_KH
+Vikoda_Sales_Data/DanhMuc_SP
+```
+
+Không dispatch thay đổi trong `Vikoda_Sales_Data/Data_Goc` vì pipeline tự ghi output
+vào đó; cho phép folder này kích hoạt lại workflow sẽ tạo refresh loop.
 
 ## SharePoint folder contract
 
@@ -37,19 +65,20 @@ DanhMuc_KH/Thong tin khach hang.xlsx
 DanhMuc_SP/Danh Muc San Pham.xlsx
 ```
 
-Nếu đổi folder contract, phải cập nhật workflow + README + runbook và chạy manual end-to-end validation.
+Nếu đổi folder contract, phải cập nhật workflow + README + runbook + Power Automate
+condition và chạy end-to-end validation.
 
 ## Authentication guardrails
 
-- Production cloud auth: GitHub OIDC + Microsoft Entra Federated Credential.
+- GitHub connector trong Power Automate chỉ cần quyền dispatch repository event.
+- Production cloud auth tới Microsoft Graph: GitHub OIDC + Microsoft Entra Federated Credential.
 - Required GitHub Variables: `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`.
 - Không thêm `AZURE_CLIENT_SECRET` vào workflow production.
 - Giữ Microsoft Graph `Sites.Selected` nếu không có lý do bắt buộc mở rộng quyền.
 - PR/push CI không được có `id-token: write`.
-- `cloud-refresh` được cấp `id-token: write` chỉ để đăng nhập Microsoft Entra
-  bằng OIDC và gọi Microsoft Graph.
-- `deploy-dashboard` được cấp `id-token: write` chỉ cho cơ chế xác thực của
-  GitHub Pages deployment; job này không được nhận cấu hình Microsoft Entra/Graph.
+- `cloud-refresh` được cấp `id-token: write` chỉ để đăng nhập Microsoft Entra bằng OIDC.
+- `deploy-dashboard` được cấp `id-token: write` chỉ cho GitHub Pages deployment.
+- Job deploy Pages không được nhận cấu hình Microsoft Entra/Graph.
 - Không job nào khác được cấp `id-token: write`.
 
 ## Data guardrails
@@ -67,16 +96,28 @@ production workbooks
 customer/revenue-level exports
 ```
 
-GitHub runner là ephemeral workspace, không phải persistent data store. Production output phải được ghi về SharePoint.
+GitHub runner là ephemeral workspace, không phải persistent data store. Production
+output phải được ghi về SharePoint; dashboard runtime được publish qua Pages artifact.
 
 ## Pipeline invariants
 
-- `run_cloud_pipeline.py` phải chạy `--strict` trong production.
-- Thiếu workbook nguồn phải fail; không fallback sang dữ liệu cũ.
-- Health check phải PASS trước upload `Data_Goc`.
-- Upload chỉ nhận `.xlsx` hợp lệ, non-empty.
-- SharePoint có thể thay đổi byte-size của Office workbook do server-side metadata; không dùng exact byte-size làm điều kiện duy nhất để xác nhận upload Office.
-- Dashboard publish mặc định OFF và phải giữ các security gates hiện tại.
+- `repository_dispatch: sharepoint_changed` là trigger production chính.
+- Không có `schedule` polling trong production workflow.
+- `workflow_dispatch` được giữ để chạy thủ công khi Power Automate gặp sự cố.
+- Change detector phải chạy trước download/ETL và STOP sớm khi fingerprint không đổi.
+- Chỉ rebuild ERP period bị ảnh hưởng khi có thể xác định delta.
+- Thiếu workbook nguồn bắt buộc phải fail; không im lặng fallback sang dữ liệu cũ.
+- Health check + web regression phải PASS trước Pages deploy.
+- State/fingerprint chỉ được commit sau pipeline thành công.
+- Upload chỉ nhận workbook/checkpoint hợp lệ theo contract.
+- Không dùng exact byte-size làm điều kiện duy nhất để xác nhận Office upload vì SharePoint có thể thay đổi server-side metadata.
+
+## Local utilities
+
+`Chay CT/` và các script hỗ trợ máy Windows chỉ là tooling local/manual. Không dùng
+FileSystemWatcher, `.cmd`, PowerShell watcher hoặc OneDrive sync làm production trigger.
+Nếu local utility không còn được dùng hoặc trùng production capability, ưu tiên xóa
+thay vì duy trì hai kiến trúc song song.
 
 ## Required verification before completion
 
@@ -85,24 +126,29 @@ python code/run_all_tests.py --quiet
 npm run verify:web
 ```
 
-Nếu thay đổi Graph/OIDC/SharePoint/workflow production, ngoài CI còn phải chạy manual workflow trên `main` với:
+Nếu thay đổi Graph/OIDC/SharePoint/workflow production, ngoài CI phải chạy một
+end-to-end event thật hoặc manual workflow trên `main` và xác minh:
 
 ```text
-run_cloud_refresh = true
-publish_dashboard = false
+OIDC login PASS
+SharePoint metadata/download PASS
+incremental ETL PASS
+health check PASS
+Data_Goc upload PASS
+GitHub Pages deploy PASS khi source_changed=true
 ```
-
-Definition of Done: OIDC + tất cả download + strict ETL + health check + `Data_Goc` upload đều PASS.
 
 ## Documentation rule
 
-Các thay đổi production architecture phải giữ đồng bộ tối thiểu:
+Thay đổi production architecture phải giữ đồng bộ tối thiểu:
 
 ```text
 README.md
 HUONG_DAN_SHAREPOINT_GITHUB_ACTIONS.md
-PROJECT_AUDIT.md (khi thay đổi trạng thái/audit)
-SECURITY.md (khi thay đổi security model)
+PROJECT_AUDIT.md
+SECURITY.md
+AGENTS.md
 ```
 
-Không tạo tài liệu mới mô tả một architecture khác với workflow thực tế.
+Không tạo thêm tài liệu mô tả một architecture khác với workflow thực tế. Nếu một
+runbook chuyên biệt đã được hợp nhất vào runbook chính, xóa bản trùng để tránh drift.

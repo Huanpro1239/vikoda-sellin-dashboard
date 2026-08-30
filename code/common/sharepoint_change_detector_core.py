@@ -1,20 +1,17 @@
-"""Detect SharePoint workbook changes before running the expensive Sell-In pipeline.
+"""Shared Microsoft Graph primitives for SharePoint source change detection.
 
-The detector fingerprints source workbooks with Microsoft Graph metadata and compares
-that fingerprint with the last successful state stored on SharePoint. The state is
-committed only after ETL + validation + uploads succeed, so a failed run is retried
-on the next poll instead of being marked as processed.
+This module owns the reusable Graph I/O, workbook manifest fingerprint and state
+checkpoint operations. The production entrypoint lives in
+``sharepoint_change_detector_v2.py`` and adds ERP-period diff semantics on top.
 
-Authentication is secretless: GitHub Actions first runs azure/login with OIDC and
-this script obtains a Graph token through AzureCliCredential.
+Authentication remains secretless: GitHub Actions runs ``azure/login`` with OIDC,
+then ``AzureCliCredential`` obtains a Microsoft Graph token inside the runner.
 """
 
 from __future__ import annotations
 
-import argparse
 import hashlib
 import json
-import os
 import time
 import urllib.error
 import urllib.parse
@@ -22,6 +19,7 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
+
 
 GRAPH_SCOPE = "https://graph.microsoft.com/.default"
 WORKBOOK_SUFFIXES = {".xlsx", ".xlsm"}
@@ -66,6 +64,7 @@ def _request_with_retry(
 
 
 def get_graph_access_token(credential: Any | None = None) -> str:
+    """Return a Microsoft Graph token from Azure CLI/OIDC runner context."""
     if credential is None:
         try:
             from azure.identity import AzureCliCredential
@@ -123,6 +122,7 @@ def list_source_manifest(
     drive_id: str,
     folders: Sequence[str],
 ) -> list[dict[str, Any]]:
+    """Recursively list relevant source workbooks and stable Graph metadata."""
     manifest: list[dict[str, Any]] = []
     queue = [folder.strip("/") for folder in folders if folder.strip("/")]
     visited: set[str] = set()
@@ -172,6 +172,7 @@ def list_source_manifest(
 
 
 def compute_fingerprint(manifest: Iterable[Mapping[str, Any]]) -> str:
+    """Create a deterministic SHA-256 fingerprint from source workbook metadata."""
     normalized = [
         {
             "path": str(item.get("path") or ""),
@@ -187,7 +188,13 @@ def compute_fingerprint(manifest: Iterable[Mapping[str, Any]]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def read_remote_state(token: str, site_id: str, drive_id: str, state_path: str) -> dict[str, Any] | None:
+def read_remote_state(
+    token: str,
+    site_id: str,
+    drive_id: str,
+    state_path: str,
+) -> dict[str, Any] | None:
+    """Read the last successful detector state; missing state is a valid first-run case."""
     encoded = urllib.parse.quote(state_path.strip("/"), safe="/")
     url = (
         f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}"
@@ -210,7 +217,12 @@ def read_remote_state(token: str, site_id: str, drive_id: str, state_path: str) 
     return payload if isinstance(payload, dict) else None
 
 
-def detect_change(previous_state: Mapping[str, Any] | None, fingerprint: str, *, force: bool = False) -> tuple[bool, str]:
+def detect_change(
+    previous_state: Mapping[str, Any] | None,
+    fingerprint: str,
+    *,
+    force: bool = False,
+) -> tuple[bool, str]:
     if force:
         return True, "manual-force"
     if not previous_state:
@@ -223,7 +235,13 @@ def detect_change(previous_state: Mapping[str, Any] | None, fingerprint: str, *,
     return False, "no-source-change"
 
 
-def build_state(fingerprint: str, *, file_count: int, env: Mapping[str, str]) -> dict[str, Any]:
+def build_state(
+    fingerprint: str,
+    *,
+    file_count: int,
+    env: Mapping[str, str],
+) -> dict[str, Any]:
+    """Build a checkpoint describing the successful GitHub run."""
     return {
         "version": STATE_VERSION,
         "fingerprint": fingerprint,
@@ -242,6 +260,7 @@ def write_remote_state(
     state_path: str,
     state: Mapping[str, Any],
 ) -> None:
+    """Atomically replace the small detector checkpoint through Graph content PUT."""
     encoded = urllib.parse.quote(state_path.strip("/"), safe="/")
     url = (
         f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}"
@@ -261,95 +280,3 @@ def write_remote_state(
             response = {}
         if isinstance(response, dict) and int(response.get("size") or len(data)) <= 0:
             raise ChangeDetectorError("Graph returned an empty state file after upload")
-
-
-def _required_cloud_ids(env: Mapping[str, str]) -> tuple[str, str]:
-    site_id = str(env.get("SHAREPOINT_SITE_ID", "")).strip()
-    drive_id = str(env.get("SHAREPOINT_DRIVE_ID", "")).strip()
-    missing = [name for name, value in (("SHAREPOINT_SITE_ID", site_id), ("SHAREPOINT_DRIVE_ID", drive_id)) if not value]
-    if missing:
-        raise ChangeDetectorError(f"Missing cloud configuration: {', '.join(missing)}")
-    return site_id, drive_id
-
-
-def _write_github_output(values: Mapping[str, Any], env: Mapping[str, str]) -> None:
-    output_path = str(env.get("GITHUB_OUTPUT", "")).strip()
-    if not output_path:
-        return
-    with open(output_path, "a", encoding="utf-8") as handle:
-        for key, value in values.items():
-            handle.write(f"{key}={value}\n")
-
-
-def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Detect SharePoint source workbook changes")
-    parser.add_argument("--action", choices=("check", "commit"), required=True)
-    parser.add_argument("--state-path", required=True, help="SharePoint path to the state JSON file")
-    parser.add_argument("--folder", action="append", default=[], help="Source folder; repeat for each source")
-    parser.add_argument("--fingerprint", help="Fingerprint from the successful check step (commit action)")
-    parser.add_argument("--file-count", type=int, default=0)
-    parser.add_argument("--force", action="store_true", help="Treat this run as changed even if fingerprint matches")
-    parser.add_argument("--manifest-file", help="Optional local manifest JSON output")
-    return parser.parse_args(argv)
-
-
-def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None) -> int:
-    args = parse_args(argv)
-    active_env = os.environ if env is None else env
-    site_id, drive_id = _required_cloud_ids(active_env)
-    token = get_graph_access_token()
-
-    if args.action == "commit":
-        fingerprint = str(args.fingerprint or "").strip()
-        if len(fingerprint) != 64:
-            raise ChangeDetectorError("Commit requires a valid SHA-256 fingerprint")
-        state = build_state(fingerprint, file_count=args.file_count, env=active_env)
-        write_remote_state(token, site_id, drive_id, args.state_path, state)
-        print(f"SharePoint source state committed: {fingerprint[:12]}…")
-        return 0
-
-    folders = [str(folder).strip("/") for folder in args.folder if str(folder).strip("/")]
-    if not folders:
-        raise ChangeDetectorError("Check action requires at least one --folder")
-
-    manifest = list_source_manifest(token, site_id, drive_id, folders)
-    if not manifest:
-        raise ChangeDetectorError("No .xlsx/.xlsm source workbook found in monitored SharePoint folders")
-    fingerprint = compute_fingerprint(manifest)
-    previous = read_remote_state(token, site_id, drive_id, args.state_path)
-    changed, reason = detect_change(previous, fingerprint, force=args.force)
-
-    if args.manifest_file:
-        manifest_path = Path(args.manifest_file)
-        manifest_path.parent.mkdir(parents=True, exist_ok=True)
-        manifest_path.write_text(
-            json.dumps(
-                {
-                    "fingerprint": fingerprint,
-                    "file_count": len(manifest),
-                    "changed": changed,
-                    "reason": reason,
-                    "files": manifest,
-                },
-                ensure_ascii=False,
-                indent=2,
-            ) + "\n",
-            encoding="utf-8",
-        )
-
-    outputs = {
-        "changed": str(changed).lower(),
-        "fingerprint": fingerprint,
-        "file_count": len(manifest),
-        "reason": reason,
-    }
-    _write_github_output(outputs, active_env)
-    print(
-        f"SharePoint change check: changed={str(changed).lower()} "
-        f"reason={reason} files={len(manifest)} fingerprint={fingerprint[:12]}…"
-    )
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
