@@ -3,32 +3,32 @@
 # làm repo phình rất nhanh.
 
 # Dữ liệu nghiệp vụ, workbook nguồn và mọi artifact ETL không thuộc source code.
-# Các file đã tracked trước đây vẫn còn cho tới khi có kế hoạch purge riêng;
-# quy tắc này ngăn dữ liệu mới bị add lại sau khi được di chuyển khỏi Git.
 /Data/
 /web/data/
 
 # Workbook rời ở gốc dự án
 /Chiet khau tra sau/
 
-# Cau hinh dich Drive rieng cua tung may
+# Cấu hình đích Drive riêng của từng máy
 /Chay CT/drive.conf
 
-# rclone.exe tai ve
-/.runtime/rclone/
-
-# Thư mục nháp của agent và runtime cục bộ
-/.codex_work/
+# Runtime/tool cache cục bộ
 /.runtime/
+/.codex_work/
 node_modules/
+.venv/
+venv/
 .pytest_cache/
+.ruff_cache/
+.mypy_cache/
 .coverage
+.coverage.*
 htmlcov/
 
 # File thực thi đóng gói
 code/Skill/sell-in-monthly/assets/portable/*.exe
 
-# Thư viện vendored
+# Thư viện vendored local
 code/Skill/skill-bao-cao/scripts/vendor/
 
 # Rác của Python và Excel
@@ -45,7 +45,7 @@ Thumbs.db
 desktop.ini
 .DS_Store
 
-# Bảo mật: Không bao giờ commit credentials, secrets, token, env thật
+# Bảo mật: không bao giờ commit credentials, secrets, token, env thật
 .env
 .env.*
 !.env.example
