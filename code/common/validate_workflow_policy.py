@@ -1,8 +1,10 @@
-"""Validate the least-privilege contract of the production GitHub workflow.
+"""Validate production GitHub workflow architecture and least-privilege policy.
 
 The validator intentionally uses only the Python standard library so it can run
-before project dependencies are installed in CI. It checks the small security
-surface that must remain stable; it is not intended to be a general YAML parser.
+before project dependencies are installed in CI. It protects the small set of
+production invariants that must not drift: event-driven SharePoint refresh,
+manual fallback, GitHub OIDC, explicit job permissions and Pages isolation.
+It is deliberately not a general YAML parser.
 """
 
 from __future__ import annotations
@@ -19,7 +21,17 @@ PERMISSION_PATTERN = re.compile(r"^      ([A-Za-z0-9_-]+):\s*([^#\s]+)", re.MULT
 
 
 class WorkflowPolicyError(RuntimeError):
-    """Raised when the workflow violates a production security invariant."""
+    """Raised when the workflow violates a production invariant."""
+
+
+def _on_block(workflow_text: str) -> str:
+    marker = re.search(r"(?m)^on:\s*$", workflow_text)
+    if marker is None:
+        raise WorkflowPolicyError("Workflow is missing the top-level on section")
+
+    tail = workflow_text[marker.end() :]
+    end = re.search(r"(?m)^[A-Za-z0-9_-]+:\s*$", tail)
+    return tail[: end.start()] if end else tail
 
 
 def _job_blocks(workflow_text: str) -> dict[str, str]:
@@ -50,8 +62,41 @@ def _permissions(job_name: str, job_block: str) -> dict[str, str]:
     return dict(PERMISSION_PATTERN.findall(permissions_text))
 
 
+def _validate_trigger_contract(workflow_text: str, jobs: dict[str, str]) -> None:
+    on_block = _on_block(workflow_text)
+
+    if re.search(r"(?m)^  schedule:\s*$", on_block):
+        raise WorkflowPolicyError(
+            "Production refresh must be event-driven; scheduled SharePoint polling is forbidden"
+        )
+    if not re.search(r"(?m)^  repository_dispatch:\s*$", on_block):
+        raise WorkflowPolicyError("Workflow must accept repository_dispatch events")
+    if not re.search(r"(?m)^    types:\s*\[\s*sharepoint_changed\s*\]\s*$", on_block):
+        raise WorkflowPolicyError(
+            "repository_dispatch must be restricted to the sharepoint_changed event"
+        )
+    if not re.search(r"(?m)^  workflow_dispatch:\s*$", on_block):
+        raise WorkflowPolicyError("Manual workflow_dispatch fallback must remain available")
+
+    cloud_refresh = jobs["cloud-refresh"]
+    if "github.event_name == 'repository_dispatch'" not in cloud_refresh:
+        raise WorkflowPolicyError(
+            "Job 'cloud-refresh' must run for repository_dispatch data-change events"
+        )
+    if "github.event_name == 'workflow_dispatch'" not in cloud_refresh:
+        raise WorkflowPolicyError(
+            "Job 'cloud-refresh' must preserve manual workflow_dispatch fallback"
+        )
+
+    test_job = jobs["test"]
+    if "github.event_name != 'repository_dispatch'" not in test_job:
+        raise WorkflowPolicyError(
+            "Data-change events must skip the full source test suite and use reviewed main code"
+        )
+
+
 def validate_workflow_text(workflow_text: str) -> None:
-    """Raise ``WorkflowPolicyError`` if the workflow breaks the auth contract."""
+    """Raise ``WorkflowPolicyError`` if the workflow breaks production policy."""
     if "AZURE_CLIENT_SECRET" in workflow_text:
         raise WorkflowPolicyError("Production workflow must not reference AZURE_CLIENT_SECRET")
 
@@ -60,6 +105,8 @@ def validate_workflow_text(workflow_text: str) -> None:
     missing = sorted(required_jobs.difference(jobs))
     if missing:
         raise WorkflowPolicyError(f"Workflow is missing required jobs: {', '.join(missing)}")
+
+    _validate_trigger_contract(workflow_text, jobs)
 
     permissions = {name: _permissions(name, block) for name, block in jobs.items()}
     id_token_jobs = {
