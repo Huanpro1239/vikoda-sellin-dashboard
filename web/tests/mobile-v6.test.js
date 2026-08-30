@@ -35,7 +35,12 @@ test('mobile V6 JavaScript exposes all six dashboard pages', () => {
   assert.match(js, /mobile_filter_backdrop/);
 });
 
-test('release checks validate mobile V6 JavaScript', () => {
+test('release syntax checks automatically cover every dashboard JavaScript file', () => {
   const pkg = JSON.parse(read('package.json'));
-  assert.match(pkg.scripts['check:web'], /web\/js\/mobile-v6\.js/);
+  const checker = read('web/tests/check-js-syntax.js');
+
+  assert.equal(pkg.scripts['check:web'], 'node web/tests/check-js-syntax.js');
+  assert.match(checker, /web['"], ['"]js/);
+  assert.match(checker, /endsWith\(['"]\.js['"]\)/);
+  assert.ok(fs.existsSync(path.join(root, 'web', 'js', 'mobile-v6.js')));
 });
