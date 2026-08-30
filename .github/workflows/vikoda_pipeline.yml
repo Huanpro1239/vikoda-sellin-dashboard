@@ -25,6 +25,8 @@ on:
       - 'SECURITY.md'
       - 'HUONG_DAN_SHAREPOINT_GITHUB_ACTIONS.md'
       - '.github/workflows/vikoda_pipeline.yml'
+  repository_dispatch:
+    types: [sharepoint_changed]
   workflow_dispatch:
     inputs:
       run_cloud_refresh:
@@ -32,14 +34,13 @@ on:
         required: true
         type: boolean
         default: true
-  schedule:
-    # Lightweight metadata poll. Expensive ETL only runs when SharePoint changes.
-    - cron: '*/30 * * * *'
 
 permissions:
   contents: read
 
 concurrency:
+  # SharePoint can emit several events while a workbook is being saved. Keep
+  # refresh runs serialized so one successful state checkpoint is never raced.
   group: 'vikoda-sellin-${{ github.ref }}'
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
@@ -84,7 +85,9 @@ jobs:
 
   test:
     name: Read-only CI
-    if: github.event_name != 'schedule'
+    # Data-change events use already-reviewed main code. Do not spend time
+    # running the full source test suite before every SharePoint refresh.
+    if: github.event_name != 'repository_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -127,7 +130,7 @@ jobs:
     if: >-
       always() &&
       (needs.test.result == 'success' || needs.test.result == 'skipped') &&
-      (github.event_name == 'schedule' ||
+      (github.event_name == 'repository_dispatch' ||
       (github.event_name == 'workflow_dispatch' && inputs.run_cloud_refresh))
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -376,6 +379,7 @@ jobs:
             echo
             echo "- Job status: **${{ job.status }}**"
             echo "- Trigger: \`${{ github.event_name }}\`"
+            echo "- Dispatch action: \`${{ github.event.action || 'n/a' }}\`"
             echo "- Source change: \`${{ steps.source_change.outputs.changed || 'not-checked' }}\`"
             echo "- Reason: \`${{ steps.source_change.outputs.reason || 'n/a' }}\`"
             echo "- Source workbooks: \`${{ steps.source_change.outputs.file_count || 'n/a' }}\`"
