@@ -96,18 +96,21 @@ Nhân viên chỉ cần hiểu luồng tổng quát dưới đây:
 
 ```mermaid
 flowchart LR
-    A[File nguồn trên SharePoint] --> B[Hệ thống kiểm tra thay đổi]
-    B --> C{Có dữ liệu mới?}
-    C -- Không --> D[Giữ nguyên dashboard]
-    C -- Có --> E[Xử lý tháng bị thay đổi]
-    E --> F[Kiểm tra chất lượng dữ liệu]
-    F --> G[Cập nhật Data_Goc]
-    G --> H[Build Dashboard]
-    H --> I[GitHub Pages]
-    I --> J[Nhân viên xem trên Web / Điện thoại]
+    A[File nguồn trên SharePoint] --> B[SharePoint báo có thay đổi]
+    B --> C[Hệ thống kiểm tra dữ liệu thực sự có đổi không]
+    C --> D{Có delta mới?}
+    D -- Không --> E[Giữ nguyên dashboard]
+    D -- Có --> F[Xử lý phần bị thay đổi]
+    F --> G[Kiểm tra chất lượng dữ liệu]
+    G --> H[Cập nhật Data_Goc]
+    H --> I[Build Dashboard]
+    I --> J[GitHub Pages]
+    J --> K[Nhân viên xem trên Web / Điện thoại]
 ```
 
-Hệ thống kiểm tra SharePoint theo lịch khoảng 30 phút/lần. Khi không có thay đổi, hệ thống dừng sớm để không xử lý lại dữ liệu không cần thiết.
+Hệ thống **không chờ lịch 30 phút**. Khi file nguồn phù hợp trên SharePoint được tạo
+hoặc sửa, hệ thống nhận tín hiệu và bắt đầu kiểm tra. Nếu nội dung không tạo delta mới,
+pipeline dừng sớm để tránh xử lý thừa.
 
 ---
 
@@ -115,17 +118,19 @@ Hệ thống kiểm tra SharePoint theo lịch khoảng 30 phút/lần. Khi khô
 
 ```mermaid
 flowchart TD
-    A[ERP T08 thay đổi] --> B[Watcher phát hiện T08]
-    B --> C[Giữ nguyên T01-T07]
-    B --> D[Rebuild T08]
-    B --> E[Giữ nguyên các tháng khác]
-    D --> F[Health Check]
-    F --> G[Upload Sell in T08 + checkpoint]
-    G --> H[Build lại dashboard]
-    H --> I[Web có dữ liệu mới]
+    A[ERP T08 thay đổi] --> B[Hệ thống nhận sự kiện SharePoint]
+    B --> C[Kiểm tra fingerprint/delta]
+    C --> D[Giữ nguyên T01-T07]
+    C --> E[Rebuild T08]
+    C --> F[Giữ nguyên các tháng khác]
+    E --> G[Health Check]
+    G --> H[Upload Sell in T08 + checkpoint]
+    H --> I[Build lại dashboard]
+    I --> J[Web có dữ liệu mới]
 ```
 
-Điều này giúp hệ thống nhanh hơn và tránh tạo lại toàn bộ lịch sử mỗi lần một tháng thay đổi.
+Điều này giúp hệ thống phản ứng theo dữ liệu mới và tránh tạo lại toàn bộ lịch sử mỗi
+lần chỉ một tháng thay đổi.
 
 ---
 
@@ -134,16 +139,20 @@ flowchart TD
 Bình thường:
 
 ```text
-SharePoint cập nhật
-→ hệ thống phát hiện
-→ xử lý dữ liệu
+SharePoint cập nhật file nguồn
+→ hệ thống nhận sự kiện
+→ xác minh dữ liệu thay đổi
+→ xử lý incremental
 → kiểm tra PASS
 → deploy web
 ```
 
-Chỉ sau khi các bước kiểm tra thành công thì dashboard mới được cập nhật.
+Dashboard không thay đổi ngay tại thời điểm bấm Save file; hệ thống còn cần thời gian
+đồng bộ, xử lý và kiểm tra. Chỉ sau khi các gate thành công thì phiên bản web mới được
+phát hành.
 
-Nếu file nguồn lỗi hoặc dữ liệu không đạt kiểm tra, hệ thống giữ bản dashboard trước đó thay vì publish bản lỗi.
+Nếu file nguồn lỗi hoặc dữ liệu không đạt kiểm tra, hệ thống giữ bản dashboard trước đó
+thay vì publish bản lỗi.
 
 ---
 
@@ -162,7 +171,8 @@ Kiểm tra lần lượt:
    - số liệu bạn kỳ vọng;
    - thời điểm file SharePoint được cập nhật.
 
-Không nên chỉ báo “dashboard sai” mà không kèm kỳ và bộ lọc, vì cùng một KPI sẽ khác nhau theo điều kiện lọc.
+Không nên chỉ báo “dashboard sai” mà không kèm kỳ và bộ lọc, vì cùng một KPI sẽ khác
+nhau theo điều kiện lọc.
 
 ---
 
@@ -209,22 +219,25 @@ Vikoda_Sales_Data/
 
 - Đảm bảo file nguồn SharePoint đúng cấu trúc.
 - Kiểm tra dữ liệu ERP, Target, danh mục KH/SP.
-- Chạy workflow thủ công khi cần kiểm tra ngay.
+- Phối hợp chạy workflow thủ công khi cần fallback.
 
 ### Người bảo trì kỹ thuật
 
-- Theo dõi GitHub Actions.
-- Bảo trì ETL/incremental logic.
-- Bảo trì dashboard và test.
+- Theo dõi Power Automate run và GitHub Actions.
+- Bảo trì event contract, ETL/incremental logic và state.
+- Bảo trì dashboard và regression tests.
 - Kiểm tra Microsoft Graph/OIDC khi kết nối SharePoint gặp lỗi.
 
 ---
 
 ## 12. Lưu ý về đường link web
 
-Dashboard hiện được publish bằng **GitHub Pages**. Theo cấu hình hiện tại, web publish đầy đủ payload dashboard và URL là public.
+Dashboard hiện được publish bằng **GitHub Pages**. Theo cấu hình hiện tại, web publish
+đầy đủ payload dashboard và URL là public.
 
 Không đặt mật khẩu, token, secret hoặc thông tin đăng nhập vào file GitHub/README/dashboard.
+Lớp login phía trình duyệt nếu được bật chỉ là tiện ích sử dụng, không phải cơ chế làm
+GitHub Pages thành private.
 
 ---
 
