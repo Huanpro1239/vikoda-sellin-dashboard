@@ -1,9 +1,9 @@
 /**
- * VIKODA WEB DASHBOARD - OPTIONAL LOCAL ACCESS GATE
+ * VIKODA WEB DASHBOARD - OPTIONAL CLIENT-SIDE ACCESS GATE
  *
- * This is only a local UX gate, not a security boundary. GitHub Pages deployment
- * uses a sanitized public dataset, so the gate is intentionally open unless a
- * local build injects VIKODA_ACCESS_GATE_HASH.
+ * This is a UX gate only, not a security boundary. GitHub Pages is public static
+ * hosting and the deployed dashboard payload must be treated as publicly readable.
+ * The gate stays open unless a local/custom build injects VIKODA_ACCESS_GATE_HASH.
  */
 
 class VikodaAuth {
