@@ -1,8 +1,8 @@
 """SharePoint source change detector with per-file manifest and ERP-period diff outputs.
 
-The watcher deliberately depends only on the Python standard library plus the
-lightweight Graph/OIDC helper. It must run before the production ETL dependencies
-are installed so the 30-minute polling path stays cheap.
+This is the production detector entrypoint. It stays lightweight so an event-driven
+SharePoint refresh can verify Graph metadata before installing the full ETL dependency
+set. Shared Graph/fingerprint primitives live in ``sharepoint_change_detector_core``.
 """
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ import re
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from sharepoint_change_detector import (
+from sharepoint_change_detector_core import (
     ChangeDetectorError,
     build_state,
     compute_fingerprint,
@@ -34,7 +34,7 @@ def parse_erp_period_from_name(name: str) -> str | None:
     """Return YYYY-MM from a valid ERP source filename without opening Excel.
 
     This intentionally mirrors the Sell-In source naming contract but does not
-    import the ETL package (which requires openpyxl). The watcher only needs the
+    import the ETL package (which requires openpyxl). The detector only needs the
     month encoded in the filename to decide which Data_Goc period may be affected.
     """
     match = ERP_FILE_PATTERN.search(str(name or "").strip())
@@ -65,7 +65,7 @@ def changed_manifest_paths(previous_state: Mapping[str, Any] | None, current: li
 
     Legacy state files did not contain a manifest. In that case return an empty
     list: the incremental planner will reconcile source vs existing Data_Goc and
-    the successful run will establish the manifest baseline for future polls.
+    the successful run will establish the manifest baseline for future events.
     """
     if not previous_state or not isinstance(previous_state.get("files"), list):
         return []
