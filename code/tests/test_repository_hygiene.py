@@ -10,7 +10,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 class RepositoryHygieneTests(unittest.TestCase):
-    def test_only_v2_sharepoint_change_detector_remains(self) -> None:
+    def test_legacy_detector_is_replaced_by_core_and_v2_entrypoint(self) -> None:
+        self.assertTrue((PROJECT_ROOT / "code/common/sharepoint_change_detector_core.py").is_file())
         self.assertTrue((PROJECT_ROOT / "code/common/sharepoint_change_detector_v2.py").is_file())
         self.assertFalse((PROJECT_ROOT / "code/common/sharepoint_change_detector.py").exists())
 
