@@ -1,4 +1,4 @@
-"""Regression tests for the production workflow permission contract."""
+"""Regression tests for the production workflow architecture and permission contract."""
 
 from __future__ import annotations
 
@@ -20,8 +20,44 @@ class WorkflowPolicyTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
 
-    def test_current_workflow_satisfies_permission_contract(self) -> None:
+    def test_current_workflow_satisfies_production_contract(self) -> None:
         validate_workflow_text(self.workflow)
+
+    def test_scheduled_sharepoint_polling_is_rejected(self) -> None:
+        changed = self.workflow.replace(
+            "\npermissions:\n",
+            "\n  schedule:\n    - cron: '*/30 * * * *'\n\npermissions:\n",
+            1,
+        )
+        with self.assertRaisesRegex(WorkflowPolicyError, "event-driven"):
+            validate_workflow_text(changed)
+
+    def test_repository_dispatch_trigger_is_required(self) -> None:
+        changed = self.workflow.replace(
+            "  repository_dispatch:\n    types: [sharepoint_changed]\n",
+            "",
+            1,
+        )
+        with self.assertRaisesRegex(WorkflowPolicyError, "repository_dispatch"):
+            validate_workflow_text(changed)
+
+    def test_repository_dispatch_event_name_is_pinned(self) -> None:
+        changed = self.workflow.replace(
+            "types: [sharepoint_changed]",
+            "types: [unexpected_event]",
+            1,
+        )
+        with self.assertRaisesRegex(WorkflowPolicyError, "sharepoint_changed"):
+            validate_workflow_text(changed)
+
+    def test_data_change_event_must_skip_full_source_tests(self) -> None:
+        changed = self.workflow.replace(
+            "if: github.event_name != 'repository_dispatch'",
+            "if: github.event_name != 'push'",
+            1,
+        )
+        with self.assertRaisesRegex(WorkflowPolicyError, "skip the full source test suite"):
+            validate_workflow_text(changed)
 
     def test_azure_client_secret_is_rejected(self) -> None:
         changed = self.workflow + "\n# AZURE_CLIENT_SECRET\n"
