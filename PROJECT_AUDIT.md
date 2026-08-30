@@ -56,7 +56,7 @@ Bao gồm test cho hai skill nghiệp vụ và production-hardening layer.
 npm run verify:web
 ```
 
-Bao gồm JavaScript syntax check và Node regression tests.
+Bao gồm JavaScript syntax check tự động cho toàn bộ `web/js/*.js` và Node regression tests.
 
 ### Workflow policy
 
@@ -95,10 +95,12 @@ coi là public. Client-side `auth.js` chỉ là UX gate, không phải security 
 
 ## 5. Cleanup decisions
 
-### Xóa
+### Xóa / thay thế
 
-- `code/common/sharepoint_change_detector.py`: detector V1 không còn production use/test;
-  V2 là implementation duy nhất được workflow và test suite sử dụng.
+- `code/common/sharepoint_change_detector.py`: detector V1/CLI cũ được loại bỏ. Các
+  Graph/fingerprint primitives còn cần thiết được tách sang
+  `sharepoint_change_detector_core.py`; production entrypoint vẫn là
+  `sharepoint_change_detector_v2.py`.
 - `code/Skill/skill-bao-cao/scripts/auto_watch_sharepoint.ps1`: local FileSystemWatcher
   trùng production event-driven capability.
 - `Chay CT/Tu dong chay khi SharePoint cap nhat.cmd`: launcher của watcher local đã loại bỏ.
