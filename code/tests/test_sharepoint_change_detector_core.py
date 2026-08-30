@@ -45,7 +45,10 @@ class SharePointChangeDetectorCoreTests(unittest.TestCase):
         fingerprint = "a" * 64
         self.assertEqual((True, "manual-force"), core.detect_change({}, fingerprint, force=True))
         self.assertEqual((True, "state-missing"), core.detect_change(None, fingerprint))
-        self.assertEqual((True, "state-invalid"), core.detect_change({}, fingerprint))
+        self.assertEqual(
+            (True, "state-invalid"),
+            core.detect_change({"version": 1}, fingerprint),
+        )
         self.assertEqual(
             (True, "source-fingerprint-changed"),
             core.detect_change({"fingerprint": "b" * 64}, fingerprint),
