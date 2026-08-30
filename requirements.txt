@@ -1,5 +1,5 @@
 # Core runtime tested by CI (Python 3.12). Keep exact direct versions so a
-# scheduled build cannot change behavior merely because PyPI published a release.
+# production build cannot change behavior merely because PyPI published a release.
 pandas==2.2.3
 openpyxl==3.1.5
 xlsxwriter==3.2.9
