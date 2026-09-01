@@ -46,6 +46,7 @@ function createButton(attributes = {}) {
   const listeners = new Map();
   return {
     attributes: { ...attributes },
+    disabled: false,
     textContent: '',
     classList: {
       toggle() {},
@@ -70,6 +71,18 @@ function createButton(attributes = {}) {
 function createPillsHost() {
   let markup = '';
   let buttons = [];
+  const feedbackBar = {
+    classes: new Set(),
+    classList: {
+      toggle(name, force) {
+        if (force) feedbackBar.classes.add(name);
+        else feedbackBar.classes.delete(name);
+      },
+      contains(name) {
+        return feedbackBar.classes.has(name);
+      },
+    },
+  };
   return {
     get innerHTML() {
       return markup;
@@ -82,6 +95,10 @@ function createPillsHost() {
     querySelectorAll(selector) {
       return selector === '.remove-pill' ? buttons : [];
     },
+    closest(selector) {
+      return selector === '.filter-feedback-bar' ? feedbackBar : null;
+    },
+    feedbackBar,
     buttonFor(key) {
       return buttons.find((button) => button.getAttribute('data-key') === key);
     },
@@ -281,4 +298,18 @@ test('active filter feedback and clear action stay visible on mobile', () => {
   );
   assert.match(html, /<nav class="nav-menu" aria-label="Trang báo cáo">/);
   assert.match(html, /<nav class="mobile-bottom-nav" aria-label="Trang báo cáo trên di động">/);
+});
+
+test('empty filter feedback disables clear and active filters restore it', () => {
+  const { app, elements, engine } = createHarness();
+  engine.subscribe(() => app.updateFilterPillsUI());
+
+  app.updateFilterPillsUI();
+  assert.equal(elements.btn_clear_filters.disabled, true);
+  assert.equal(elements.filter_pills_container.feedbackBar.classList.contains('is-empty'), true);
+  assert.match(elements.filter_pills_container.innerHTML, /Đang xem toàn bộ dữ liệu/);
+
+  engine.setFilter('channel', 'GT');
+  assert.equal(elements.btn_clear_filters.disabled, false);
+  assert.equal(elements.filter_pills_container.feedbackBar.classList.contains('is-empty'), false);
 });

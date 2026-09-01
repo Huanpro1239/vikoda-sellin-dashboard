@@ -579,6 +579,11 @@ class VikodaApp {
     if (f.productGroup) pills.push({ key: 'productGroup', label: `Nhóm SP: ${f.productGroup}` });
     if (f.packUnit) pills.push({ key: 'packUnit', label: `ĐVT: ${f.packUnit}` });
 
+    const feedbackBar = container.closest('.filter-feedback-bar');
+    const clearButton = document.getElementById('btn_clear_filters');
+    if (feedbackBar) feedbackBar.classList.toggle('is-empty', !pills.length);
+    if (clearButton) clearButton.disabled = !pills.length;
+
     container.innerHTML = pills.length
       ? pills.map((p) => `
         <span class="filter-pill">
@@ -586,7 +591,7 @@ class VikodaApp {
           <button type="button" class="remove-pill" data-key="${this.escapeHTML(p.key)}" aria-label="Xóa ${this.escapeHTML(p.label)}">✕</button>
         </span>
       `).join('')
-      : '<span class="filter-empty-state">Chưa có bộ lọc · đang xem tất cả</span>';
+      : '<span class="filter-empty-state">Đang xem toàn bộ dữ liệu</span>';
 
     container.querySelectorAll('.remove-pill').forEach((btn) => {
       btn.addEventListener('click', () => {

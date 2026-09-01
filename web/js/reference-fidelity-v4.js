@@ -102,8 +102,97 @@
     const chart = charts.getOrCreate(chartId);
     if (!chart) return;
     const data = monthlyComboData(charts.engine);
+    const isOverviewTrend = chartId === 'chart_p1_trend';
     const isProductTrend = chartId === 'chart_p3_trend';
     const valueLabelFontSize = isProductTrend ? 10 : 8.5;
+
+    if (isOverviewTrend) {
+      const futureStart = data.through < data.labels.length ? data.labels[data.through].replace('T', '') : null;
+      const futureEnd = data.labels[data.labels.length - 1].replace('T', '');
+      chart.setOption({
+        animationDuration: 300,
+        tooltip: {
+          ...tooltip(),
+          trigger: 'axis',
+          axisPointer: { type: 'shadow' },
+          formatter: (params) => {
+            const index = Number.isInteger(params[0]?.dataIndex) ? params[0].dataIndex : 0;
+            let html = `<strong>Tháng ${escapeHTML(params[0]?.name || '')}</strong><br/>`;
+            params.forEach((p) => {
+              if (p.value === null || p.value === undefined) return;
+              html += `${p.marker}${escapeHTML(p.seriesName)}: <strong>${fmt(p.value)} tr</strong><br/>`;
+            });
+            if (data.attainment[index] !== null) html += `% đạt Target: <strong>${fmt(data.attainment[index], 1)}%</strong><br/>`;
+            if (data.growth[index] !== null) html += `Tăng trưởng: <strong>${fmt(data.growth[index], 1)}%</strong>`;
+            return html;
+          },
+        },
+        legend: { ...legend(), data: ['Actual', 'Cùng kỳ', 'Target'] },
+        grid: { left: 66, right: 34, top: 58, bottom: 42, containLabel: true },
+        xAxis: {
+          type: 'category',
+          data: data.labels.map((label) => label.replace('T', '')),
+          name: 'Tháng',
+          nameLocation: 'middle',
+          nameGap: 28,
+          nameTextStyle: { color: C.muted, fontSize: 10 },
+          axisLine: { lineStyle: { color: '#c8d3dc' } },
+          axisTick: { show: false },
+          axisLabel: { ...axisText(), fontSize: 10 },
+        },
+        yAxis: [{
+          type: 'value',
+          name: 'Doanh thu · triệu đồng',
+          nameTextStyle: { color: C.muted, fontSize: 9, align: 'left' },
+          splitNumber: 4,
+          splitLine: gridLine(),
+          axisLabel: { ...axisText(), formatter: (v) => v ? fmtCompact(v) : '0' },
+        }],
+        series: [
+          {
+            name: 'Actual', type: 'bar', barMaxWidth: 24, data: data.actual,
+            itemStyle: { color: C.blue, borderRadius: [3, 3, 0, 0] },
+            label: {
+              show: true,
+              position: 'top',
+              distance: 5,
+              fontSize: 9,
+              formatter: (p) => {
+                if (p.value === null || p.value === undefined) return '';
+                const attained = data.attainment[p.dataIndex];
+                if (attained === null) return fmtCompact(p.value);
+                const state = attained >= 100 ? 'good' : attained >= 85 ? 'warn' : 'bad';
+                return `{value|${fmtCompact(p.value)}}\n{${state}|${fmt(attained, 1)}%}`;
+              },
+              rich: {
+                value: { color: '#496176', fontSize: 9, fontWeight: 600, lineHeight: 15 },
+                good: { color: '#087f6d', backgroundColor: '#e7f6f2', borderRadius: 7, padding: [2, 5], fontSize: 8, fontWeight: 700 },
+                warn: { color: '#9a5b00', backgroundColor: '#fff4d8', borderRadius: 7, padding: [2, 5], fontSize: 8, fontWeight: 700 },
+                bad: { color: '#b43b42', backgroundColor: '#fdebed', borderRadius: 7, padding: [2, 5], fontSize: 8, fontWeight: 700 },
+              },
+            },
+            labelLayout: { hideOverlap: true },
+          },
+          {
+            name: 'Cùng kỳ', type: 'bar', barMaxWidth: 24, data: data.ly,
+            itemStyle: { color: '#b7c2cc', borderRadius: [3, 3, 0, 0] },
+          },
+          {
+            name: 'Target', type: 'line', data: data.target,
+            symbol: 'none', smooth: .08,
+            lineStyle: { color: C.orange, width: 2, type: 'dashed' },
+            itemStyle: { color: C.orange },
+            markArea: futureStart ? {
+              silent: true,
+              itemStyle: { color: 'rgba(31, 64, 91, 0.035)' },
+              label: { show: true, position: 'insideTop', color: '#8a9aaa', fontSize: 9, formatter: 'Kế hoạch' },
+              data: [[{ xAxis: futureStart }, { xAxis: futureEnd }]],
+            } : undefined,
+          },
+        ],
+      }, true);
+      return;
+    }
 
     chart.setOption({
       animationDuration: 300,
@@ -247,9 +336,9 @@
     if (regionCard && secondGrid) secondGrid.insertBefore(regionCard, secondGrid.firstChild);
     gapCard?.classList.add('reference-hidden-card');
     if (firstGrid) firstGrid.style.gridTemplateColumns = '1fr';
-    setCardText('chart_p1_trend', '1 · ACTUAL · CÙNG KỲ · TARGET · % ĐẠT TARGET · % GROWTH', 'X · Tháng 1–12   |   CỘT · Doanh thu (triệu đồng)   |   ĐƯỜNG · % đạt Target · % Growth');
-    setCardText('chart_p1_channel_mix', '2 · TOP 5 VÙNG', 'VÙNG · Top 5 theo Actual kỳ chọn   |   Đơn vị: triệu đồng');
-    setCardText('chart_p1_product_mix', '3 · TOP 5 GROUP BRAND', 'GROUP BRAND / SKU · Top 5 theo Actual kỳ chọn   |   Đơn vị: triệu đồng');
+    setCardText('chart_p1_trend', 'Hiệu quả Sell-In theo tháng', 'Actual, cùng kỳ và Target · Chạm hoặc rê để xem tỷ lệ');
+    setCardText('chart_p1_channel_mix', 'Top 5 vùng theo doanh thu', 'Xếp hạng theo Actual trong kỳ chọn · Đơn vị: triệu đồng');
+    setCardText('chart_p1_product_mix', 'Top 5 nhóm sản phẩm', 'Đóng góp doanh thu theo nhóm sản phẩm · Đơn vị: triệu đồng');
   }
 
   function renderOverview(charts) {

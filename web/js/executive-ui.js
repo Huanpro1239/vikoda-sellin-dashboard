@@ -44,9 +44,9 @@
     appendStylesheet('css/powerbi-premium-v7.css?v=7.0.0', 'data-vikoda-powerbi-premium-v7');
     appendStylesheet('css/overview-performance-v8.css?v=8.0.0', 'data-vikoda-overview-performance-v8');
     appendStylesheet('css/accounting-report-v9.css?v=9.0.0', 'data-vikoda-accounting-report-v9');
-
+    appendStylesheet('css/vikoda-polish-v9.css?v=9.0.0', 'data-vikoda-polish-v9');
     appendScript('js/reference-analytics.js?v=3.0.0', 'data-vikoda-reference-analytics');
-    appendScript('js/reference-fidelity-v4.js?v=4.3.0', 'data-vikoda-reference-fidelity');
+    appendScript('js/reference-fidelity-v4.js?v=4.4.0', 'data-vikoda-reference-fidelity');
     appendScript('js/reference-geography-v4.js?v=4.0.0', 'data-vikoda-reference-geography');
     appendScript('js/page05-sale-v5.js?v=5.0.0', 'data-vikoda-sale-v5');
     appendScript('js/mobile-v6.js?v=6.0.0', 'data-vikoda-mobile-v6');

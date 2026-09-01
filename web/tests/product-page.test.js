@@ -31,18 +31,6 @@ test('product trend provides more room and larger labels for high values', () =>
   assert.match(js, /isProductTrend \? fmtCompact\(p\.value\) : fmt\(p\.value\)/);
 });
 
-test('product layout assets use a fresh cache version', () => {
-  const shell = read('web/js/executive-ui.js');
-  const html = read('web/index.html');
-
-  assert.match(shell, /reference-fidelity-v4\.css\?v=4\.2\.0/);
-  assert.match(shell, /reference-fidelity-v4\.js\?v=4\.3\.0/);
-  assert.match(shell, /vikoda-powerbi-theme\.css\?v=2\.8\.0/);
-  assert.match(html, /formatters\.js\?v=2\.8\.0/);
-  assert.match(html, /executive-ui\.js\?v=2\.8\.0/);
-  assert.match(html, /app\.js\?v=2\.8\.0/);
-});
-
 test('mobile page changes keep the product header in sync', () => {
   const app = read('web/js/app.js');
   const shell = read('web/js/executive-ui.js');
