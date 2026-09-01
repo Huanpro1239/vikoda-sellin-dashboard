@@ -100,6 +100,25 @@ def parse_as_of(value: str | None) -> date:
     return datetime.strptime(value, "%Y-%m-%d").date()
 
 
+def reporting_as_of(
+    run_as_of: date,
+    available_periods: set[tuple[int, int]],
+) -> date:
+    """Use the newest Sell-In workbook period that actually exists.
+
+    Calendar month rollover must not make the dashboard require a workbook for a
+    month that has not started flowing through ERP/Data_Goc yet. Explicit
+    ``--as-of-date`` remains strict; this helper is only used for automatic runs.
+    Missing periods inside the resolved reporting window still fail below.
+    """
+    cutoff = (run_as_of.year, run_as_of.month)
+    candidates = [period for period in available_periods if period <= cutoff]
+    if not candidates:
+        return run_as_of
+    year, month = max(candidates)
+    return date(year, month, 1)
+
+
 def expected_periods(as_of: date) -> list[tuple[int, int]]:
     periods = []
     for year in (as_of.year - 1, as_of.year):
@@ -120,13 +139,11 @@ def main() -> int:
     staging_dir.mkdir(parents=True, exist_ok=True)
     data_file = staging_dir / "sell_in_data.json"
     audit_file = staging_dir / "sell_in_audit.json"
-    as_of = parse_as_of(args.as_of_date)
+    run_as_of = parse_as_of(args.as_of_date)
 
     problems: list[str] = []
     warnings: list[str] = []
-    expected = expected_periods(as_of)
-    expected_set = set(expected)
-    files_by_period: dict[tuple[int, int], list[Path]] = {}
+    discovered_files: dict[tuple[int, int], list[Path]] = {}
 
     for path in source_dir.glob("*.xlsx"):
         if path.name.startswith("~$"):
@@ -136,8 +153,26 @@ def main() -> int:
             continue
         month = int(match.group(1))
         year = int(match.group(2))
-        if (year, month) in expected_set:
-            files_by_period.setdefault((year, month), []).append(path)
+        discovered_files.setdefault((year, month), []).append(path)
+
+    if args.as_of_date:
+        as_of = run_as_of
+    else:
+        as_of = reporting_as_of(run_as_of, set(discovered_files))
+        if (as_of.year, as_of.month) != (run_as_of.year, run_as_of.month):
+            warnings.append(
+                "Phạm vi báo cáo tự chốt theo Data_Goc mới nhất: "
+                f"T{as_of.month:02d}/{as_of.year} "
+                f"(ngày chạy {run_as_of.isoformat()})"
+            )
+
+    expected = expected_periods(as_of)
+    expected_set = set(expected)
+    files_by_period = {
+        period: paths
+        for period, paths in discovered_files.items()
+        if period in expected_set
+    }
 
     selected_files: list[tuple[int, int, Path]] = []
     for year, month in expected:
@@ -293,6 +328,7 @@ def main() -> int:
         "generated_at": payload["generated_at"],
         "source_dir": str(source_dir),
         "data_file": str(data_file),
+        "run_as_of_date": run_as_of.isoformat(),
         "as_of_date": as_of.isoformat(),
         "expected_periods": [f"{year}{month:02d}" for year, month in expected],
         "invoice_type_filter": {
