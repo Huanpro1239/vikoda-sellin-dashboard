@@ -25,6 +25,7 @@ REQUIRED_WEB_FILES = (
     "css/mobile-v6.css",
     "css/powerbi-premium-v7.css",
     "css/overview-performance-v8.css",
+    "css/accounting-report-v9.css",
     "js/app.js",
     "js/formatters.js",
     "js/charts.js",
@@ -39,6 +40,7 @@ REQUIRED_WEB_FILES = (
     "js/channel-geography-facets.js",
     "js/page-scoped-filters-v7.js",
     "js/overview-performance-v8.js",
+    "js/accounting-charts-v9.js",
     "js/auth.js",
 )
 
