@@ -40,6 +40,9 @@
     appendStylesheet('css/reference-fidelity-v4.css?v=4.2.0', 'data-vikoda-reference-fidelity');
     appendStylesheet('css/page05-sale-v5.css?v=5.0.0', 'data-vikoda-sale-v5');
     appendStylesheet('css/mobile-v6.css?v=6.1.0', 'data-vikoda-mobile-v6');
+    // Final visual layer intentionally loads last so it owns presentation only.
+    appendStylesheet('css/powerbi-premium-v7.css?v=7.0.0', 'data-vikoda-powerbi-premium-v7');
+
     appendScript('js/reference-analytics.js?v=3.0.0', 'data-vikoda-reference-analytics');
     appendScript('js/reference-fidelity-v4.js?v=4.3.0', 'data-vikoda-reference-fidelity');
     appendScript('js/reference-geography-v4.js?v=4.0.0', 'data-vikoda-reference-geography');
@@ -47,6 +50,7 @@
     appendScript('js/mobile-v6.js?v=6.0.0', 'data-vikoda-mobile-v6');
     appendScript('js/smart-slicers.js?v=1.0.0', 'data-vikoda-smart-slicers');
     appendScript('js/channel-geography-facets.js?v=1.0.0', 'data-vikoda-channel-geography-facets');
+    appendScript('js/page-scoped-filters-v7.js?v=7.0.0', 'data-vikoda-page-scoped-filters-v7');
   }
 
   function tagFilterBlocks() {
