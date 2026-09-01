@@ -441,26 +441,101 @@ class VikodaApp {
   // ------------------------------------------------------------------------
   // BỘ LỌC DROPDOWN BÊN TRÁI
   // ------------------------------------------------------------------------
-  initSidebarDropdowns() {
-    const mienSelect = document.getElementById('select_mien');
-    const channelSelect = document.getElementById('select_channel');
-    const groupSelect = document.getElementById('select_group');
+  uniqueBusinessValues(values) {
+    return [...new Set(values
+      .map((value) => String(value || '').trim())
+      .filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'vi'));
+  }
 
-    if (mienSelect) {
-      mienSelect.addEventListener('change', (e) => {
-        window.dataEngine.setFilter('mien', e.target.value || null);
+  replaceBusinessFilterOptions(select, values, allLabel, selectedValue = '') {
+    if (!select) return;
+    select.replaceChildren();
+
+    const all = document.createElement('option');
+    all.value = '';
+    all.textContent = allLabel;
+    select.appendChild(all);
+
+    values.forEach((value) => {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = value;
+      select.appendChild(option);
+    });
+
+    select.value = values.includes(selectedValue) ? selectedValue : '';
+  }
+
+  syncBusinessFilterControls() {
+    const engine = window.dataEngine;
+    if (!engine?.raw) return;
+
+    const customers = Object.values(engine.customers || {});
+    const territories = Object.values(engine.territories || {});
+    const products = Object.values(engine.products || {});
+    const filters = engine.filters || {};
+    const regions = typeof engine.getRegionsForMien === 'function'
+      ? engine.getRegionsForMien(filters.mien)
+      : this.uniqueBusinessValues([...customers, ...territories]
+        .filter((item) => !filters.mien || item.mien === filters.mien)
+        .map((item) => item.vung));
+
+    this.replaceBusinessFilterOptions(
+      document.getElementById('select_channel'),
+      this.uniqueBusinessValues(customers.map((item) => item.channel)),
+      'Tất cả kênh',
+      filters.channel || '',
+    );
+    this.replaceBusinessFilterOptions(
+      document.getElementById('select_mien'),
+      this.uniqueBusinessValues([...customers, ...territories].map((item) => item.mien)),
+      'Tất cả miền',
+      filters.mien || '',
+    );
+    this.replaceBusinessFilterOptions(
+      document.getElementById('select_vung'),
+      regions,
+      'Tất cả vùng',
+      filters.vung || '',
+    );
+    this.replaceBusinessFilterOptions(
+      document.getElementById('select_group'),
+      this.uniqueBusinessValues(products.map((item) => engine.normalizeProductGroup?.(item.group) || item.group)),
+      'Tất cả nhóm SP',
+      filters.productGroup || '',
+    );
+  }
+
+  initSidebarDropdowns() {
+    const mapping = {
+      select_channel: 'channel',
+      select_mien: 'mien',
+      select_vung: 'vung',
+      select_group: 'productGroup',
+    };
+
+    Object.entries(mapping).forEach(([id, key]) => {
+      const select = document.getElementById(id);
+      if (!select || select.dataset.boundBusinessFilter) return;
+      select.dataset.boundBusinessFilter = 'true';
+      select.addEventListener('change', (event) => {
+        window.dataEngine.setFilter(key, event.target.value || null);
+      });
+    });
+
+    const panel = document.getElementById('business_filter_panel');
+    const toggle = document.getElementById('btn_toggle_business_filters');
+    if (panel && toggle && !toggle.dataset.boundBusinessFilterToggle) {
+      toggle.dataset.boundBusinessFilterToggle = 'true';
+      toggle.addEventListener('click', () => {
+        const collapsed = panel.classList.toggle('is-collapsed');
+        toggle.setAttribute('aria-expanded', String(!collapsed));
+        toggle.textContent = collapsed ? 'Mở lọc' : 'Thu gọn';
       });
     }
-    if (channelSelect) {
-      channelSelect.addEventListener('change', (e) => {
-        window.dataEngine.setFilter('channel', e.target.value || null);
-      });
-    }
-    if (groupSelect) {
-      groupSelect.addEventListener('change', (e) => {
-        window.dataEngine.setFilter('productGroup', e.target.value || null);
-      });
-    }
+
+    this.syncBusinessFilterControls();
   }
 
   // ------------------------------------------------------------------------
@@ -484,13 +559,7 @@ class VikodaApp {
         });
 
         const monthSelect = document.getElementById('select_month');
-        const mienSelect = document.getElementById('select_mien');
-        const channelSelect = document.getElementById('select_channel');
-        const groupSelect = document.getElementById('select_group');
         if (monthSelect) monthSelect.value = window.dataEngine.filters.startDate.slice(0, 7);
-        if (mienSelect) mienSelect.value = '';
-        if (channelSelect) channelSelect.value = '';
-        if (groupSelect) groupSelect.value = '';
       });
     }
   }
@@ -510,28 +579,19 @@ class VikodaApp {
     if (f.productGroup) pills.push({ key: 'productGroup', label: `Nhóm SP: ${f.productGroup}` });
     if (f.packUnit) pills.push({ key: 'packUnit', label: `ĐVT: ${f.packUnit}` });
 
-    container.innerHTML = pills.map((p) => `
-      <span class="filter-pill">
-        ${this.escapeHTML(p.label)}
-        <button type="button" class="remove-pill" data-key="${this.escapeHTML(p.key)}" aria-label="Xóa ${this.escapeHTML(p.label)}">✕</button>
-      </span>
-    `).join('');
+    container.innerHTML = pills.length
+      ? pills.map((p) => `
+        <span class="filter-pill">
+          ${this.escapeHTML(p.label)}
+          <button type="button" class="remove-pill" data-key="${this.escapeHTML(p.key)}" aria-label="Xóa ${this.escapeHTML(p.label)}">✕</button>
+        </span>
+      `).join('')
+      : '<span class="filter-empty-state">Chưa có bộ lọc · đang xem tất cả</span>';
 
     container.querySelectorAll('.remove-pill').forEach((btn) => {
       btn.addEventListener('click', () => {
         const k = btn.getAttribute('data-key');
         window.dataEngine.setFilter(k, null);
-
-        if (k === 'mien') {
-          const s = document.getElementById('select_mien');
-          if (s) s.value = '';
-        } else if (k === 'channel') {
-          const s = document.getElementById('select_channel');
-          if (s) s.value = '';
-        } else if (k === 'productGroup') {
-          const s = document.getElementById('select_group');
-          if (s) s.value = '';
-        }
       });
     });
   }
@@ -540,6 +600,11 @@ class VikodaApp {
   // RENDER DỮ LIỆU TOÀN BỘ TRANG
   // ------------------------------------------------------------------------
   render() {
+    try {
+      this.syncBusinessFilterControls();
+    } catch (e) {
+      console.error('Lỗi syncBusinessFilterControls:', e);
+    }
     try {
       this.updateKPIs();
     } catch (e) {
@@ -603,6 +668,10 @@ class VikodaApp {
 
   updateKPIs() {
     const kpis = window.dataEngine.getSummaryKPIs();
+    const formatMillion = window.VikodaFormatters?.formatMillion
+      || ((value) => `${Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} tr`);
+    const formatPercent = window.VikodaFormatters?.formatPercent
+      || ((value, { signed = false } = {}) => `${signed && Number(value) > 0 ? '+' : ''}${Number(value || 0).toFixed(1)}%`);
 
     // Executive AI Alert Strip Text on Page 1
     const elExecAlert = document.getElementById('exec_alert_text');
@@ -629,14 +698,26 @@ class VikodaApp {
     // Actual MTD / Selected Period
     const elActual = document.getElementById('kpi_actual');
     if (elActual) {
-      elActual.innerText = `${Math.round(kpis.actualMillion).toLocaleString()} Tr.đ`;
+      elActual.textContent = formatMillion(kpis.actualMillion);
       this.pulseElement(elActual);
+    }
+
+    const elLy = document.getElementById('kpi_ly');
+    if (elLy) {
+      elLy.textContent = formatMillion(kpis.lyMillion);
+      this.pulseElement(elLy);
+    }
+
+    const elTarget = document.getElementById('kpi_target');
+    if (elTarget) {
+      elTarget.textContent = formatMillion(kpis.targetMillion);
+      this.pulseElement(elTarget);
     }
 
     // Target Attainment
     const elAttain = document.getElementById('kpi_attainment');
     if (elAttain) {
-      elAttain.innerText = `${kpis.attainment.toFixed(1)}%`;
+      elAttain.textContent = formatPercent(kpis.attainment);
       this.pulseElement(elAttain);
     }
 
@@ -650,7 +731,7 @@ class VikodaApp {
     // YoY Growth
     const elYoY = document.getElementById('kpi_yoy');
     if (elYoY) {
-      elYoY.innerText = `${kpis.yoy >= 0 ? '+' : ''}${kpis.yoy.toFixed(1)}%`;
+      elYoY.textContent = formatPercent(kpis.yoy, { signed: true });
       elYoY.className = `kpi-value ${kpis.yoy >= 0 ? 'positive' : 'negative'}`;
       this.pulseElement(elYoY);
     }

@@ -10,7 +10,7 @@ const read = (relative) => fs.readFileSync(path.join(root, relative), 'utf8');
 
 test('mobile V6 assets are wired into the dashboard shell', () => {
   const shell = read('web/js/executive-ui.js');
-  assert.match(shell, /css\/mobile-v6\.css\?v=6\.0\.0/);
+  assert.match(shell, /css\/mobile-v6\.css\?v=6\.1\.0/);
   assert.match(shell, /js\/mobile-v6\.js\?v=6\.0\.0/);
 });
 

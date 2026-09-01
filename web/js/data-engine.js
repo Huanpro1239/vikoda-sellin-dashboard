@@ -78,11 +78,35 @@ class VikodaDataEngine {
     this.listeners.forEach((cb) => cb(this.filters));
   }
 
+  getRegionsForMien(mien = null) {
+    const dimensions = [
+      ...Object.values(this.customers || {}),
+      ...Object.values(this.territories || {}),
+    ];
+    return [...new Set(dimensions
+      .filter((item) => !mien || item.mien === mien)
+      .map((item) => String(item.vung || '').trim())
+      .filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'vi'));
+  }
+
   setFilter(key, value) {
-    if (this.filters[key] === value) {
-      this.filters[key] = null;
+    const normalizedValue = value === '' || value === undefined ? null : value;
+    const nextValue = this.filters[key] === normalizedValue ? null : normalizedValue;
+
+    if (key === 'mien') {
+      this.filters.mien = nextValue;
+      const validRegions = this.getRegionsForMien(nextValue);
+      if (nextValue && this.filters.vung && !validRegions.includes(this.filters.vung)) {
+        this.filters.vung = null;
+      }
+    } else if (key === 'vung') {
+      if (nextValue && this.filters.mien && !this.getRegionsForMien(this.filters.mien).includes(nextValue)) {
+        this.filters.mien = null;
+      }
+      this.filters.vung = nextValue;
     } else {
-      this.filters[key] = value;
+      this.filters[key] = nextValue;
     }
     this.notify();
   }

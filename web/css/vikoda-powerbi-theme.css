@@ -68,16 +68,29 @@ body {
   color: #e1e8ef;
 }
 
-.filter-pills-bar {
-  align-self: flex-end;
-  margin-bottom: 4px;
+.filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 4px 7px;
+  border-radius: 4px;
+  background: #e7f1f8;
+  border-color: #b9cddd;
+  color: #21445f;
 }
 
-.filter-pill {
+.remove-pill {
+  min-width: 24px;
+  min-height: 24px;
   border-radius: 4px;
-  background: rgba(255,255,255,.09);
-  border-color: rgba(255,255,255,.18);
-  color: #eaf4fb;
+}
+
+.remove-pill:focus-visible,
+.btn-clear-all:focus-visible,
+#btn_toggle_business_filters:focus-visible {
+  outline: 2px solid #1782b6;
+  outline-offset: 2px;
 }
 
 .header-actions {
@@ -171,6 +184,38 @@ body {
   padding: 7px 5px 8px;
 }
 
+.business-filter-panel {
+  margin-top: 11px;
+}
+
+.business-filter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+#btn_toggle_business_filters {
+  min-height: 28px;
+  padding: 4px 7px;
+  border: 1px solid #5d8baa;
+  border-radius: 5px;
+  background: #174b70;
+  color: #d9edf8;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: none;
+}
+
+.business-filter-panel.is-collapsed .business-filter-fields {
+  display: none;
+}
+
 .slicer-card > .slicer-header {
   display: none;
 }
@@ -238,6 +283,60 @@ body {
 .app-content {
   padding: 6px 14px 14px;
   background: var(--vpb-canvas) !important;
+}
+
+.filter-feedback-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  margin: 0 0 9px;
+  padding: 6px 8px 6px 10px;
+  border: 1px solid #c8d5e3;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.filter-feedback-copy {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  flex: 1;
+}
+
+.filter-feedback-label {
+  flex: 0 0 auto;
+  color: #5f7388;
+  font-size: 10px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.filter-feedback-bar .filter-pills-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+  overflow: visible;
+}
+
+.filter-empty-state {
+  color: #6d8194;
+  font-size: 11px;
+}
+
+.filter-feedback-bar .btn-clear-all {
+  flex: 0 0 auto;
+  min-height: 31px;
+  border-color: #b7cbdc;
+  background: #f5f8fb;
+  color: #244760;
+}
+
+.filter-feedback-bar .btn-clear-all:hover {
+  background: #e9f1f7;
 }
 
 .period-status-banner {
@@ -455,33 +554,7 @@ body {
   background: #147dab;
 }
 
-/* Page-aware filter visibility: mimic each screenshot instead of showing every slicer everywhere. */
-body[data-dashboard-page="page_01"] .filter-block-channel,
-body[data-dashboard-page="page_01"] .filter-block-mien,
-body[data-dashboard-page="page_01"] .filter-block-vung,
-body[data-dashboard-page="page_01"] .filter-block-group {
-  display: none !important;
-}
-
-body[data-dashboard-page="page_04"] .filter-block-group,
-body[data-dashboard-page="page_02"] .filter-block-group {
-  display: none !important;
-}
-
-body[data-dashboard-page="page_03"] .filter-block-channel,
-body[data-dashboard-page="page_03"] .filter-block-mien,
-body[data-dashboard-page="page_03"] .filter-block-vung,
-body[data-dashboard-page="page_03"] .filter-block-group,
-body[data-dashboard-page="page_05"] .filter-block-channel,
-body[data-dashboard-page="page_05"] .filter-block-mien,
-body[data-dashboard-page="page_05"] .filter-block-vung,
-body[data-dashboard-page="page_05"] .filter-block-group,
-body[data-dashboard-page="page_06"] .filter-block-channel,
-body[data-dashboard-page="page_06"] .filter-block-mien,
-body[data-dashboard-page="page_06"] .filter-block-vung,
-body[data-dashboard-page="page_06"] .filter-block-group {
-  display: block;
-}
+/* Business slicers are global: the same four controls remain available on every page. */
 
 /* Forecast / variance page */
 .forecast-control-bar {
@@ -551,6 +624,10 @@ body[data-dashboard-page="page_06"] .filter-block-group {
 
   .brand-section {
     min-width: 390px;
+  }
+
+  .filter-feedback-bar .filter-pills-bar {
+    display: flex;
   }
 
   .executive-kpi-grid {

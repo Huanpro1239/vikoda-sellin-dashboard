@@ -16,9 +16,6 @@
     page_06: { order: 6, label: 'Chênh lệch', title: 'PHÂN TÍCH CHÊNH LỆCH' },
   };
 
-  const fmtMillion = (value) => `${Number(value || 0).toLocaleString('en-US', { maximumFractionDigits: 1 })} tr`;
-  const fmtPercent = (value) => `${Number(value || 0).toFixed(1)}%`;
-
   function appendStylesheet(href, dataAttribute) {
     if (document.querySelector(`link[${dataAttribute}]`)) return;
     const link = document.createElement('link');
@@ -38,11 +35,11 @@
   }
 
   function loadPowerBiTheme() {
-    appendStylesheet('css/vikoda-powerbi-theme.css?v=2.6.0', 'data-vikoda-powerbi-theme');
+    appendStylesheet('css/vikoda-powerbi-theme.css?v=2.8.0', 'data-vikoda-powerbi-theme');
     appendStylesheet('css/reference-dashboard-v3.css?v=3.0.0', 'data-vikoda-reference-theme');
     appendStylesheet('css/reference-fidelity-v4.css?v=4.2.0', 'data-vikoda-reference-fidelity');
     appendStylesheet('css/page05-sale-v5.css?v=5.0.0', 'data-vikoda-sale-v5');
-    appendStylesheet('css/mobile-v6.css?v=6.0.0', 'data-vikoda-mobile-v6');
+    appendStylesheet('css/mobile-v6.css?v=6.1.0', 'data-vikoda-mobile-v6');
     appendScript('js/reference-analytics.js?v=3.0.0', 'data-vikoda-reference-analytics');
     appendScript('js/reference-fidelity-v4.js?v=4.3.0', 'data-vikoda-reference-fidelity');
     appendScript('js/reference-geography-v4.js?v=4.0.0', 'data-vikoda-reference-geography');
@@ -100,25 +97,8 @@
     document.title = `Vikoda Sell-In | ${page.title}`;
   }
 
-  function updateKpis() {
-    if (!window.dataEngine?.raw || typeof window.dataEngine.getSummaryKPIs !== 'function') return;
-    const kpis = window.dataEngine.getSummaryKPIs();
-    setText('kpi_ly', fmtMillion(kpis.lyMillion));
-    setText('kpi_target', fmtMillion(kpis.targetMillion));
-
-    const actual = document.getElementById('kpi_actual');
-    if (actual) actual.textContent = fmtMillion(kpis.actualMillion);
-
-    const attainment = document.getElementById('kpi_attainment');
-    if (attainment) attainment.textContent = fmtPercent(kpis.attainment);
-
-    const growth = document.getElementById('kpi_yoy');
-    if (growth) {
-      growth.textContent = fmtPercent(kpis.yoy);
-      growth.classList.toggle('positive', Number(kpis.yoy) >= 0);
-      growth.classList.toggle('negative', Number(kpis.yoy) < 0);
-    }
-
+  function updateDataStatus() {
+    if (!window.dataEngine?.raw) return;
     const year = getReportingYear();
     const asOf = String(window.dataEngine.metadata.as_of_date || window.dataEngine.metadata.source_latest_date || '');
     const generated = String(window.dataEngine.metadata.generated_at || '');
@@ -130,80 +110,6 @@
         : 'mới nhất';
       status.textContent = `AUTO SYNC · dữ liệu đến ${asOf || year} · ${timeText}`;
       status.title = 'Dashboard được build tự động từ dữ liệu SharePoint sau khi pipeline kiểm tra thành công.';
-    }
-  }
-
-  function uniqueValues(source) {
-    return [...new Set(source.map((value) => String(value || '').trim()).filter(Boolean))]
-      .sort((a, b) => a.localeCompare(b, 'vi'));
-  }
-
-  function replaceOptions(select, values, allLabel) {
-    if (!select) return;
-    const current = select.value;
-    select.replaceChildren();
-    const all = document.createElement('option');
-    all.value = '';
-    all.textContent = allLabel;
-    select.appendChild(all);
-    values.forEach((value) => {
-      const option = document.createElement('option');
-      option.value = value;
-      option.textContent = value;
-      select.appendChild(option);
-    });
-    if (values.includes(current)) select.value = current;
-  }
-
-  function populateBusinessFilters() {
-    if (!window.dataEngine?.raw) return;
-    const customers = Object.values(window.dataEngine.customers || {});
-    const territories = Object.values(window.dataEngine.territories || {});
-    const products = Object.values(window.dataEngine.products || {});
-
-    replaceOptions(
-      document.getElementById('select_mien'),
-      uniqueValues([...customers.map((item) => item.mien), ...territories.map((item) => item.mien)]),
-      'All',
-    );
-    replaceOptions(
-      document.getElementById('select_vung'),
-      uniqueValues([...customers.map((item) => item.vung), ...territories.map((item) => item.vung)]),
-      'All',
-    );
-    replaceOptions(
-      document.getElementById('select_channel'),
-      uniqueValues(customers.map((item) => item.channel)),
-      'All',
-    );
-    replaceOptions(
-      document.getElementById('select_group'),
-      uniqueValues(products.map((item) => window.dataEngine.normalizeProductGroup?.(item.group) || item.group)),
-      'All',
-    );
-  }
-
-  function syncFilterControls() {
-    if (!window.dataEngine) return;
-    const mapping = {
-      select_mien: 'mien',
-      select_vung: 'vung',
-      select_channel: 'channel',
-      select_group: 'productGroup',
-    };
-    Object.entries(mapping).forEach(([id, key]) => {
-      const select = document.getElementById(id);
-      if (select) select.value = window.dataEngine.filters[key] || '';
-    });
-  }
-
-  function bindExtraFilters() {
-    const region = document.getElementById('select_vung');
-    if (region && !region.dataset.boundExecutive) {
-      region.dataset.boundExecutive = 'true';
-      region.addEventListener('change', (event) => {
-        window.dataEngine?.setFilter('vung', event.target.value || null);
-      });
     }
   }
 
@@ -231,19 +137,12 @@
 
   function update() {
     updateTitle();
-    updateKpis();
-    syncFilterControls();
+    updateDataStatus();
   }
 
   function waitForData(attempt = 0) {
     if (window.dataEngine?.raw) {
-      populateBusinessFilters();
-      bindExtraFilters();
       update();
-      if (!window.dataEngine.__executiveUiSubscribed) {
-        window.dataEngine.__executiveUiSubscribed = true;
-        window.dataEngine.subscribe(update);
-      }
       return;
     }
     if (attempt < 120) window.setTimeout(() => waitForData(attempt + 1), 100);
@@ -254,7 +153,6 @@
     tagFilterBlocks();
     bindNavigationTitle();
     bindPageChangeTitle();
-    bindExtraFilters();
     setPageContext();
     updateTitle();
     waitForData();

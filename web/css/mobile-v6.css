@@ -82,9 +82,7 @@
   }
 
   .reference-dashboard-v3 .brand-subtitle,
-  .reference-dashboard-v3 .filter-pills-bar,
-  .reference-dashboard-v3 .btn-logout,
-  .reference-dashboard-v3 .btn-clear-all {
+  .reference-dashboard-v3 .btn-logout {
     display: none !important;
   }
 
@@ -185,6 +183,52 @@
     min-width: 0;
     padding: 8px 8px calc(var(--mobile-bottom-nav) + 18px + env(safe-area-inset-bottom)) !important;
     overflow: visible !important;
+  }
+
+  .reference-dashboard-v3 .filter-feedback-bar {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    margin-bottom: 8px;
+    padding: 7px;
+  }
+
+  .reference-dashboard-v3 .filter-feedback-copy {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  .reference-dashboard-v3 .filter-feedback-label {
+    font-size: 9px;
+  }
+
+  .reference-dashboard-v3 .filter-feedback-bar .filter-pills-bar {
+    display: flex !important;
+    flex-wrap: nowrap;
+    max-width: 100%;
+    padding-bottom: 2px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .reference-dashboard-v3 .filter-pill {
+    flex: 0 0 auto;
+    min-height: 36px;
+  }
+
+  .reference-dashboard-v3 .remove-pill {
+    min-width: 32px;
+    min-height: 32px;
+  }
+
+  .reference-dashboard-v3 .filter-feedback-bar .btn-clear-all {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 7px 9px;
   }
 
   .reference-dashboard-v3 .period-status-banner {

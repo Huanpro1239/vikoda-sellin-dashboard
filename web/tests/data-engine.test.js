@@ -176,3 +176,19 @@ test('quarter/year charts and CEO memos contain only derived, current-period val
   assert.equal(memos.includes('2027'), true);
   assert.equal(memos.includes('99.9%'), true);
 });
+
+test('changing miền clears an incompatible vùng before listeners are notified', () => {
+  const engine = makeEngine();
+  engine.filters.mien = 'MT';
+  engine.filters.vung = 'MT';
+  const notifications = [];
+  engine.subscribe((filters) => notifications.push({ ...filters }));
+
+  engine.setFilter('mien', 'Miền Bắc');
+
+  assert.equal(engine.filters.mien, 'Miền Bắc');
+  assert.equal(engine.filters.vung, null);
+  assert.equal(notifications.length, 1);
+  assert.equal(notifications[0].mien, 'Miền Bắc');
+  assert.equal(notifications[0].vung, null);
+});
