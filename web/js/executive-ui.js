@@ -55,6 +55,7 @@
     appendScript('js/page-scoped-filters-v7.js?v=7.0.0', 'data-vikoda-page-scoped-filters-v7');
     appendScript('js/overview-performance-v8.js?v=8.0.0', 'data-vikoda-overview-performance-v8');
     appendScript('js/accounting-charts-v9.js?v=9.0.0', 'data-vikoda-accounting-charts-v9');
+    appendScript('js/accounting-layout-fix-v9-1.js?v=9.1.0', 'data-vikoda-accounting-layout-fix-v9-1');
   }
 
   function tagFilterBlocks() {
