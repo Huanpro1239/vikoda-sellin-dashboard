@@ -24,6 +24,7 @@ REQUIRED_WEB_FILES = (
     "css/page05-sale-v5.css",
     "css/mobile-v6.css",
     "js/app.js",
+    "js/formatters.js",
     "js/charts.js",
     "js/data-engine.js",
     "js/executive-ui.js",

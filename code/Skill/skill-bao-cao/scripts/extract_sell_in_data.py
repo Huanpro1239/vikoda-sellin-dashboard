@@ -94,10 +94,39 @@ def date_value(value: Any, *, location: str) -> str:
     raise ValueError(f"{location}: NgayHoaDon không phải ngày Excel: {value!r}")
 
 
-def parse_as_of(value: str | None) -> date:
+import calendar
+
+
+def parse_as_of(value: str | None) -> date | None:
     if not value:
-        return date.today()
+        return None
     return datetime.strptime(value, "%Y-%m-%d").date()
+
+
+def derive_as_of(source_dir: Path, requested_as_of: date | None = None) -> date:
+    if requested_as_of is not None:
+        return requested_as_of
+
+    discovered_periods: list[tuple[int, int]] = []
+    for path in source_dir.glob("*.xlsx"):
+        if path.name.startswith("~$"):
+            continue
+        match = FILE_PATTERN.match(path.name)
+        if match:
+            month = int(match.group(1))
+            year = int(match.group(2))
+            discovered_periods.append((year, month))
+
+    if discovered_periods:
+        max_year = max(year for year, _ in discovered_periods)
+        max_month = max(month for year, month in discovered_periods if year == max_year)
+        today = date.today()
+        if today.year == max_year and today.month == max_month:
+            return today
+        last_day = calendar.monthrange(max_year, max_month)[1]
+        return date(max_year, max_month, last_day)
+
+    return date.today()
 
 
 def expected_periods(as_of: date) -> list[tuple[int, int]]:
@@ -120,7 +149,7 @@ def main() -> int:
     staging_dir.mkdir(parents=True, exist_ok=True)
     data_file = staging_dir / "sell_in_data.json"
     audit_file = staging_dir / "sell_in_audit.json"
-    as_of = parse_as_of(args.as_of_date)
+    as_of = derive_as_of(source_dir, parse_as_of(args.as_of_date))
 
     problems: list[str] = []
     warnings: list[str] = []

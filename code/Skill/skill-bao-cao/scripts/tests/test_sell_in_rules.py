@@ -20,6 +20,7 @@ from extract_sell_in_data import (  # noqa: E402
     COLUMNS,
     FILE_PATTERN,
     date_value,
+    derive_as_of,
     expected_periods,
     is_revenue_invoice_type,
     numeric_value,
@@ -110,6 +111,23 @@ class PeriodScopeTest(unittest.TestCase):
 
     def test_parse_as_of(self) -> None:
         self.assertEqual(parse_as_of("2026-07-27"), date(2026, 7, 27))
+        self.assertIsNone(parse_as_of(None))
+
+    def test_derive_as_of_with_explicit_date(self) -> None:
+        self.assertEqual(
+            derive_as_of(Path("non_existent"), date(2026, 7, 27)),
+            date(2026, 7, 27),
+        )
+
+    def test_derive_as_of_from_workbooks_on_month_rollover(self) -> None:
+        import tempfile
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            for m in range(1, 9):
+                (temp_path / f"Sell in T{m:02d}_2026.xlsx").touch()
+            # Month 8 is latest available; should derive last day of August 2026
+            derived = derive_as_of(temp_path)
+            self.assertEqual(derived, date(2026, 8, 31))
 
 
 class FileNameTest(unittest.TestCase):
