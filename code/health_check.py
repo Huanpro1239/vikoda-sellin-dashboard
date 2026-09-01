@@ -41,6 +41,7 @@ REQUIRED_WEB_FILES = (
     "js/page-scoped-filters-v7.js",
     "js/overview-performance-v8.js",
     "js/accounting-charts-v9.js",
+    "js/accounting-layout-fix-v9-1.js",
     "js/auth.js",
 )
 
