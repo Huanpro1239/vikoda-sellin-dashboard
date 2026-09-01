@@ -23,6 +23,8 @@ REQUIRED_WEB_FILES = (
     "css/reference-fidelity-v4.css",
     "css/page05-sale-v5.css",
     "css/mobile-v6.css",
+    "css/powerbi-premium-v7.css",
+    "css/overview-performance-v8.css",
     "js/app.js",
     "js/formatters.js",
     "js/charts.js",
@@ -33,6 +35,10 @@ REQUIRED_WEB_FILES = (
     "js/reference-geography-v4.js",
     "js/page05-sale-v5.js",
     "js/mobile-v6.js",
+    "js/smart-slicers.js",
+    "js/channel-geography-facets.js",
+    "js/page-scoped-filters-v7.js",
+    "js/overview-performance-v8.js",
     "js/auth.js",
 )
 
