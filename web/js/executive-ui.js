@@ -40,9 +40,10 @@
     appendStylesheet('css/reference-fidelity-v4.css?v=4.2.0', 'data-vikoda-reference-fidelity');
     appendStylesheet('css/page05-sale-v5.css?v=5.0.0', 'data-vikoda-sale-v5');
     appendStylesheet('css/mobile-v6.css?v=6.1.0', 'data-vikoda-mobile-v6');
-    // Final visual layer intentionally loads last so it owns presentation only.
+    // Final visual layers intentionally load last so they own presentation only.
     appendStylesheet('css/powerbi-premium-v7.css?v=7.0.0', 'data-vikoda-powerbi-premium-v7');
     appendStylesheet('css/overview-performance-v8.css?v=8.0.0', 'data-vikoda-overview-performance-v8');
+    appendStylesheet('css/accounting-report-v9.css?v=9.0.0', 'data-vikoda-accounting-report-v9');
 
     appendScript('js/reference-analytics.js?v=3.0.0', 'data-vikoda-reference-analytics');
     appendScript('js/reference-fidelity-v4.js?v=4.3.0', 'data-vikoda-reference-fidelity');
@@ -53,6 +54,7 @@
     appendScript('js/channel-geography-facets.js?v=1.0.0', 'data-vikoda-channel-geography-facets');
     appendScript('js/page-scoped-filters-v7.js?v=7.0.0', 'data-vikoda-page-scoped-filters-v7');
     appendScript('js/overview-performance-v8.js?v=8.0.0', 'data-vikoda-overview-performance-v8');
+    appendScript('js/accounting-charts-v9.js?v=9.0.0', 'data-vikoda-accounting-charts-v9');
   }
 
   function tagFilterBlocks() {
