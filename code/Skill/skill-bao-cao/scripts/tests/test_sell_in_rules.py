@@ -24,6 +24,7 @@ from extract_sell_in_data import (  # noqa: E402
     is_revenue_invoice_type,
     numeric_value,
     parse_as_of,
+    reporting_as_of,
 )
 
 
@@ -110,6 +111,23 @@ class PeriodScopeTest(unittest.TestCase):
 
     def test_parse_as_of(self) -> None:
         self.assertEqual(parse_as_of("2026-07-27"), date(2026, 7, 27))
+
+    def test_dau_thang_tu_chot_theo_ky_data_goc_moi_nhat(self) -> None:
+        resolved = reporting_as_of(
+            date(2026, 9, 1),
+            {(2025, 9), (2026, 7), (2026, 8)},
+        )
+        self.assertEqual(resolved, date(2026, 8, 1))
+
+    def test_khi_da_co_file_thang_moi_thi_dung_thang_moi(self) -> None:
+        resolved = reporting_as_of(
+            date(2026, 9, 1),
+            {(2025, 9), (2026, 8), (2026, 9)},
+        )
+        self.assertEqual(resolved, date(2026, 9, 1))
+
+    def test_khong_co_file_hop_le_thi_giu_che_do_strict_theo_ngay_chay(self) -> None:
+        self.assertEqual(reporting_as_of(date(2026, 9, 1), set()), date(2026, 9, 1))
 
 
 class FileNameTest(unittest.TestCase):
