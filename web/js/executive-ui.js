@@ -46,6 +46,7 @@
     appendScript('js/page05-sale-v5.js?v=5.0.0', 'data-vikoda-sale-v5');
     appendScript('js/mobile-v6.js?v=6.0.0', 'data-vikoda-mobile-v6');
     appendScript('js/smart-slicers.js?v=1.0.0', 'data-vikoda-smart-slicers');
+    appendScript('js/channel-geography-facets.js?v=1.0.0', 'data-vikoda-channel-geography-facets');
   }
 
   function tagFilterBlocks() {
