@@ -28,22 +28,22 @@
 }
 
 #view_page_01 #chart_p1_trend {
-  height: 430px !important;
-  min-height: 430px !important;
+  height: 360px !important;
+  min-height: 360px !important;
   padding-top: 0 !important;
 }
 
 @media (min-width: 1500px) {
   #view_page_01 #chart_p1_trend {
-    height: 455px !important;
-    min-height: 455px !important;
+    height: 380px !important;
+    min-height: 380px !important;
   }
 }
 
 @media (max-width: 1180px) {
   #view_page_01 #chart_p1_trend {
-    height: 450px !important;
-    min-height: 450px !important;
+    height: 380px !important;
+    min-height: 380px !important;
   }
 }
 
@@ -53,14 +53,14 @@
   }
 
   #view_page_01 #chart_p1_trend {
-    height: 485px !important;
-    min-height: 485px !important;
+    height: 380px !important;
+    min-height: 380px !important;
   }
 }
 
 @media (max-width: 520px) {
   #view_page_01 #chart_p1_trend {
-    height: 520px !important;
-    min-height: 520px !important;
+    height: 380px !important;
+    min-height: 380px !important;
   }
 }

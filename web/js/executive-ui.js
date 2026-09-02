@@ -42,7 +42,7 @@
     appendStylesheet('css/mobile-v6.css?v=6.1.0', 'data-vikoda-mobile-v6');
     // Final visual layers intentionally load last so they own presentation only.
     appendStylesheet('css/powerbi-premium-v7.css?v=7.0.0', 'data-vikoda-powerbi-premium-v7');
-    appendStylesheet('css/overview-performance-v8.css?v=8.0.0', 'data-vikoda-overview-performance-v8');
+    appendStylesheet('css/overview-performance-v8.css?v=8.1.0', 'data-vikoda-overview-performance-v8');
     appendStylesheet('css/accounting-report-v9.css?v=9.0.0', 'data-vikoda-accounting-report-v9');
     appendStylesheet('css/vikoda-polish-v9.css?v=9.0.0', 'data-vikoda-polish-v9');
     appendScript('js/reference-analytics.js?v=3.0.0', 'data-vikoda-reference-analytics');
@@ -53,7 +53,7 @@
     appendScript('js/smart-slicers.js?v=1.0.0', 'data-vikoda-smart-slicers');
     appendScript('js/channel-geography-facets.js?v=1.0.0', 'data-vikoda-channel-geography-facets');
     appendScript('js/page-scoped-filters-v7.js?v=7.0.0', 'data-vikoda-page-scoped-filters-v7');
-    appendScript('js/overview-performance-v8.js?v=8.0.0', 'data-vikoda-overview-performance-v8');
+    appendScript('js/overview-performance-v8.js?v=8.1.0', 'data-vikoda-overview-performance-v8');
     appendScript('js/accounting-charts-v9.js?v=9.0.0', 'data-vikoda-accounting-charts-v9');
     appendScript('js/accounting-layout-fix-v9-1.js?v=9.1.0', 'data-vikoda-accounting-layout-fix-v9-1');
   }

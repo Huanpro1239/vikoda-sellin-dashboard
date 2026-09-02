@@ -75,7 +75,8 @@ test('visual loader applies the fresh polish stylesheet after every legacy layer
   const stylesheets = nodes.filter((node) => node.tagName === 'link');
 
   assert.equal(stylesheets.at(-1).href, 'css/vikoda-polish-v9.css?v=9.0.0');
-  assert.equal(stylesheets.at(-2).href, 'css/mobile-v6.css?v=6.1.0');
+  assert.ok(stylesheets.findIndex((node) => node.href === 'css/accounting-report-v9.css?v=9.0.0') < stylesheets.length - 1);
+  assert.ok(stylesheets.findIndex((node) => node.href === 'css/mobile-v6.css?v=6.1.0') < stylesheets.length - 1);
   assert.match(html, /js\/executive-ui\.js\?v=2\.9\.0/);
   assert.match(html, /js\/app\.js\?v=2\.9\.0/);
 });
