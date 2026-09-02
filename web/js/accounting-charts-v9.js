@@ -317,6 +317,13 @@
       ? yAxes.find((axis) => axis?.type === 'category')
       : xAxes.find((axis) => axis?.type === 'category');
     const categoryCount = toArray(categoryAxis?.data).length;
+    const styleFinalAxis = (axis) => {
+      const styled = styleAxis(axis, axis?.type === 'value');
+      if (chartId === 'chart_p1_trend' && axis?.type === 'value') {
+        return { ...styled, min: 0, scale: false };
+      }
+      return styled;
+    };
 
     const patch = {
       backgroundColor: 'transparent',
@@ -328,8 +335,8 @@
       animationDuration: Math.min(Number(option.animationDuration) || 220, 240),
       tooltip: toArray(option.tooltip).map(styleTooltip),
       legend: toArray(option.legend).map(styleLegend),
-      xAxis: xAxes.map((axis) => styleAxis(axis, axis?.type === 'value')),
-      yAxis: yAxes.map((axis) => styleAxis(axis, axis?.type === 'value')),
+      xAxis: xAxes.map(styleFinalAxis),
+      yAxis: yAxes.map(styleFinalAxis),
       series: toArray(option.series).map((series, index) => styleSeries(series, index, {
         horizontal,
         categoryCount,

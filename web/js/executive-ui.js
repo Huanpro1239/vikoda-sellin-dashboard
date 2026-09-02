@@ -54,7 +54,7 @@
     appendScript('js/channel-geography-facets.js?v=1.0.0', 'data-vikoda-channel-geography-facets');
     appendScript('js/page-scoped-filters-v7.js?v=7.0.0', 'data-vikoda-page-scoped-filters-v7');
     appendScript('js/overview-performance-v8.js?v=8.1.0', 'data-vikoda-overview-performance-v8');
-    appendScript('js/accounting-charts-v9.js?v=9.0.0', 'data-vikoda-accounting-charts-v9');
+    appendScript('js/accounting-charts-v9.js?v=9.0.1', 'data-vikoda-accounting-charts-v9');
     appendScript('js/accounting-layout-fix-v9-1.js?v=9.1.0', 'data-vikoda-accounting-layout-fix-v9-1');
   }
 

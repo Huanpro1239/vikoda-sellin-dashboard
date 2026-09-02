@@ -11,7 +11,7 @@ const read = (relative) => fs.readFileSync(path.join(root, relative), 'utf8');
 test('accounting v9 is loaded after overview v8 as the final visual layer', () => {
   const shell = read('web/js/executive-ui.js');
   assert.match(shell, /accounting-report-v9\.css\?v=9\.0\.0/);
-  assert.match(shell, /accounting-charts-v9\.js\?v=9\.0\.0/);
+  assert.match(shell, /accounting-charts-v9\.js\?v=9\.0\.1/);
   assert.ok(shell.indexOf('overview-performance-v8.css') < shell.indexOf('accounting-report-v9.css'));
   assert.ok(shell.indexOf('overview-performance-v8.js') < shell.indexOf('accounting-charts-v9.js'));
 });
@@ -37,6 +37,12 @@ test('accounting v9 preserves business logic and only restyles existing chart op
   assert.doesNotMatch(js, /getLYFilteredFacts\(/);
   assert.doesNotMatch(js, /fact_sell_in/);
   assert.doesNotMatch(js, /fact_target/);
+});
+
+test('accounting v9 never expands the overview revenue axis below zero', () => {
+  const js = read('web/js/accounting-charts-v9.js');
+  assert.match(js, /chartId === 'chart_p1_trend' && axis\?\.type === 'value'/);
+  assert.match(js, /\.\.\.styled, min: 0, scale: false/);
 });
 
 test('accounting report css enforces tabular numeric presentation for finance tables and KPI values', () => {
