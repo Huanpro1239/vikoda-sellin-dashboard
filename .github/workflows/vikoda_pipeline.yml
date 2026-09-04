@@ -30,7 +30,7 @@ on:
   workflow_dispatch:
     inputs:
       run_cloud_refresh:
-        description: 'Check SharePoint and refresh changed Sell-In periods'
+        description: 'Recalculate production plan and refresh changed Sell-In periods'
         required: true
         type: boolean
         default: true
@@ -39,8 +39,6 @@ permissions:
   contents: read
 
 concurrency:
-  # SharePoint can emit several events while a workbook is being saved. Keep
-  # refresh runs serialized so one successful state checkpoint is never raced.
   group: 'vikoda-sellin-${{ github.ref }}'
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
@@ -78,15 +76,13 @@ jobs:
           fi
           blocked="$(git diff --name-only "$BASE_SHA" "$GITHUB_SHA" | grep -E '^(Data/|web/data/)' || true)"
           if [[ -n "$blocked" ]]; then
-            echo "::error::Runtime data must not be committed to Git. It is generated and published by the workflow instead."
+            echo "::error::Runtime data must not be committed to Git."
             echo "$blocked"
             exit 1
           fi
 
   test:
     name: Read-only CI
-    # Data-change events use already-reviewed main code. Do not spend time
-    # running the full source test suite before every SharePoint refresh.
     if: github.event_name != 'repository_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -125,7 +121,7 @@ jobs:
         run: npm run verify:web
 
   cloud-refresh:
-    name: Incremental SharePoint refresh and dashboard build
+    name: SharePoint production plan and incremental dashboard refresh
     needs: [test]
     if: >-
       always() &&
@@ -149,6 +145,8 @@ jobs:
       SHAREPOINT_BASE_FOLDER: ${{ vars.SHAREPOINT_BASE_FOLDER || 'Vikoda_Sales_Data' }}
       PIPELINE_STATE_FILE: ${{ vars.SHAREPOINT_PIPELINE_STATE_FILE || '_vikoda_pipeline_state.json' }}
       INCREMENTAL_STATE_FILE: ${{ vars.SHAREPOINT_INCREMENTAL_STATE_FILE || '_vikoda_incremental_state.json' }}
+      PLANNING_SOURCE_ITEM_ID: ${{ vars.PLANNING_SOURCE_ITEM_ID || '01EX3DDZDCP23YZACRFBBZXS3XIFZXDAMW' }}
+      PLANNING_TARGET_ITEM_ID: ${{ vars.PLANNING_TARGET_ITEM_ID || '01EX3DDZGDKHPGY5HLMJAJKFWC3IVMHDEL' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -163,8 +161,8 @@ jobs:
           cache: pip
           cache-dependency-path: requirements.txt
 
-      - name: Install lightweight Graph authentication dependency
-        run: python -m pip install --disable-pip-version-check azure-identity==1.24.0
+      - name: Install pinned production dependencies
+        run: python -m pip install --disable-pip-version-check --requirement requirements.txt
 
       - name: Validate Microsoft OIDC configuration
         shell: bash
@@ -183,6 +181,12 @@ jobs:
 
       - name: Resolve SharePoint site and drive IDs
         run: python code/common/sharepoint_bootstrap.py
+
+      - name: Recalculate and publish production plan
+        run: >-
+          python code/production_planning/run_sharepoint.py
+          --source-item-id "${PLANNING_SOURCE_ITEM_ID}"
+          --target-item-id "${PLANNING_TARGET_ITEM_ID}"
 
       - name: Detect SharePoint source changes and affected ERP periods
         id: source_change
@@ -205,13 +209,9 @@ jobs:
           fi
           python code/common/sharepoint_change_detector_v2.py "${args[@]}"
 
-      - name: Skip unchanged SharePoint data
+      - name: Skip unchanged dashboard sources
         if: steps.source_change.outputs.changed != 'true'
-        run: echo "No source change (${{ steps.source_change.outputs.reason }}). Skip downloads, ETL and web deploy."
-
-      - name: Install pinned production dependencies
-        if: steps.source_change.outputs.changed == 'true'
-        run: python -m pip install --disable-pip-version-check --requirement requirements.txt
+        run: echo "No Sell-In source change (${{ steps.source_change.outputs.reason }}). Production plan was still checked."
 
       - name: Download existing Data_Goc baseline
         if: steps.source_change.outputs.changed == 'true'
@@ -382,11 +382,8 @@ jobs:
             echo "- Dispatch action: \`${{ github.event.action || 'n/a' }}\`"
             echo "- Source change: \`${{ steps.source_change.outputs.changed || 'not-checked' }}\`"
             echo "- Reason: \`${{ steps.source_change.outputs.reason || 'n/a' }}\`"
-            echo "- Source workbooks: \`${{ steps.source_change.outputs.file_count || 'n/a' }}\`"
             echo "- ERP periods changed: \`${{ steps.source_change.outputs.erp_periods || 'baseline/reconcile' }}\`"
             echo "- Data_Goc periods rebuilt: \`${{ steps.delta.outputs.rebuild_periods || 'none' }}\`"
-            echo "- Data_Goc workbooks rebuilt: \`${{ steps.delta.outputs.rebuild_count || '0' }}\`"
-            echo "- GitHub Pages payload: \`full dashboard data\`"
             echo "- SharePoint output: \`${SHAREPOINT_BASE_FOLDER}/Data_Goc\`"
             echo "- Commit: \`${GITHUB_SHA}\`"
           } >> "$GITHUB_STEP_SUMMARY"
