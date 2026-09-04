@@ -398,6 +398,7 @@ jobs:
     permissions:
       contents: read
       pages: write
+      # Required by actions/deploy-pages for GitHub Pages, not Microsoft Graph.
       id-token: write
     environment:
       name: github-pages
