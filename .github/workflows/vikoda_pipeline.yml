@@ -391,7 +391,10 @@ jobs:
   deploy-dashboard:
     name: Deploy full dashboard to GitHub Pages
     needs: [cloud-refresh]
+    # cloud-refresh intentionally runs through an upstream skipped test on repository_dispatch.
+    # always() prevents GitHub from propagating that skipped ancestor into this deploy job.
     if: >-
+      always() &&
       needs.cloud-refresh.result == 'success' &&
       needs.cloud-refresh.outputs.source_changed == 'true'
     runs-on: ubuntu-latest
