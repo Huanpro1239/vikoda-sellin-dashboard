@@ -94,6 +94,36 @@ def _validate_trigger_contract(workflow_text: str, jobs: dict[str, str]) -> None
             "Data-change events must skip the full source test suite and use reviewed main code"
         )
 
+    # repository_dispatch intentionally skips the full test job. If cloud-refresh
+    # keeps that dependency, always() is mandatory so GitHub cannot propagate the
+    # skipped ancestor and suppress the production refresh.
+    if "needs: [test]" in cloud_refresh:
+        if "always()" not in cloud_refresh:
+            raise WorkflowPolicyError(
+                "Job 'cloud-refresh' must use always() while depending on skipped test"
+            )
+        if "needs.test.result == 'skipped'" not in cloud_refresh:
+            raise WorkflowPolicyError(
+                "Job 'cloud-refresh' must explicitly allow the skipped test result"
+            )
+
+
+def _validate_pages_deploy_contract(jobs: dict[str, str]) -> None:
+    deploy = jobs["deploy-dashboard"]
+    required_markers = {
+        "needs: [cloud-refresh]": "depend directly on cloud-refresh",
+        "always()": "use always() to defeat skipped-ancestor propagation",
+        "needs.cloud-refresh.result == 'success'": "require a successful cloud refresh",
+        "needs.cloud-refresh.outputs.source_changed == 'true'": (
+            "deploy whenever cloud-refresh reports source_changed=true"
+        ),
+    }
+    for marker, requirement in required_markers.items():
+        if marker not in deploy:
+            raise WorkflowPolicyError(
+                f"Job 'deploy-dashboard' must {requirement}; missing: {marker}"
+            )
+
 
 def validate_workflow_text(workflow_text: str) -> None:
     """Raise ``WorkflowPolicyError`` if the workflow breaks production policy."""
@@ -107,6 +137,7 @@ def validate_workflow_text(workflow_text: str) -> None:
         raise WorkflowPolicyError(f"Workflow is missing required jobs: {', '.join(missing)}")
 
     _validate_trigger_contract(workflow_text, jobs)
+    _validate_pages_deploy_contract(jobs)
 
     permissions = {name: _permissions(name, block) for name, block in jobs.items()}
     id_token_jobs = {
