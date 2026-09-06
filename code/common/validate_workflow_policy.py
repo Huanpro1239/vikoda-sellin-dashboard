@@ -94,35 +94,40 @@ def _validate_trigger_contract(workflow_text: str, jobs: dict[str, str]) -> None
             "Data-change events must skip the full source test suite and use reviewed main code"
         )
 
-    # repository_dispatch intentionally skips the full test job. If cloud-refresh
-    # keeps that dependency, always() is mandatory so GitHub cannot propagate the
-    # skipped ancestor and suppress the production refresh.
-    if "needs: [test]" in cloud_refresh:
-        if "always()" not in cloud_refresh:
+    # repository_dispatch intentionally skips the full test job. The cloud refresh
+    # currently depends on that job, so its *job-level* condition must explicitly
+    # neutralize skipped-ancestor propagation. Do not accept an unrelated always()
+    # from a later step or a comment.
+    if re.search(r"(?m)^    needs:\s*\[\s*test\s*\]\s*$", cloud_refresh):
+        cloud_guard = re.compile(
+            r"(?m)^    if: >-\n"
+            r"      always\(\) &&\n"
+            r"      \(needs\.test\.result == 'success' \|\| needs\.test\.result == 'skipped'\) &&\n"
+        )
+        if cloud_guard.search(cloud_refresh) is None:
             raise WorkflowPolicyError(
-                "Job 'cloud-refresh' must use always() while depending on skipped test"
-            )
-        if "needs.test.result == 'skipped'" not in cloud_refresh:
-            raise WorkflowPolicyError(
-                "Job 'cloud-refresh' must explicitly allow the skipped test result"
+                "Job 'cloud-refresh' must use job-level always() and explicitly allow skipped test"
             )
 
 
 def _validate_pages_deploy_contract(jobs: dict[str, str]) -> None:
     deploy = jobs["deploy-dashboard"]
-    required_markers = {
-        "needs: [cloud-refresh]": "depend directly on cloud-refresh",
-        "always()": "use always() to defeat skipped-ancestor propagation",
-        "needs.cloud-refresh.result == 'success'": "require a successful cloud refresh",
-        "needs.cloud-refresh.outputs.source_changed == 'true'": (
-            "deploy whenever cloud-refresh reports source_changed=true"
-        ),
-    }
-    for marker, requirement in required_markers.items():
-        if marker not in deploy:
-            raise WorkflowPolicyError(
-                f"Job 'deploy-dashboard' must {requirement}; missing: {marker}"
-            )
+    if re.search(r"(?m)^    needs:\s*\[\s*cloud-refresh\s*\]\s*$", deploy) is None:
+        raise WorkflowPolicyError(
+            "Job 'deploy-dashboard' must depend directly on cloud-refresh"
+        )
+
+    deploy_guard = re.compile(
+        r"(?m)^    if: >-\n"
+        r"      always\(\) &&\n"
+        r"      needs\.cloud-refresh\.result == 'success' &&\n"
+        r"      needs\.cloud-refresh\.outputs\.source_changed == 'true'\s*$"
+    )
+    if deploy_guard.search(deploy) is None:
+        raise WorkflowPolicyError(
+            "Job 'deploy-dashboard' must use job-level always(), require cloud-refresh success, "
+            "and deploy when source_changed=true"
+        )
 
 
 def validate_workflow_text(workflow_text: str) -> None:
