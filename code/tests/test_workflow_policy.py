@@ -59,6 +59,38 @@ class WorkflowPolicyTests(unittest.TestCase):
         with self.assertRaisesRegex(WorkflowPolicyError, "skip the full source test suite"):
             validate_workflow_text(changed)
 
+    def test_cloud_refresh_dependency_requires_always(self) -> None:
+        changed = self.workflow.replace(
+            "      always() &&\n      (needs.test.result == 'success' || needs.test.result == 'skipped') &&\n",
+            "      (needs.test.result == 'success' || needs.test.result == 'skipped') &&\n",
+            1,
+        )
+        with self.assertRaisesRegex(WorkflowPolicyError, "cloud-refresh.*always"):
+            validate_workflow_text(changed)
+
+    def test_pages_deploy_must_keep_always(self) -> None:
+        deploy_marker = (
+            "    if: >-\n"
+            "      always() &&\n"
+            "      needs.cloud-refresh.result == 'success' &&\n"
+        )
+        changed = self.workflow.replace(
+            deploy_marker,
+            "    if: >-\n      needs.cloud-refresh.result == 'success' &&\n",
+            1,
+        )
+        with self.assertRaisesRegex(WorkflowPolicyError, "deploy-dashboard.*always"):
+            validate_workflow_text(changed)
+
+    def test_pages_deploy_must_follow_source_changed(self) -> None:
+        changed = self.workflow.replace(
+            "      needs.cloud-refresh.outputs.source_changed == 'true'",
+            "      needs.cloud-refresh.outputs.source_changed == 'false'",
+            1,
+        )
+        with self.assertRaisesRegex(WorkflowPolicyError, "source_changed=true"):
+            validate_workflow_text(changed)
+
     def test_azure_client_secret_is_rejected(self) -> None:
         changed = self.workflow + "\n# AZURE_CLIENT_SECRET\n"
         with self.assertRaisesRegex(WorkflowPolicyError, "AZURE_CLIENT_SECRET"):
